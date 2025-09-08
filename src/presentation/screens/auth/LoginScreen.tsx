@@ -1,14 +1,14 @@
 import { StackScreenProps } from "@react-navigation/stack";
 import { useState } from "react";
 import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
   StyleSheet,
-  View,
   Text,
   TextInput,
   TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
-  ActivityIndicator,
+  View,
 } from "react-native";
 import { RootStackParams } from "../../navigation/StackNavigation";
 
