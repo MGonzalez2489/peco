@@ -2,6 +2,7 @@ import { StackScreenProps } from "@react-navigation/stack";
 import { useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -10,26 +11,40 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { RootStackParams } from "../../navigation/StackNavigation";
+import { RootStackParams } from "../../navigation/AuthNavigation";
 import { COLORS } from "../../../../assets/styles";
+import { useAuthStore } from "../../store/auth/useAuthStore";
 
 interface Props extends StackScreenProps<RootStackParams, "LoginScreen"> {}
 
+//TODO: VALIDATIONS, FORMIK, etc
 export const LoginScreen = ({ navigation }: Props) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async () => {
-    setLoading(true);
-    // Simulate a network request
-    setTimeout(() => {
-      // In a real app, you'd handle API call response here
-      console.log("Login attempt with:", { email, password });
-      setLoading(false);
-      navigation.navigate("HomeScreen");
-    }, 2000);
+  const { login } = useAuthStore();
+
+  const onLogin = async () => {
+    //TODO: VALIDATIONS
+
+    const response = await login({ email, password });
+
+    if (!response) {
+      Alert.alert("Error", "Usuario o contraseña incorrectos");
+    }
   };
+
+  // const handleLogin = async () => {
+  //   setLoading(true);
+  //   // Simulate a network request
+  //   setTimeout(() => {
+  //     // In a real app, you'd handle API call response here
+  //     console.log("Login attempt with:", { email, password });
+  //     setLoading(false);
+  //     navigation.navigate("HomeScreen");
+  //   }, 2000);
+  // };
 
   return (
     <KeyboardAvoidingView
@@ -60,7 +75,7 @@ export const LoginScreen = ({ navigation }: Props) => {
 
         <TouchableOpacity
           style={styles.button}
-          onPress={handleLogin}
+          onPress={onLogin}
           disabled={loading}
         >
           {loading ? (

@@ -10,7 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { RootStackParams } from "../../navigation/StackNavigation";
+import { RootStackParams } from "../../navigation/AuthNavigation";
 
 interface Props extends StackScreenProps<RootStackParams, "RegisterScreen"> {}
 

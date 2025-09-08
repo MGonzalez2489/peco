@@ -5,7 +5,6 @@ import { Platform } from "react-native";
 const testUrl = Platform.OS === "ios" ? API_URL_IOS : API_URL_ANDROID;
 
 export const url = STAGE === "production" ? "prodUrl" : testUrl;
-
 const api = axios.create({
   baseURL: url,
   headers: {
