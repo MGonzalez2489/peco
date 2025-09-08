@@ -1,6 +1,6 @@
 import { createDrawerNavigator } from "@react-navigation/drawer";
+import { AccountsScreen } from "../screens/account";
 import { HomeScreen } from "../screens/home/HomeScreen";
-import { AccountScreen } from "../screens/account";
 
 export type MainDrawerParams = {
   HomeScreen: undefined;
@@ -13,7 +13,7 @@ export const MainNavigator = () => {
   return (
     <Drawer.Navigator>
       <Drawer.Screen name="HomeScreen" component={HomeScreen} />
-      <Drawer.Screen name="AccountsScreen" component={AccountScreen} />
+      <Drawer.Screen name="AccountsScreen" component={AccountsScreen} />
     </Drawer.Navigator>
   );
 };

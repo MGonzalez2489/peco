@@ -10,3 +10,12 @@ export const authLogin = async (dto: LoginDto) => {
     console.log("error", error);
   }
 };
+
+export const authRegister = async (dto: LoginDto) => {
+  try {
+    const { data } = await api.post<ResultDto<TokenDto>>("auth/register", dto);
+    return data.data;
+  } catch (error) {
+    console.log("error", error);
+  }
+};

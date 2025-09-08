@@ -3,6 +3,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthNavigator, MainNavigator } from "./presentation/navigation";
 import { useAuthStore } from "./presentation/store/auth/useAuthStore";
 
+//TODO: use AuthProvider
+
 export const PecoApp = () => {
   // const colorScheme = useColorScheme();
   const { isAuthenticated } = useAuthStore();
