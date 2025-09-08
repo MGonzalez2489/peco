@@ -11,6 +11,7 @@ import {
   View,
 } from "react-native";
 import { RootStackParams } from "../../navigation/StackNavigation";
+import { COLORS } from "../../../../assets/styles";
 
 interface Props extends StackScreenProps<RootStackParams, "LoginScreen"> {}
 
@@ -26,6 +27,7 @@ export const LoginScreen = ({ navigation }: Props) => {
       // In a real app, you'd handle API call response here
       console.log("Login attempt with:", { email, password });
       setLoading(false);
+      navigation.navigate("HomeScreen");
     }, 2000);
   };
 
@@ -89,7 +91,7 @@ export const LoginScreen = ({ navigation }: Props) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: COLORS.white,
   },
   content: {
     flex: 1,
@@ -100,13 +102,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: "bold",
-    color: "#333333",
+    color: COLORS.text,
     marginBottom: 40,
   },
   input: {
     width: "100%",
     height: 50,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.white,
     borderRadius: 8,
     paddingHorizontal: 15,
     marginBottom: 15,
@@ -117,14 +119,14 @@ const styles = StyleSheet.create({
   button: {
     width: "100%",
     height: 50,
-    backgroundColor: "#007AFF",
+    backgroundColor: COLORS.primary,
     justifyContent: "center",
     alignItems: "center",
     borderRadius: 8,
     marginTop: 10,
   },
   buttonText: {
-    color: "#FFFFFF",
+    color: COLORS.white,
     fontSize: 18,
     fontWeight: "bold",
   },
@@ -132,7 +134,7 @@ const styles = StyleSheet.create({
     marginTop: 15,
   },
   linkText: {
-    color: "#007AFF",
+    color: COLORS.primary,
     fontSize: 14,
     textDecorationLine: "underline",
   },
@@ -150,7 +152,7 @@ const styles = StyleSheet.create({
     marginLeft: 5,
   },
   bottomLinkText: {
-    color: "#007AFF",
+    color: COLORS.primary,
     fontSize: 14,
     fontWeight: "bold",
   },
