@@ -1,99 +1,133 @@
+import { LoginDto } from "@infrastructure/dtos/auth";
 import { StackScreenProps } from "@react-navigation/stack";
-import { useState } from "react";
+import { useAuthStore } from "@store/auth/useAuthStore";
+import { COLORS } from "@styles/colors";
+import { useMutation } from "@tanstack/react-query";
+import { Formik } from "formik";
+import { useRef } from "react";
 import {
-  StyleSheet,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
-import { RootStackParams } from "../../navigation/AuthNavigation";
+import { AuthStackParams } from "src/presentation/navigation";
 
-interface Props extends StackScreenProps<RootStackParams, "RegisterScreen"> {}
+interface Props extends StackScreenProps<AuthStackParams, "RegisterScreen"> {}
 
+//TODO: styling, confirm password validator
 export const RegisterScreen = ({ navigation }: Props) => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+  const { register } = useAuthStore();
+  const emailInpRef = useRef(null);
+  const passInpRef = useRef(null);
+  const confirmInpref = useRef(null);
 
-  const handleLogin = async () => {
-    setLoading(true);
-    // Simulate a network request
-    setTimeout(() => {
-      // In a real app, you'd handle API call response here
-      console.log("Login attempt with:", { email, password });
-      setLoading(false);
-    }, 2000);
-  };
+  //
+  const mutation = useMutation({
+    mutationFn: (data: LoginDto) => register(data),
+    onError(error) {
+      alert(error);
+    },
+  });
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={styles.container}
+    <Formik
+      initialValues={{ email: "", password: "", confirmPassword: "" }}
+      validate={(values) => {
+        const errors = {};
+        if (!values.email) {
+          errors["email"] = "Required";
+        } else if (
+          !/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(values.email)
+        ) {
+          errors["email"] = "Invalid email address";
+        }
+        return errors;
+      }}
+      onSubmit={(values) => {
+        mutation.mutate({ email: values.email, password: values.password });
+      }}
     >
-      <View style={styles.content}>
-        <Text style={styles.title}>Create an account!</Text>
-
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          placeholderTextColor="#A0A0A0"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          placeholderTextColor="#A0A0A0"
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-        />
-
-        <TextInput
-          style={styles.input}
-          placeholder="Confirm Password"
-          placeholderTextColor="#A0A0A0"
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-        />
-
-        <TouchableOpacity
-          style={styles.button}
-          onPress={handleLogin}
-          disabled={loading}
+      {({ handleChange, handleSubmit, values, errors, touched }) => (
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.container}
         >
-          {loading ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.buttonText}>Create</Text>
-          )}
-        </TouchableOpacity>
-      </View>
+          <View style={styles.content}>
+            <Text style={styles.title}>Crear cuenta</Text>
 
-      <View style={styles.bottomContainer}>
-        <TouchableOpacity
-          style={styles.bottomLink}
-          onPress={() => navigation.navigate("LoginScreen")}
-        >
-          <Text style={styles.bottomLinkText}>I already have an account</Text>
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+            <TextInput
+              ref={emailInpRef}
+              style={styles.input}
+              placeholder="Email"
+              placeholderTextColor="#A0A0A0"
+              value={values.email}
+              onChangeText={handleChange("email")}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              returnKeyType={"next"}
+              onSubmitEditing={() => passInpRef.current?.focus()}
+            />
+
+            <TextInput
+              ref={passInpRef}
+              style={styles.input}
+              placeholder="Password"
+              placeholderTextColor="#A0A0A0"
+              secureTextEntry
+              value={values.password}
+              onChangeText={handleChange("password")}
+              onSubmitEditing={() => confirmInpref.current?.focus()}
+            />
+
+            <TextInput
+              ref={confirmInpref}
+              style={styles.input}
+              placeholder="Confirm Password"
+              placeholderTextColor="#A0A0A0"
+              secureTextEntry
+              value={values.confirmPassword}
+              onChangeText={handleChange("confirmPassword")}
+              onSubmitEditing={() => handleSubmit()}
+            />
+
+            <TouchableOpacity
+              style={styles.button}
+              onPress={() => handleSubmit()}
+              disabled={mutation.isPending}
+            >
+              {mutation.isPending ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.buttonText}>Create</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.bottomContainer}>
+            <TouchableOpacity
+              style={styles.bottomLink}
+              onPress={() => navigation.navigate("LoginScreen")}
+            >
+              <Text style={styles.bottomLinkText}>
+                I already have an account
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      )}
+    </Formik>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: COLORS.white,
   },
   content: {
     flex: 1,
@@ -104,13 +138,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: "bold",
-    color: "#333333",
+    color: COLORS.text,
     marginBottom: 40,
   },
   input: {
     width: "100%",
     height: 50,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.white,
     borderRadius: 8,
     paddingHorizontal: 15,
     marginBottom: 15,
@@ -121,14 +155,14 @@ const styles = StyleSheet.create({
   button: {
     width: "100%",
     height: 50,
-    backgroundColor: "#007AFF",
+    backgroundColor: COLORS.primary,
     justifyContent: "center",
     alignItems: "center",
     borderRadius: 8,
     marginTop: 10,
   },
   buttonText: {
-    color: "#FFFFFF",
+    color: COLORS.white,
     fontSize: 18,
     fontWeight: "bold",
   },
@@ -136,7 +170,7 @@ const styles = StyleSheet.create({
     marginTop: 15,
   },
   linkText: {
-    color: "#007AFF",
+    color: COLORS.primary,
     fontSize: 14,
     textDecorationLine: "underline",
   },
@@ -154,7 +188,7 @@ const styles = StyleSheet.create({
     marginLeft: 5,
   },
   bottomLinkText: {
-    color: "#007AFF",
+    color: COLORS.primary,
     fontSize: 14,
     fontWeight: "bold",
   },

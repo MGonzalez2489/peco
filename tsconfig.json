@@ -6,7 +6,9 @@
     "paths": {
       "@actions/*": ["./src/actions/*"],
       "@store/*": ["./src/presentation/store/*"],
-      "@styles/*": ["./assets/styles/*"]
+      "@config/*": ["./config/*"],
+      "@styles/*": ["./assets/styles/*"],
+      "@infrastructure/*": ["./src/infrastructure/*"]
     }
   }
 }

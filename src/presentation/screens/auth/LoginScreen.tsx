@@ -1,10 +1,12 @@
+import { LoginDto } from "@infrastructure/dtos/auth";
 import { StackScreenProps } from "@react-navigation/stack";
 import { useAuthStore } from "@store/auth/useAuthStore";
 import { COLORS } from "@styles/colors";
-import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { Formik } from "formik";
+import { useRef } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -17,89 +19,98 @@ import { AuthStackParams } from "src/presentation/navigation";
 
 interface Props extends StackScreenProps<AuthStackParams, "LoginScreen"> {}
 
-//TODO: VALIDATIONS, FORMIK, etc
+//TODO: Styling
 export const LoginScreen = ({ navigation }: Props) => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-
   const { login } = useAuthStore();
+  const emailInpRef = useRef(null);
+  const passInpRef = useRef(null);
 
-  const onLogin = async () => {
-    //TODO: VALIDATIONS
-
-    const response = await login({ email, password });
-
-    if (!response) {
-      Alert.alert("Error", "Usuario o contraseña incorrectos");
-    }
-  };
-
-  // const handleLogin = async () => {
-  //   setLoading(true);
-  //   // Simulate a network request
-  //   setTimeout(() => {
-  //     // In a real app, you'd handle API call response here
-  //     console.log("Login attempt with:", { email, password });
-  //     setLoading(false);
-  //     navigation.navigate("HomeScreen");
-  //   }, 2000);
-  // };
+  //
+  const mutation = useMutation({
+    mutationFn: (data: LoginDto) => login(data),
+  });
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={styles.container}
+    <Formik
+      initialValues={{ email: "", password: "" }}
+      validate={(values) => {
+        const errors = {};
+        if (!values.email) {
+          errors["email"] = "Required";
+        } else if (
+          !/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(values.email)
+        ) {
+          errors["email"] = "Invalid email address";
+        }
+        return errors;
+      }}
+      onSubmit={(values) => mutation.mutate(values)}
     >
-      <View style={styles.content}>
-        <Text style={styles.title}>Welcome!</Text>
-
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          placeholderTextColor="#A0A0A0"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          placeholderTextColor="#A0A0A0"
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-        />
-
-        <TouchableOpacity
-          style={styles.button}
-          onPress={onLogin}
-          disabled={loading}
+      {({ handleChange, handleSubmit, values, errors, touched }) => (
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.container}
         >
-          {loading ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.buttonText}>Log In</Text>
-          )}
-        </TouchableOpacity>
+          <View style={styles.content}>
+            <Text style={styles.title}>Bienvenido!</Text>
 
-        <TouchableOpacity style={styles.link}>
-          <Text style={styles.linkText}>Forgot your password?</Text>
-        </TouchableOpacity>
-      </View>
+            <TextInput
+              ref={emailInpRef}
+              style={styles.input}
+              placeholder="Email"
+              placeholderTextColor="#A0A0A0"
+              value={values.email}
+              onChangeText={handleChange("email")}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              returnKeyType={"next"}
+              onSubmitEditing={() => passInpRef.current?.focus()}
+            />
+            <Text> {errors.email && touched.email && errors.email}</Text>
 
-      <View style={styles.bottomContainer}>
-        <Text style={styles.bottomText}>Don't have an account?</Text>
-        <TouchableOpacity
-          style={styles.bottomLink}
-          onPress={() => navigation.navigate("RegisterScreen")}
-        >
-          <Text style={styles.bottomLinkText}>Create account</Text>
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+            <TextInput
+              ref={passInpRef}
+              style={styles.input}
+              placeholder="Password"
+              placeholderTextColor="#A0A0A0"
+              secureTextEntry
+              value={values.password}
+              onChangeText={handleChange("password")}
+              onSubmitEditing={() => handleSubmit()}
+            />
+            <Text>
+              {errors.password && touched.password && errors.password}
+            </Text>
+
+            <TouchableOpacity
+              style={styles.button}
+              onPress={() => handleSubmit()}
+              disabled={mutation.isPending}
+            >
+              {mutation.isPending ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.buttonText}>Log In</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.link}>
+              <Text style={styles.linkText}>Forgot your password?</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.bottomContainer}>
+            <Text style={styles.bottomText}>Don't have an account?</Text>
+            <TouchableOpacity
+              style={styles.bottomLink}
+              onPress={() => navigation.navigate("RegisterScreen")}
+            >
+              <Text style={styles.bottomLinkText}>Create account</Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      )}
+    </Formik>
   );
 };
 
