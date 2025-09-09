@@ -1,13 +1,12 @@
+import { useQuery } from "@tanstack/react-query";
 import {
-  Text,
-  View,
-  StyleSheet,
-  TouchableOpacity,
   FlatList,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { accountsLoad } from "../../../actions/account/load-accounts";
-import { useState } from "react";
-import { Account } from "../../../domain/entities";
 
 // Helper function to format currency
 const formatCurrency = (amount: number) => {
@@ -36,10 +35,15 @@ const AccountItem = ({ account }) => {
 };
 
 export const AccountsScreen = () => {
-  const [accounts, setAccounts] = useState<Account[]>([]);
-
-  const acc = accountsLoad();
-  acc.then((f) => setAccounts(f.data));
+  const { isLoading, data: accounts = [] } = useQuery({
+    queryKey: ["products", "infinite"],
+    staleTime: 1000 * 60 * 60, //1 hour
+    queryFn: () => accountsLoad(), // meter la paginacion como parametro
+  });
+  // const [accounts, setAccounts] = useState<Account[]>([]);
+  //
+  // const acc = accountsLoad();
+  // acc.then((f) => setAccounts(f.data));
 
   return (
     <View style={styles.container}>
