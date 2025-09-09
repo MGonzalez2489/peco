@@ -3,7 +3,7 @@ import { Account } from "../../domain/entities";
 import { ResultListDto } from "../../infrastructure/dtos/responses";
 import { SearchDto } from "../../infrastructure/dtos/search.dto";
 
-export const accountsLoad = async (page: number) => {
+export const loadAccounts = async (page: number = 1) => {
   try {
     //TODO: FIX QUERY PARAMS
     const s = new SearchDto();

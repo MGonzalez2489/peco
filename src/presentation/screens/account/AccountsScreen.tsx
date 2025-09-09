@@ -1,3 +1,4 @@
+import { loadAccounts } from "@actions/account/load-accounts";
 import { useQuery } from "@tanstack/react-query";
 import {
   FlatList,
@@ -6,7 +7,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { accountsLoad } from "../../../actions/account/load-accounts";
 
 // Helper function to format currency
 const formatCurrency = (amount: number) => {
@@ -38,12 +38,8 @@ export const AccountsScreen = () => {
   const { isLoading, data: accounts = [] } = useQuery({
     queryKey: ["products", "infinite"],
     staleTime: 1000 * 60 * 60, //1 hour
-    queryFn: () => accountsLoad(), // meter la paginacion como parametro
+    queryFn: () => loadAccounts(), // meter la paginacion como parametro
   });
-  // const [accounts, setAccounts] = useState<Account[]>([]);
-  //
-  // const acc = accountsLoad();
-  // acc.then((f) => setAccounts(f.data));
 
   return (
     <View style={styles.container}>
