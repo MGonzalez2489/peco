@@ -1,5 +1,6 @@
-import { loadAccounts } from "@actions/account/load-accounts";
-import { useQuery } from "@tanstack/react-query";
+import { DrawerNavigationProp } from "@react-navigation/drawer";
+import { useNavigation } from "@react-navigation/native";
+import { useAccountStore } from "@store/useAccountStore";
 import {
   FlatList,
   StyleSheet,
@@ -7,6 +8,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { MainLayout } from "src/presentation/layout";
+import { MainDrawerParams } from "src/presentation/navigation";
 
 // Helper function to format currency
 const formatCurrency = (amount: number) => {
@@ -17,57 +20,47 @@ const formatCurrency = (amount: number) => {
 };
 
 // Reusable Account Item Component
-const AccountItem = ({ account }) => {
-  const balanceStyle =
-    account.balance < 0 ? styles.negativeBalance : styles.positiveBalance;
-
-  return (
-    <TouchableOpacity style={styles.itemContainer}>
-      <View style={styles.textContainer}>
-        <Text style={styles.accountName}>{account.name}</Text>
-        {account.bank && <Text style={styles.bankName}>{account.bank}</Text>}
-      </View>
-      <Text style={[styles.balanceText, balanceStyle]}>
-        {formatCurrency(account.balance)}
-      </Text>
-    </TouchableOpacity>
-  );
-};
 
 export const AccountsScreen = () => {
-  const { isLoading, data: accounts = [] } = useQuery({
-    queryKey: ["products", "infinite"],
-    staleTime: 1000 * 60 * 60, //1 hour
-    queryFn: () => loadAccounts(), // meter la paginacion como parametro
-  });
+  const { accounts } = useAccountStore();
+  const navigation = useNavigation<DrawerNavigationProp<MainDrawerParams>>();
+
+  const AccountItem = ({ account }) => {
+    const balanceStyle =
+      account.balance < 0 ? styles.negativeBalance : styles.positiveBalance;
+
+    return (
+      <TouchableOpacity
+        style={styles.itemContainer}
+        onPress={() => {
+          navigation.navigate("AccountScreen", { accountId: account.publicId });
+        }}
+      >
+        <View style={styles.textContainer}>
+          <Text style={styles.accountName}>{account.name}</Text>
+          {account.bank && <Text style={styles.bankName}>{account.bank}</Text>}
+        </View>
+        <Text style={[styles.balanceText, balanceStyle]}>
+          {formatCurrency(account.balance)}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
 
   return (
-    <View style={styles.container}>
-      <FlatList
-        data={accounts}
-        renderItem={({ item }) => <AccountItem account={item} />}
-        contentContainerStyle={styles.listContainer}
-        keyExtractor={(item) => item.publicId}
-      />
-    </View>
+    <MainLayout title="Cuentas">
+      <View>
+        <FlatList
+          data={accounts}
+          renderItem={({ item }) => <AccountItem account={item} />}
+          keyExtractor={(item) => item.publicId}
+        />
+      </View>
+    </MainLayout>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F5F5F5",
-    paddingTop: 20,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#333333",
-    padding: 20,
-  },
-  listContainer: {
-    paddingHorizontal: 10,
-  },
   itemContainer: {
     flexDirection: "row",
     justifyContent: "space-between",

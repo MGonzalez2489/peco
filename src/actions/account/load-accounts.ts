@@ -1,13 +1,12 @@
-import { api } from "../../../config/api/api";
-import { Account } from "../../domain/entities";
-import { ResultListDto } from "../../infrastructure/dtos/responses";
-import { SearchDto } from "../../infrastructure/dtos/search.dto";
+import { api } from "@config/api/api";
+import { ResultListDto } from "@infrastructure/dtos/responses";
+import { SearchDto } from "@infrastructure/dtos/search.dto";
+import { Account } from "src/domain/entities";
 
-export const loadAccounts = async (page: number = 1) => {
+export const loadAccounts = async () => {
   try {
     //TODO: FIX QUERY PARAMS
     const s = new SearchDto();
-    s.page = page;
     // const url = `accounts?page=${s.page}&take=${s.take}&showAll=${s.showAll}&order="DESC"&orderBy="createdAt"`;
     const queryString = objToQueryString(s);
     const { data } = await api.get<ResultListDto<Account>>(

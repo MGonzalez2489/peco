@@ -3,7 +3,7 @@ import { PropsWithChildren, useEffect } from "react";
 import { Text, View } from "react-native";
 import { AuthStackParams, MainDrawerParams } from "../navigation";
 import { DrawerNavigationProp } from "@react-navigation/drawer";
-import { useAuthStore } from "../store/auth/useAuthStore";
+import { useAuthStore } from "../store/useAuthStore";
 
 export const AuthProvider = ({ children }: PropsWithChildren) => {
   const navigation =

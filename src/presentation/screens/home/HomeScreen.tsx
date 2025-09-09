@@ -1,9 +1,11 @@
-import { Text, View } from "react-native";
+import { Text } from "react-native";
+import { MainLayout } from "src/presentation/layout";
 
+//TODO: Create custom navbar for all MainLayoutImplementations
 export const HomeScreen = () => {
   return (
-    <View>
-      <Text>Hola soy el home</Text>
-    </View>
+    <MainLayout title="hello there">
+      <Text>Title from home</Text>
+    </MainLayout>
   );
 };

@@ -1,6 +1,6 @@
 import { LoginDto } from "@infrastructure/dtos/auth";
 import { StackScreenProps } from "@react-navigation/stack";
-import { useAuthStore } from "@store/auth/useAuthStore";
+import { useAuthStore } from "@store/useAuthStore";
 import { COLORS } from "@styles/colors";
 import { useMutation } from "@tanstack/react-query";
 import { Formik } from "formik";
