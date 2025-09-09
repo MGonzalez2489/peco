@@ -52,7 +52,10 @@ export const LoginScreen = ({ navigation }: Props) => {
           style={styles.container}
         >
           <View style={styles.content}>
-            <Text style={styles.title}>Bienvenido!</Text>
+            <Text style={styles.title}>Bienvenido de nuevo</Text>
+            <Text style={styles.subTitle}>
+              Inicia sesión para continuar con tus finanzas.
+            </Text>
 
             <TextInput
               ref={emailInpRef}
@@ -100,12 +103,12 @@ export const LoginScreen = ({ navigation }: Props) => {
           </View>
 
           <View style={styles.bottomContainer}>
-            <Text style={styles.bottomText}>Don't have an account?</Text>
+            <Text style={styles.bottomText}>¿No tienes cuenta?</Text>
             <TouchableOpacity
               style={styles.bottomLink}
               onPress={() => navigation.navigate("RegisterScreen")}
             >
-              <Text style={styles.bottomLinkText}>Create account</Text>
+              <Text style={styles.bottomLinkText}>Registrate</Text>
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
@@ -128,13 +131,18 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: "bold",
-    color: COLORS.text,
-    marginBottom: 40,
+    color: COLORS.primary,
+    marginBottom: 10,
+  },
+  subTitle: {
+    marginBottom: 50,
+    fontSize: 15,
+    color: "#a8b0b9",
   },
   input: {
     width: "100%",
     height: 50,
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.background,
     borderRadius: 8,
     paddingHorizontal: 15,
     marginBottom: 15,
@@ -148,7 +156,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     justifyContent: "center",
     alignItems: "center",
-    borderRadius: 8,
+    borderRadius: 100,
     marginTop: 10,
   },
   buttonText: {
@@ -178,7 +186,7 @@ const styles = StyleSheet.create({
     marginLeft: 5,
   },
   bottomLinkText: {
-    color: COLORS.primary,
+    color: COLORS.secondary,
     fontSize: 14,
     fontWeight: "bold",
   },

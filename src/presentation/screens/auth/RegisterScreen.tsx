@@ -109,13 +109,12 @@ export const RegisterScreen = ({ navigation }: Props) => {
           </View>
 
           <View style={styles.bottomContainer}>
+            <Text style={styles.bottomText}>¿Ya tienes una cuenta?</Text>
             <TouchableOpacity
               style={styles.bottomLink}
               onPress={() => navigation.navigate("LoginScreen")}
             >
-              <Text style={styles.bottomLinkText}>
-                I already have an account
-              </Text>
+              <Text style={styles.bottomLinkText}>Inicia sesión</Text>
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
@@ -139,12 +138,12 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: "bold",
     color: COLORS.text,
-    marginBottom: 40,
+    marginBottom: 50,
   },
   input: {
     width: "100%",
     height: 50,
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.background,
     borderRadius: 8,
     paddingHorizontal: 15,
     marginBottom: 15,
@@ -158,7 +157,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     justifyContent: "center",
     alignItems: "center",
-    borderRadius: 8,
+    borderRadius: 100,
     marginTop: 10,
   },
   buttonText: {
@@ -188,7 +187,7 @@ const styles = StyleSheet.create({
     marginLeft: 5,
   },
   bottomLinkText: {
-    color: COLORS.primary,
+    color: COLORS.secondary,
     fontSize: 14,
     fontWeight: "bold",
   },
