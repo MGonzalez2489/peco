@@ -4,7 +4,9 @@
     "baseUrl": ".",
     "typeRoots": ["./src/types"],
     "paths": {
-      "@actions/*": ["./src/actions/*"]
+      "@actions/*": ["./src/actions/*"],
+      "@store/*": ["./src/presentation/store/*"],
+      "@styles/*": ["./assets/styles/*"]
     }
   }
 }

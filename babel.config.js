@@ -11,6 +11,8 @@ module.exports = function (api) {
           alias: {
             "@": "./src",
             "@actions/*": "./src/actions/*",
+            "@store/*": "./src/presentation/store/*",
+            "@styles/*": "./assets/styles/*",
           },
         },
       ],

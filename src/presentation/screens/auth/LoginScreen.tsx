@@ -1,4 +1,6 @@
 import { StackScreenProps } from "@react-navigation/stack";
+import { useAuthStore } from "@store/auth/useAuthStore";
+import { COLORS } from "@styles/colors";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -11,11 +13,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { RootStackParams } from "../../navigation/AuthNavigation";
-import { COLORS } from "../../../../assets/styles";
-import { useAuthStore } from "../../store/auth/useAuthStore";
+import { AuthStackParams } from "src/presentation/navigation";
 
-interface Props extends StackScreenProps<RootStackParams, "LoginScreen"> {}
+interface Props extends StackScreenProps<AuthStackParams, "LoginScreen"> {}
 
 //TODO: VALIDATIONS, FORMIK, etc
 export const LoginScreen = ({ navigation }: Props) => {
