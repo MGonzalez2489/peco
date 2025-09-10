@@ -1,5 +1,7 @@
+import { COLORS } from "@styles/colors";
 import { ComponentStyles } from "@styles/components";
 import { Formik } from "formik";
+import { useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -10,6 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import DropDownPicker from "react-native-dropdown-picker";
 import { MainLayout } from "src/presentation/layout";
 
 const initialValues = {
@@ -23,11 +26,18 @@ const initialValues = {
 //TODO: Review if a common form component can be created to
 //avoid repeating keyboardavoidingView behavior
 export const AccountCreateScreen = () => {
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState(null);
+  const [items, setItems] = useState([
+    { label: "Apple", value: "apple" },
+    { label: "Banana", value: "banana" },
+  ]);
+
   return (
     <MainLayout title="Crear cuenta">
       <Formik
         initialValues={initialValues}
-        onSubmit={() => console.log("values")}
+        onSubmit={(values) => console.log("values", values)}
       >
         {({ handleChange, handleSubmit, values, errors, touched }) => (
           <KeyboardAvoidingView
@@ -38,6 +48,7 @@ export const AccountCreateScreen = () => {
               {/* Required Fields */}
               <View>
                 {/* Name */}
+                <Text style={ComponentStyles.inputLabel}>Nombre</Text>
                 <TextInput
                   style={ComponentStyles.input}
                   placeholder="Nombre de la cuenta"
@@ -48,6 +59,7 @@ export const AccountCreateScreen = () => {
                   onChangeText={handleChange("name")}
                 />
                 {/* Initial Balance */}
+                <Text style={ComponentStyles.inputLabel}>Balance Inicial</Text>
                 <TextInput
                   style={ComponentStyles.input}
                   placeholder="Balance inicial"
@@ -58,20 +70,31 @@ export const AccountCreateScreen = () => {
                   onChangeText={handleChange("balance")}
                 />
                 {/* Account Type */}
-                <TextInput
+                <Text style={ComponentStyles.inputLabel}>Tipo</Text>
+                <DropDownPicker
+                  open={open}
+                  value={value}
+                  items={items}
+                  setOpen={setOpen}
+                  setValue={setValue}
+                  setItems={setItems}
+                  onChangeValue={handleChange("accountType")}
+                  placeholder="Tipo de Cuenta"
                   style={ComponentStyles.input}
-                  placeholder="Tipo de cuenta"
-                  placeholderTextColor="#A0A0A0"
-                  keyboardType="default"
-                  autoCapitalize="none"
-                  value={values.accountType}
-                  onChangeText={handleChange("accountType")}
+                  listItemContainerStyle={{
+                    backgroundColor: COLORS.background,
+                  }}
+                  dropDownContainerStyle={{
+                    borderTopWidth: 0,
+                    borderColor: "#E0E0E0",
+                  }}
                 />
               </View>
               <View style={{ paddingTop: 30 }}></View>
               {/* Optional Fields */}
               <View>
                 {/* Bank */}
+                <Text style={ComponentStyles.inputLabel}>Banco</Text>
                 <TextInput
                   style={ComponentStyles.input}
                   placeholder="Banco"
@@ -82,6 +105,7 @@ export const AccountCreateScreen = () => {
                   onChangeText={handleChange("bank")}
                 />
                 {/* Account Number */}
+                <Text style={ComponentStyles.inputLabel}>Numero de cuenta</Text>
                 <TextInput
                   style={ComponentStyles.input}
                   placeholder="Numero de cuenta"
@@ -101,7 +125,7 @@ export const AccountCreateScreen = () => {
               {false ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
-                <Text style={{ color: "#fff" }}>Crear</Text>
+                <Text style={ComponentStyles.btnPrimaryText}>Crear</Text>
               )}
             </TouchableOpacity>
           </KeyboardAvoidingView>

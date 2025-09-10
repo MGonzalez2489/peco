@@ -104,7 +104,7 @@ export const RegisterScreen = ({ navigation }: Props) => {
               {mutation.isPending ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
-                <Text style={styles.buttonText}>Create</Text>
+                <Text style={ComponentStyles.btnPrimaryText}>Crear</Text>
               )}
             </TouchableOpacity>
           </View>

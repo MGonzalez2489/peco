@@ -87,14 +87,14 @@ export const LoginScreen = ({ navigation }: Props) => {
             </Text>
 
             <TouchableOpacity
-              style={styles.button}
+              style={ComponentStyles.btnPrimary}
               onPress={() => handleSubmit()}
               disabled={mutation.isPending}
             >
               {mutation.isPending ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
-                <Text style={styles.buttonText}>Log In</Text>
+                <Text style={ComponentStyles.btnPrimaryText}>Entrar</Text>
               )}
             </TouchableOpacity>
 
@@ -141,11 +141,6 @@ const styles = StyleSheet.create({
     color: "#a8b0b9",
   },
 
-  buttonText: {
-    color: COLORS.white,
-    fontSize: 18,
-    fontWeight: "bold",
-  },
   link: {
     marginTop: 15,
   },

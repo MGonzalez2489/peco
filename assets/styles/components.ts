@@ -2,6 +2,10 @@ import { StyleSheet } from "react-native";
 import { COLORS } from "./colors";
 
 export const ComponentStyles = StyleSheet.create({
+  inputLabel: {
+    marginBottom: 5,
+    color: COLORS.text,
+  },
   input: {
     width: "100%",
     height: 50,
@@ -22,5 +26,10 @@ export const ComponentStyles = StyleSheet.create({
     borderRadius: 100,
     marginTop: 10,
     color: "#fff",
+  },
+  btnPrimaryText: {
+    color: COLORS.white,
+    fontSize: 18,
+    fontWeight: "bold",
   },
 });
