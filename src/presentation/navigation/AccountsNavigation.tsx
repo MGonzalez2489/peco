@@ -31,7 +31,7 @@ export const AccountsNavigator = ({ navigation }: Props) => {
           headerTitle: "Cuentas",
           headerLeft: () => (
             <TouchableOpacity onPress={() => navigation.openDrawer()}>
-              <Menu style={{ paddingLeft: 50 }} />
+              <Menu style={{ paddingLeft: 20 }} />
             </TouchableOpacity>
           ),
         }}
@@ -39,12 +39,15 @@ export const AccountsNavigator = ({ navigation }: Props) => {
       <Stack.Screen
         name="AccountScreen"
         component={AccountScreen}
-        options={{ title: "Detalles" }}
+        options={{ title: "Detalles", headerBackButtonDisplayMode: "minimal" }}
       />
       <Stack.Screen
         name="AccountCreateScreen"
         component={AccountCreateScreen}
-        options={{ title: "Crear cuenta" }}
+        options={{
+          title: "Crear cuenta",
+          headerBackButtonDisplayMode: "minimal",
+        }}
       />
     </Stack.Navigator>
   );

@@ -1,6 +1,7 @@
 import { api } from "@config/api/api";
 import { ResultListDto } from "@infrastructure/dtos/responses";
 import { SearchDto } from "@infrastructure/dtos/search.dto";
+import { isAxiosError } from "axios";
 import { Account } from "src/domain/entities";
 
 export const loadAccounts = async () => {
@@ -14,6 +15,10 @@ export const loadAccounts = async () => {
     );
     return data.data;
   } catch (error) {
+    if (isAxiosError(error)) {
+      console.log("Axios error", error.response?.data);
+      throw new Error(error.response?.data.message);
+    }
     console.log("Error fetching accounts", error);
   }
 };

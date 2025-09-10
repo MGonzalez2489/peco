@@ -2,6 +2,7 @@ import { LoginDto } from "@infrastructure/dtos/auth";
 import { StackScreenProps } from "@react-navigation/stack";
 import { useAuthStore } from "@store/useAuthStore";
 import { COLORS } from "@styles/colors";
+import { ComponentStyles } from "@styles/components";
 import { useMutation } from "@tanstack/react-query";
 import { Formik } from "formik";
 import { useRef } from "react";
@@ -62,7 +63,7 @@ export const RegisterScreen = ({ navigation }: Props) => {
 
             <TextInput
               ref={emailInpRef}
-              style={styles.input}
+              style={ComponentStyles.input}
               placeholder="Email"
               placeholderTextColor="#A0A0A0"
               value={values.email}
@@ -75,7 +76,7 @@ export const RegisterScreen = ({ navigation }: Props) => {
 
             <TextInput
               ref={passInpRef}
-              style={styles.input}
+              style={ComponentStyles.input}
               placeholder="Password"
               placeholderTextColor="#A0A0A0"
               secureTextEntry
@@ -86,7 +87,7 @@ export const RegisterScreen = ({ navigation }: Props) => {
 
             <TextInput
               ref={confirmInpref}
-              style={styles.input}
+              style={ComponentStyles.input}
               placeholder="Confirm Password"
               placeholderTextColor="#A0A0A0"
               secureTextEntry
@@ -140,17 +141,7 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     marginBottom: 50,
   },
-  input: {
-    width: "100%",
-    height: 50,
-    backgroundColor: COLORS.background,
-    borderRadius: 8,
-    paddingHorizontal: 15,
-    marginBottom: 15,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
-  },
+
   button: {
     width: "100%",
     height: 50,
