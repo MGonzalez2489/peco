@@ -5,3 +5,7 @@ export const COLORS = {
   text: "#333333",
   white: "#FFFFFF",
 };
+
+//TODO:
+//Determine color for icons
+//Define dark theme
