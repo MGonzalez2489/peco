@@ -1,48 +1,26 @@
 import { createDrawerNavigator } from "@react-navigation/drawer";
-import {
-  AccountCreateScreen,
-  AccountScreen,
-  AccountsScreen,
-} from "../screens/account";
 import { HomeScreen } from "../screens/home/HomeScreen";
+import { AccountsNavigator } from "./AccountsNavigation";
 
 export type MainDrawerParams = {
-  HomeScreen: undefined;
-  AccountsScreen: undefined;
-  AccountScreen: { accountId: string };
-  AccountCreateScreen: undefined;
+  Home: undefined;
+  Accounts: undefined;
 };
 
 const Drawer = createDrawerNavigator<MainDrawerParams>();
 
 export const MainNavigator = () => {
   return (
-    <Drawer.Navigator
-      initialRouteName="HomeScreen"
-      screenOptions={{ headerShown: true }}
-    >
+    <Drawer.Navigator initialRouteName="Home">
       <Drawer.Screen
-        name="HomeScreen"
+        name="Home"
         component={HomeScreen}
         options={{ title: "Inicio" }}
       />
       <Drawer.Screen
-        name="AccountsScreen"
-        component={AccountsScreen}
-        options={{ title: "Cuentas" }}
-      />
-      <Drawer.Screen
-        name="AccountScreen"
-        component={AccountScreen}
-        options={{
-          title: "Detalles",
-          drawerItemStyle: { display: "none" },
-        }}
-      />
-      <Drawer.Screen
-        name="AccountCreateScreen"
-        component={AccountCreateScreen}
-        options={{ title: "Crear Cuenta" }}
+        name="Accounts"
+        component={AccountsNavigator}
+        options={{ headerShown: false }}
       />
     </Drawer.Navigator>
   );

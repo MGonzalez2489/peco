@@ -1,10 +1,10 @@
 import { NavigationContainer } from "@react-navigation/native";
+import { useAccountStore } from "@store/useAccountStore";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthNavigator, MainNavigator } from "./presentation/navigation";
 import { useAuthStore } from "./presentation/store/useAuthStore";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useEffect } from "react";
-import { useAccountStore } from "@store/useAccountStore";
 
 //TODO: use AuthProvider
 
@@ -20,11 +20,11 @@ export const PecoApp = () => {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <SafeAreaView style={{ flex: 1 }}>
-        <NavigationContainer>
+      <NavigationContainer>
+        <SafeAreaView style={{ flex: 1 }}>
           {isAuthenticated ? <MainNavigator /> : <AuthNavigator />}
-        </NavigationContainer>
-      </SafeAreaView>
+        </SafeAreaView>
+      </NavigationContainer>
     </QueryClientProvider>
   );
 };

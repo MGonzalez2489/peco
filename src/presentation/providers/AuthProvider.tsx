@@ -1,8 +1,8 @@
+import { DrawerNavigationProp } from "@react-navigation/drawer";
 import { useNavigation } from "@react-navigation/native";
 import { PropsWithChildren, useEffect } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { AuthStackParams, MainDrawerParams } from "../navigation";
-import { DrawerNavigationProp } from "@react-navigation/drawer";
 import { useAuthStore } from "../store/useAuthStore";
 
 export const AuthProvider = ({ children }: PropsWithChildren) => {
@@ -17,9 +17,5 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
     }
   }, [isAuthenticated]);
 
-  return (
-    <View>
-      <Text></Text>
-    </View>
-  );
+  return <View>{children}</View>;
 };
