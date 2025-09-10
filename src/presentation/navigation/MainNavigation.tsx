@@ -12,10 +12,28 @@ const Drawer = createDrawerNavigator<MainDrawerParams>();
 
 export const MainNavigator = () => {
   return (
-    <Drawer.Navigator>
-      <Drawer.Screen name="HomeScreen" component={HomeScreen} />
-      <Drawer.Screen name="AccountsScreen" component={AccountsScreen} />
-      <Drawer.Screen name="AccountScreen" component={AccountScreen} />
+    <Drawer.Navigator
+      initialRouteName="HomeScreen"
+      screenOptions={{ headerShown: true }}
+    >
+      <Drawer.Screen
+        name="HomeScreen"
+        component={HomeScreen}
+        options={{ title: "Inicio" }}
+      />
+      <Drawer.Screen
+        name="AccountsScreen"
+        component={AccountsScreen}
+        options={{ title: "Cuentas" }}
+      />
+      <Drawer.Screen
+        name="AccountScreen"
+        component={AccountScreen}
+        options={{
+          title: "Detalles",
+          drawerItemStyle: { display: "none" },
+        }}
+      />
     </Drawer.Navigator>
   );
 };
