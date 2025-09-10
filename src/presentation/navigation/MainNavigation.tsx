@@ -1,11 +1,16 @@
 import { createDrawerNavigator } from "@react-navigation/drawer";
-import { AccountScreen, AccountsScreen } from "../screens/account";
+import {
+  AccountCreateScreen,
+  AccountScreen,
+  AccountsScreen,
+} from "../screens/account";
 import { HomeScreen } from "../screens/home/HomeScreen";
 
 export type MainDrawerParams = {
   HomeScreen: undefined;
   AccountsScreen: undefined;
   AccountScreen: { accountId: string };
+  AccountCreateScreen: undefined;
 };
 
 const Drawer = createDrawerNavigator<MainDrawerParams>();
@@ -33,6 +38,11 @@ export const MainNavigator = () => {
           title: "Detalles",
           drawerItemStyle: { display: "none" },
         }}
+      />
+      <Drawer.Screen
+        name="AccountCreateScreen"
+        component={AccountCreateScreen}
+        options={{ title: "Crear Cuenta" }}
       />
     </Drawer.Navigator>
   );
