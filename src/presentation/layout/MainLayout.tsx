@@ -1,5 +1,5 @@
 import { COLORS } from "@styles/colors";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 interface Props {
   title: string;

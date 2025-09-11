@@ -1,17 +1,15 @@
 import { api } from "@config/api/api";
-import { Account } from "@domain/entities";
+import { EntryType } from "@domain/entities";
 import { ResultListDto } from "@infrastructure/dtos/responses";
 import { SearchDto } from "@infrastructure/dtos/search.dto";
 import { objToQueryString } from "@infrastructure/utils";
 import { isAxiosError } from "axios";
 
-export const loadAccounts = async () => {
+export const loadEntryTypes = async (search: SearchDto) => {
   try {
-    //TODO: FIX QUERY PARAMS
-    const s = new SearchDto();
-    const queryString = objToQueryString(s);
-    const { data } = await api.get<ResultListDto<Account>>(
-      `accounts?${queryString}`,
+    const queryString = objToQueryString(search);
+    const { data } = await api.get<ResultListDto<EntryType>>(
+      `catalogs/entry-types?${queryString}`,
     );
     return data.data;
   } catch (error) {
@@ -19,6 +17,6 @@ export const loadAccounts = async () => {
       console.log("Axios error", error.response?.data);
       throw new Error(error.response?.data.message);
     }
-    console.log("Error fetching accounts", error);
+    console.log("Error fetching entry types", error);
   }
 };

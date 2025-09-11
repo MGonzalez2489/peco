@@ -12,6 +12,7 @@ module.exports = function (api) {
             "@": "./src",
             "@actions/*": "./src/actions/*",
             "@infrastructure/*": "./src/infrastructure/*",
+            "@domain/*": "./src/domain/*",
             "@store/*": "./src/presentation/store/*",
             "@styles/*": "./assets/styles/*",
             "@config/*": "./config/*",

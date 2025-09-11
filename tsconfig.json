@@ -8,7 +8,8 @@
       "@store/*": ["./src/presentation/store/*"],
       "@config/*": ["./config/*"],
       "@styles/*": ["./assets/styles/*"],
-      "@infrastructure/*": ["./src/infrastructure/*"]
+      "@infrastructure/*": ["./src/infrastructure/*"],
+      "@domain/*": ["./src/domain/*"]
     }
   }
 }

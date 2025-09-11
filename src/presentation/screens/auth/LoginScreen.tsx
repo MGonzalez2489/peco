@@ -70,7 +70,9 @@ export const LoginScreen = ({ navigation }: Props) => {
               returnKeyType={"next"}
               onSubmitEditing={() => passInpRef.current?.focus()}
             />
-            <Text> {errors.email && touched.email && errors.email}</Text>
+            {errors.email && touched.email && errors.email && (
+              <Text>{errors.email} </Text>
+            )}
 
             <TextInput
               ref={passInpRef}
@@ -82,9 +84,9 @@ export const LoginScreen = ({ navigation }: Props) => {
               onChangeText={handleChange("password")}
               onSubmitEditing={() => handleSubmit()}
             />
-            <Text>
-              {errors.password && touched.password && errors.password}
-            </Text>
+            {errors.password && touched.password && errors.password && (
+              <Text>{errors.password}</Text>
+            )}
 
             <TouchableOpacity
               style={ComponentStyles.btnPrimary}

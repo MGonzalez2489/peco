@@ -5,17 +5,22 @@ import { useEffect } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthNavigator, MainNavigator } from "./presentation/navigation";
 import { useAuthStore } from "./presentation/store/useAuthStore";
+import { useCatalogsStore } from "@store/useCatalogsStore";
 
 //TODO: use AuthProvider
 
 const queryClient = new QueryClient();
 export const PecoApp = () => {
   const { isAuthenticated } = useAuthStore();
-  const { load, accounts } = useAccountStore();
+  const { loadAccounts, accounts } = useAccountStore();
+  const { loadCatalogs } = useCatalogsStore();
 
   //TODO: See where to load data in background
   useEffect(() => {
-    if (isAuthenticated && accounts.length === 0) load();
+    if (isAuthenticated && accounts.length === 0) {
+      loadAccounts();
+      loadCatalogs();
+    }
   }, [isAuthenticated]);
 
   return (

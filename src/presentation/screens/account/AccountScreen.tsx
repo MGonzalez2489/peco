@@ -1,10 +1,11 @@
-import { DrawerScreenProps } from "@react-navigation/drawer";
+import { StackScreenProps } from "@react-navigation/stack";
 import { useAccountStore } from "@store/useAccountStore";
 import { Text, View } from "react-native";
 import { MainLayout } from "src/presentation/layout";
-import { MainDrawerParams } from "src/presentation/navigation";
+import { AccountStackParams } from "src/presentation/navigation/AccountsNavigation";
 
-interface Props extends DrawerScreenProps<MainDrawerParams, "AccountScreen"> {}
+// interface Props extends DrawerScreenProps<MainDrawerParams, "AccountScreen"> {}
+interface Props extends StackScreenProps<AccountStackParams, "AccountScreen"> {}
 
 export const AccountScreen = ({ route }: Props) => {
   const productIdRef = route.params.accountId;
