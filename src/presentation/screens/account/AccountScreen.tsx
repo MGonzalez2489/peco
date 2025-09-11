@@ -1,5 +1,6 @@
 import { LoadEntries } from "@actions/entries/load-entries";
 import { formatCurrency } from "@infrastructure/utils";
+import { FabButton } from "@presentation/components";
 import { EntryList } from "@presentation/components/entries";
 import { MainLayout } from "@presentation/layout";
 import { AccountStackParams } from "@presentation/navigation/AccountsNavigation";
@@ -11,7 +12,7 @@ import { StyleSheet, Text, View } from "react-native";
 
 interface Props extends StackScreenProps<AccountStackParams, "AccountScreen"> {}
 
-export const AccountScreen = ({ route }: Props) => {
+export const AccountScreen = ({ navigation, route }: Props) => {
   const accountIdRef = useRef(route.params.accountId);
 
   const { getById } = useAccountStore();
@@ -57,6 +58,8 @@ export const AccountScreen = ({ route }: Props) => {
           fetchNextPage={fetchNextPage}
         />
       </View>
+
+      <FabButton onPress={() => console.log("aca")} />
     </MainLayout>
   );
 };
