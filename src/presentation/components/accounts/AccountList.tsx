@@ -1,26 +1,16 @@
-import { FlatList, StyleSheet, View } from "react-native";
-import { Account } from "src/domain/entities";
+import { FlatList } from "react-native";
 import { AccountListItem } from "./AccountListItem";
+import { Account } from "@domain/entities";
 
 interface Props {
   accounts: Account[];
 }
 export const AccountList = ({ accounts }: Props) => {
   return (
-    <View style={styles.container}>
-      <FlatList
-        data={accounts}
-        renderItem={({ item }) => <AccountListItem account={item} />}
-        keyExtractor={(item) => item.publicId}
-        contentContainerStyle={styles.container}
-      />
-    </View>
+    <FlatList
+      data={accounts}
+      renderItem={({ item }) => <AccountListItem account={item} />}
+      keyExtractor={(item) => item.publicId}
+    />
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    // gap: 10,
-  },
-});
