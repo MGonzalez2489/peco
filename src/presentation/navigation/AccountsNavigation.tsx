@@ -1,15 +1,15 @@
+import { Account } from "@domain/entities";
+import { DrawerNavigationProp } from "@react-navigation/drawer";
 import { createStackNavigator } from "@react-navigation/stack";
+import { Menu } from "lucide-react-native";
+import { TouchableOpacity } from "react-native";
 import {
+  AccountCreateScreen,
   AccountScreen,
   AccountsScreen,
-  AccountCreateScreen,
 } from "../screens/account";
-import { TouchableOpacity } from "react-native";
-import { Menu } from "lucide-react-native";
-import { DrawerNavigationProp } from "@react-navigation/drawer";
-import { MainDrawerParams } from "./MainNavigation";
-import { Account } from "@domain/entities";
 import { AccountCreateSuccessScreen } from "../screens/account/AccountCreateSuccessScreen";
+import { MainDrawerParams } from "./MainNavigation";
 
 export type AccountStackParams = {
   AccountsScreen: undefined;
@@ -42,7 +42,10 @@ export const AccountsNavigator = ({ navigation }: Props) => {
       <Stack.Screen
         name="AccountScreen"
         component={AccountScreen}
-        options={{ title: "Detalles", headerBackButtonDisplayMode: "minimal" }}
+        options={{
+          title: "Detalles",
+          headerBackButtonDisplayMode: "minimal",
+        }}
       />
       <Stack.Screen
         name="AccountCreateScreen"

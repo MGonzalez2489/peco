@@ -9,6 +9,7 @@
       "@config/*": ["./config/*"],
       "@styles/*": ["./assets/styles/*"],
       "@infrastructure/*": ["./src/infrastructure/*"],
+      "@presentation/*": ["./src/presentation/*"],
       "@domain/*": ["./src/domain/*"]
     }
   }

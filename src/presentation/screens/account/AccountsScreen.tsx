@@ -1,11 +1,11 @@
+import { FabButton } from "@presentation/components";
+import { AccountList } from "@presentation/components/accounts";
+import { MainLayout } from "@presentation/layout";
+import { AccountStackParams } from "@presentation/navigation/AccountsNavigation";
 import { useNavigation } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { useAccountStore } from "@store/useAccountStore";
 import { StyleSheet, View } from "react-native";
-import { FAB } from "src/presentation/components";
-import { AccountList } from "src/presentation/components/accounts";
-import { MainLayout } from "src/presentation/layout";
-import { AccountStackParams } from "src/presentation/navigation/AccountsNavigation";
 
 export const AccountsScreen = () => {
   const { accounts } = useAccountStore();
@@ -16,7 +16,7 @@ export const AccountsScreen = () => {
       <View style={styles.container}>
         <AccountList accounts={accounts} />
       </View>
-      <FAB onPress={() => navigation.navigate("AccountCreateScreen")} />
+      <FabButton onPress={() => navigation.navigate("AccountCreateScreen")} />
     </MainLayout>
   );
 };
