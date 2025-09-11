@@ -5,7 +5,7 @@ import { SearchDto } from "@infrastructure/dtos/search.dto";
 import { objToQueryString } from "@infrastructure/utils";
 import { isAxiosError } from "axios";
 
-export const loadAccounts = async () => {
+export const LoadAccounts = async () => {
   try {
     //TODO: FIX QUERY PARAMS
     const s = new SearchDto();

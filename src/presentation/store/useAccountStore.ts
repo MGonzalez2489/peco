@@ -1,7 +1,6 @@
-import { CreateAccount } from "@actions/account";
-import { loadAccounts } from "@actions/account/load-accounts";
+import { CreateAccount, LoadAccounts } from "@actions/account";
+import { Account } from "@domain/entities";
 import { CreateAccountDto } from "@infrastructure/dtos/accounts";
-import { Account } from "src/domain/entities";
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 
@@ -18,7 +17,7 @@ export const useAccountStore = create<AccountState>()(
     ids: [],
     accounts: [],
     loadAccounts: async () => {
-      const accounts = await loadAccounts();
+      const accounts = await LoadAccounts();
       const accIds = accounts.map((f) => f.publicId);
       set({
         ids: accIds,
