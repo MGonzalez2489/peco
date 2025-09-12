@@ -11,12 +11,13 @@ import { useCatalogsStore } from "@store/useCatalogsStore";
 
 const queryClient = new QueryClient();
 export const PecoApp = () => {
-  const { isAuthenticated } = useAuthStore();
+  const { load, isAuthenticated } = useAuthStore();
   const { loadAccounts, accounts } = useAccountStore();
   const { loadCatalogs } = useCatalogsStore();
 
   //TODO: See where to load data in background
   useEffect(() => {
+    load();
     if (isAuthenticated && accounts.length === 0) {
       loadAccounts();
       loadCatalogs();

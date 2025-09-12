@@ -7,7 +7,7 @@ export interface AuthState {
   token?: TokenDto;
   user: any;
   isAuthenticated: boolean;
-
+  load: () => void;
   login: (dto: LoginDto) => Promise<TokenDto>;
   register: (dto: LoginDto) => Promise<TokenDto>;
   logout: () => Promise<void>;
@@ -17,6 +17,16 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   token: undefined,
   user: undefined,
   isAuthenticated: false,
+
+  load: async () => {
+    if (get().token) return;
+    const storedToken = await StorageAdapter.getItem("token");
+    if (!storedToken) return;
+
+    set({
+      isAuthenticated: true,
+    });
+  },
 
   register: async (dto: LoginDto) => {
     const response = await RegisterAction(dto);
