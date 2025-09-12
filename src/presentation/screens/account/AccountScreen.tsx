@@ -40,7 +40,7 @@ export const AccountScreen = ({ route }: Props) => {
   const grupedData = groupEntriesByDate(allEntries);
 
   return (
-    <MainLayout title="Cuenta">
+    <MainLayout title={account.name}>
       <View style={styles.header}>
         <Text style={styles.balanceLabel}>Balance Actual</Text>
         <Text style={[styles.balanceText, balanceStyle]}>

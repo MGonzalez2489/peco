@@ -2,11 +2,7 @@ import {
   EntriesScreen,
   EntryCreateScreen,
 } from "@presentation/screens/entries";
-import { DrawerNavigationProp } from "@react-navigation/drawer";
 import { createStackNavigator } from "@react-navigation/stack";
-import { Menu } from "lucide-react-native";
-import { TouchableOpacity } from "react-native";
-import { MainDrawerParams } from "./MainNavigation";
 
 export type EntryStackParams = {
   EntriesScreen: undefined;
@@ -14,26 +10,15 @@ export type EntryStackParams = {
 };
 
 const Stack = createStackNavigator<EntryStackParams>();
-interface Props {
-  navigation: DrawerNavigationProp<MainDrawerParams>;
-}
 
 //TODO: Implement custom navigator
-export const EntryNavigator = ({ navigation }: Props) => {
+export const EntryNavigator = () => {
   return (
-    <Stack.Navigator screenOptions={{ headerBackButtonDisplayMode: "minimal" }}>
-      <Stack.Screen
-        name="EntriesScreen"
-        component={EntriesScreen}
-        options={{
-          headerTitle: "Transacciones",
-          headerLeft: () => (
-            <TouchableOpacity onPress={() => navigation.openDrawer()}>
-              <Menu style={{ paddingLeft: 50 }} />
-            </TouchableOpacity>
-          ),
-        }}
-      />
+    <Stack.Navigator
+      initialRouteName="EntriesScreen"
+      screenOptions={{ headerShown: false }}
+    >
+      <Stack.Screen name="EntriesScreen" component={EntriesScreen} />
       <Stack.Screen name="EntryCreateScreen" component={EntryCreateScreen} />
     </Stack.Navigator>
   );

@@ -27,19 +27,11 @@ interface Props {
 //TODO: Implement custom navigator
 export const AccountsNavigator = ({ navigation }: Props) => {
   return (
-    <Stack.Navigator initialRouteName="AccountsScreen">
-      <Stack.Screen
-        name="AccountsScreen"
-        component={AccountsScreen}
-        options={{
-          headerTitle: "Cuentas",
-          headerLeft: () => (
-            <TouchableOpacity onPress={() => navigation.openDrawer()}>
-              <Menu style={{ paddingLeft: 50 }} />
-            </TouchableOpacity>
-          ),
-        }}
-      />
+    <Stack.Navigator
+      initialRouteName="AccountsScreen"
+      screenOptions={{ headerShown: false }}
+    >
+      <Stack.Screen name="AccountsScreen" component={AccountsScreen} />
       <Stack.Screen
         name="AccountScreen"
         component={AccountScreen}

@@ -12,7 +12,7 @@ export const AccountsScreen = () => {
   const navigation = useNavigation<StackNavigationProp<AccountStackParams>>();
 
   return (
-    <MainLayout title="Cuentas">
+    <MainLayout title="Cuentas" useDrawer={true}>
       <View style={styles.container}>
         <AccountList accounts={accounts} />
       </View>

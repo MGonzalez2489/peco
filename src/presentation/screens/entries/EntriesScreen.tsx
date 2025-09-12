@@ -27,7 +27,7 @@ export const EntriesScreen = () => {
   const grupedData = groupEntriesByDate(allEntries);
 
   return (
-    <MainLayout title="Entries">
+    <MainLayout title="Entries" useDrawer={true}>
       <View style={styles.transactionsContainer}>
         <EntryList
           group={grupedData}
