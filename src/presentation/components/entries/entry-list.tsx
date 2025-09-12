@@ -1,17 +1,40 @@
 import { Entry } from "@domain/entities";
-import { FlatList, StyleSheet, Text } from "react-native";
+import { FlatList, StyleSheet, Text, View } from "react-native";
 import { EntryListItem } from "./entry-list-item";
+import { GroupedEntriesDto } from "@infrastructure/dtos/entries";
 
 interface Props {
-  entries: Entry[];
+  group: GroupedEntriesDto[];
   fetchNextPage: any;
+  showAccount?: boolean;
 }
-export const EntryList = ({ entries, fetchNextPage }: Props) => {
+export const EntryList = ({
+  group,
+  fetchNextPage,
+  showAccount = false,
+}: Props) => {
+  const renderItem = ({
+    item,
+  }: {
+    item: { date: string; entries: Entry[] };
+  }) => (
+    <View>
+      <Text>{item.date}</Text>
+      <FlatList
+        data={item.entries}
+        renderItem={({ item: entry }) => (
+          <EntryListItem entry={entry} showAccount={showAccount} />
+        )}
+        keyExtractor={(entry) => entry.publicId}
+      />
+    </View>
+  );
+
   return (
     <FlatList
-      data={entries}
-      renderItem={({ item }) => <EntryListItem entry={item} />}
-      keyExtractor={(item) => item.publicId}
+      data={group}
+      renderItem={renderItem}
+      keyExtractor={(item) => item.date}
       ListEmptyComponent={
         <Text style={styles.emptyListText}>
           No hay transacciones registradas.

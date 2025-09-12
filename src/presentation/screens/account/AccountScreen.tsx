@@ -1,5 +1,5 @@
 import { LoadEntries } from "@actions/entries/load-entries";
-import { formatCurrency } from "@infrastructure/utils";
+import { formatCurrency, groupEntriesByDate } from "@infrastructure/utils";
 import { FabButton } from "@presentation/components";
 import { EntryList } from "@presentation/components/entries";
 import { MainLayout } from "@presentation/layout";
@@ -12,7 +12,7 @@ import { StyleSheet, Text, View } from "react-native";
 
 interface Props extends StackScreenProps<AccountStackParams, "AccountScreen"> {}
 
-export const AccountScreen = ({ navigation, route }: Props) => {
+export const AccountScreen = ({ route }: Props) => {
   const accountIdRef = useRef(route.params.accountId);
 
   const { getById } = useAccountStore();
@@ -23,7 +23,7 @@ export const AccountScreen = ({ navigation, route }: Props) => {
 
   const queryKey = `entries_${accountIdRef.current}`;
   //TODO: implement pull to refresh
-  //TODO: group all entryes by day of week
+  //TODO: use 'isLoading'
   const { isLoading, data, fetchNextPage } = useInfiniteQuery({
     queryKey: [queryKey, "infinite"],
     initialPageParam: 1,
@@ -31,11 +31,13 @@ export const AccountScreen = ({ navigation, route }: Props) => {
     queryFn: async (params) =>
       LoadEntries(params.pageParam, accountIdRef.current),
     getNextPageParam: (lastPage, allPages) => {
-      console.log(lastPage.data);
       const newPage = lastPage.meta.hasNextPage ? allPages.length + 1 : null;
       return newPage;
     },
   });
+
+  const allEntries = data?.pages.flatMap((page) => page.data) || [];
+  const grupedData = groupEntriesByDate(allEntries);
 
   return (
     <MainLayout title="Cuenta">
@@ -53,10 +55,7 @@ export const AccountScreen = ({ navigation, route }: Props) => {
       </View>
 
       <View style={styles.transactionsContainer}>
-        <EntryList
-          entries={data?.pages?.map((g) => g.data).flat() ?? []}
-          fetchNextPage={fetchNextPage}
-        />
+        <EntryList group={grupedData} fetchNextPage={fetchNextPage} />
       </View>
 
       <FabButton onPress={() => console.log("aca")} />

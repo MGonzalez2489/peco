@@ -24,6 +24,7 @@ interface Props {
   navigation: DrawerNavigationProp<MainDrawerParams>;
 }
 
+//TODO: Implement custom navigator
 export const AccountsNavigator = ({ navigation }: Props) => {
   return (
     <Stack.Navigator initialRouteName="AccountsScreen">

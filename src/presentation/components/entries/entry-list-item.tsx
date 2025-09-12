@@ -5,9 +5,10 @@ import { StyleSheet, Text, View } from "react-native";
 
 interface Props {
   entry: Entry;
+  showAccount: boolean;
 }
 
-export const EntryListItem = ({ entry }: Props) => {
+export const EntryListItem = ({ entry, showAccount }: Props) => {
   const amountStyle =
     entry.type.name === "Expense"
       ? styles.negativeAmount
@@ -19,7 +20,14 @@ export const EntryListItem = ({ entry }: Props) => {
         <CircleDollarSign size={25} />
         <View>
           <Text style={styles.transactionDescription}>{entry.description}</Text>
+
           <Text style={styles.transactionCategory}>{entry.category.name}</Text>
+
+          {showAccount && (
+            <Text style={{ textTransform: "capitalize", marginTop: 5 }}>
+              {entry.account.name}
+            </Text>
+          )}
         </View>
       </View>
       <Text style={[styles.transactionAmount, amountStyle]}>
@@ -48,6 +56,7 @@ const styles = StyleSheet.create({
   transactionDescription: {
     fontSize: 16,
     fontWeight: "bold",
+    marginBottom: 5,
   },
   transactionCategory: {
     fontSize: 14,
