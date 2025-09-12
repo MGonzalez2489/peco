@@ -12,6 +12,10 @@ import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export const PecoDrawer = (props: DrawerContentComponentProps) => {
   const { logout } = useAuthStore();
+  const handleLogout = () => {
+    logout();
+    props.navigation.closeDrawer();
+  };
 
   return (
     <View style={styles.container}>
@@ -27,7 +31,7 @@ export const PecoDrawer = (props: DrawerContentComponentProps) => {
       {/* Footer */}
       <View>
         <View style={styles.footer}>
-          <TouchableOpacity onPress={logout} style={styles.logoutButton}>
+          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
             <LogOut size={20} color={COLORS.primary} />
             <Text style={styles.logoutText}>Cerrar Sesión</Text>
           </TouchableOpacity>

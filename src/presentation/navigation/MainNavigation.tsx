@@ -5,8 +5,11 @@ import { HomeScreen } from "../screens/home/HomeScreen";
 import { AccountsNavigator } from "./AccountsNavigation";
 import { EntryNavigator } from "./EntryNavigation";
 import { PecoDrawer } from "@presentation/layout/Drawer";
+import { useAuthStore } from "@store/useAuthStore";
+import { AuthNavigator } from "./AuthNavigation";
 
 export type MainDrawerParams = {
+  Auth: undefined;
   Home: undefined;
   Accounts: undefined;
   Entries: undefined;
@@ -15,24 +18,34 @@ export type MainDrawerParams = {
 const Drawer = createDrawerNavigator<MainDrawerParams>();
 
 export const MainNavigator = () => {
+  const { isAuthenticated } = useAuthStore();
   return (
     <Drawer.Navigator
-      initialRouteName="Home"
       screenOptions={{
         headerShown: false,
         drawerActiveTintColor: COLORS.primary,
       }}
       drawerContent={(props) => <PecoDrawer {...props} />}
     >
-      <Drawer.Screen
-        name="Home"
-        component={HomeScreen}
-        options={{
-          drawerIcon: () => <Home size={18} color={COLORS.primary} />,
-        }}
-      />
-      <Drawer.Screen name="Accounts" component={AccountsNavigator} />
-      <Drawer.Screen name="Entries" component={EntryNavigator} />
+      {isAuthenticated ? (
+        <Drawer.Group>
+          <Drawer.Screen
+            name="Home"
+            component={HomeScreen}
+            options={{
+              drawerIcon: () => <Home size={18} color={COLORS.primary} />,
+            }}
+          />
+          <Drawer.Screen name="Accounts" component={AccountsNavigator} />
+          <Drawer.Screen name="Entries" component={EntryNavigator} />
+        </Drawer.Group>
+      ) : (
+        <Drawer.Screen
+          name="Auth"
+          component={AuthNavigator}
+          options={{ swipeEnabled: false }}
+        />
+      )}
     </Drawer.Navigator>
   );
 };
