@@ -1,7 +1,10 @@
 import { createDrawerNavigator } from "@react-navigation/drawer";
+import { COLORS } from "@styles/colors";
+import { Home } from "lucide-react-native";
 import { HomeScreen } from "../screens/home/HomeScreen";
 import { AccountsNavigator } from "./AccountsNavigation";
 import { EntryNavigator } from "./EntryNavigation";
+import { PecoDrawer } from "@presentation/layout/Drawer";
 
 export type MainDrawerParams = {
   Home: undefined;
@@ -15,23 +18,21 @@ export const MainNavigator = () => {
   return (
     <Drawer.Navigator
       initialRouteName="Home"
-      screenOptions={{ headerShown: false }}
+      screenOptions={{
+        headerShown: false,
+        drawerActiveTintColor: COLORS.primary,
+      }}
+      drawerContent={(props) => <PecoDrawer {...props} />}
     >
       <Drawer.Screen
         name="Home"
         component={HomeScreen}
-        options={{ title: "Inicio" }}
+        options={{
+          drawerIcon: () => <Home size={18} color={COLORS.primary} />,
+        }}
       />
-      <Drawer.Screen
-        name="Accounts"
-        component={AccountsNavigator}
-        options={{ headerShown: false }}
-      />
-      <Drawer.Screen
-        name="Entries"
-        component={EntryNavigator}
-        options={{ headerShown: false }}
-      />
+      <Drawer.Screen name="Accounts" component={AccountsNavigator} />
+      <Drawer.Screen name="Entries" component={EntryNavigator} />
     </Drawer.Navigator>
   );
 };
