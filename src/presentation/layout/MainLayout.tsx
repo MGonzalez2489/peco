@@ -1,4 +1,5 @@
 import { COLORS } from "@styles/colors";
+import { LucideIcon } from "lucide-react-native";
 import { StyleSheet, View } from "react-native";
 import { Navbar } from "./Navbar";
 
@@ -9,7 +10,8 @@ interface Props {
   useDrawer?: boolean;
   //
   rightAction?: () => void;
-  rightActionIcon?: string;
+  RightActionIcon?: LucideIcon;
+  showNavbar?: boolean;
   children: React.ReactNode;
 }
 
@@ -18,12 +20,21 @@ export const MainLayout = ({
   subTitle,
   useDrawer = false,
   rightAction,
-  rightActionIcon,
+  RightActionIcon,
   children,
+  showNavbar = true,
 }: Props) => {
   return (
     <View style={styles.container}>
-      <Navbar title={title} useDrawer={useDrawer} />
+      {showNavbar && (
+        <Navbar
+          title={title}
+          useDrawer={useDrawer}
+          rightAction={rightAction}
+          RightActionIcon={RightActionIcon}
+        />
+      )}
+
       <View style={styles.content}>{children}</View>
     </View>
   );
