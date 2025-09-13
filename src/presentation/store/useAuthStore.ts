@@ -1,11 +1,13 @@
 import { LoginAction, RegisterAction } from "@actions/auth";
+import { LoadUser } from "@actions/user";
+import { User } from "@domain/entities";
 import { LoginDto, TokenDto } from "@infrastructure/dtos/auth";
 import { StorageAdapter } from "config/adapters";
 import { create } from "zustand";
 
 export interface AuthState {
   token?: TokenDto;
-  user: any;
+  user?: User;
   isAuthenticated: boolean;
   load: () => void;
   login: (dto: LoginDto) => Promise<TokenDto>;
@@ -27,14 +29,15 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       isAuthenticated: true,
     });
   },
-
   register: async (dto: LoginDto) => {
     const response = await RegisterAction(dto);
 
     await StorageAdapter.setItem("token", response.access_token);
+    const user = await LoadUser();
     set({
       isAuthenticated: true,
       token: response,
+      user,
     });
 
     return response;
@@ -43,15 +46,16 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
     const response = await LoginAction(dto);
 
     await StorageAdapter.setItem("token", response.access_token);
+    const user = await LoadUser();
     set({
       isAuthenticated: true,
       token: response,
+      user,
     });
 
     return response;
   },
   logout: async () => {
-    set({ isAuthenticated: false, token: undefined });
-    await StorageAdapter.clearStorage();
+    set({ isAuthenticated: false, token: undefined, user: undefined });
   },
 }));

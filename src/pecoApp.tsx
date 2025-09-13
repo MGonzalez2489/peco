@@ -3,17 +3,17 @@ import { useAccountStore } from "@store/useAccountStore";
 import { useCatalogsStore } from "@store/useCatalogsStore";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { StatusBar, StyleSheet } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { MainNavigator } from "./presentation/navigation";
 import { useAuthStore } from "./presentation/store/useAuthStore";
-import { StatusBar, StyleSheet } from "react-native";
 
 //TODO: use AuthProvider
 
 const queryClient = new QueryClient();
 export const PecoApp = () => {
   const { load, isAuthenticated } = useAuthStore();
-  const { loadAccounts, accounts } = useAccountStore();
+  const { loadAccounts, accounts, clearStore } = useAccountStore();
   const { loadCatalogs } = useCatalogsStore();
 
   //TODO: See where to load data in background
@@ -26,19 +26,19 @@ export const PecoApp = () => {
   }, [isAuthenticated]);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <NavigationContainer>
-        <SafeAreaView style={styles.container}>
+    <SafeAreaProvider>
+      <QueryClientProvider client={queryClient}>
+        <NavigationContainer>
           <MainNavigator />
-        </SafeAreaView>
-      </NavigationContainer>
-    </QueryClientProvider>
+        </NavigationContainer>
+      </QueryClientProvider>
+    </SafeAreaProvider>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    marginTop: StatusBar.currentHeight,
+    paddingTop: StatusBar.currentHeight,
   },
 });

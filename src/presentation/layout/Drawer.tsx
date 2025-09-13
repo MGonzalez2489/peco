@@ -1,32 +1,48 @@
+import { useLogout } from "@presentation/hooks";
 import {
   DrawerContentComponentProps,
   DrawerContentScrollView,
-  DrawerItem,
   DrawerItemList,
 } from "@react-navigation/drawer";
 import { useAuthStore } from "@store/useAuthStore";
 import { COLORS } from "@styles/colors";
-import { HelpCircle, LogOut } from "lucide-react-native";
+import { LogOut } from "lucide-react-native";
 import React from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export const PecoDrawer = (props: DrawerContentComponentProps) => {
-  const { logout } = useAuthStore();
+  const { top, bottom } = useSafeAreaInsets();
+  const { doLogout } = useLogout();
+  const { user } = useAuthStore();
   const handleLogout = () => {
-    logout();
+    doLogout();
     props.navigation.closeDrawer();
   };
 
   return (
-    <View style={styles.container}>
+    <View
+      style={{
+        ...styles.container,
+        paddingTop: top,
+        paddingBottom: bottom,
+      }}
+    >
+      {user && (
+        <View style={styles.header}>
+          <Image source={{ uri: user.avatar }} style={styles.profileImage} />
+          <Text style={styles.profileName}>{user.email}</Text>
+        </View>
+      )}
+
       {/* Content */}
       <DrawerContentScrollView {...props}>
         <DrawerItemList {...props} />
-        <DrawerItem
-          label="test item"
-          icon={() => <HelpCircle />}
-          onPress={() => alert("hola")}
-        />
+        {/* <DrawerItem */}
+        {/*   label="test item" */}
+        {/*   icon={() => <HelpCircle />} */}
+        {/*   onPress={() => alert("hola")} */}
+        {/* /> */}
       </DrawerContentScrollView>
       {/* Footer */}
       <View>
@@ -44,6 +60,23 @@ export const PecoDrawer = (props: DrawerContentComponentProps) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  header: {
+    padding: 20,
+    alignItems: "center",
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+  },
+  profileImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    marginBottom: 10,
+  },
+  profileName: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#333",
   },
   footer: {
     borderTopWidth: 1,

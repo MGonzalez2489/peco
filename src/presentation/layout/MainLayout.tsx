@@ -2,6 +2,7 @@ import { COLORS } from "@styles/colors";
 import { LucideIcon } from "lucide-react-native";
 import { StyleSheet, View } from "react-native";
 import { Navbar } from "./Navbar";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface Props {
   title: string;
@@ -24,6 +25,8 @@ export const MainLayout = ({
   children,
   showNavbar = true,
 }: Props) => {
+  const insets = useSafeAreaInsets();
+
   return (
     <View style={styles.container}>
       {showNavbar && (

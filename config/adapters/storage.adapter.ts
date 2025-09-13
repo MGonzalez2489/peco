@@ -28,5 +28,7 @@ export class StorageAdapter {
 
   static async clearStorage(): Promise<void> {
     await AsyncStorage.clear();
+    const allKeys = await AsyncStorage.getAllKeys();
+    console.log(`${allKeys.length} after clean`);
   }
 }

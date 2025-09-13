@@ -10,6 +10,7 @@ export interface AccountState {
   create: (dto: CreateAccountDto) => Promise<Account>;
   loadAccounts: () => Promise<Account[]>;
   getById: (accountId: string) => Account;
+  clearStore: () => void;
 }
 
 export const useAccountStore = create<AccountState>()(
@@ -37,6 +38,13 @@ export const useAccountStore = create<AccountState>()(
     },
     getById: (accountId) => {
       return get().accounts.find((f) => f.publicId === accountId);
+    },
+    clearStore: () => {
+      console.log("entro para aca a limpiar");
+      set({
+        ids: [],
+        accounts: [],
+      });
     },
   })),
 );

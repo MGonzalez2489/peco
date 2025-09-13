@@ -51,8 +51,8 @@ export const Navbar = ({
   };
 
   return (
-    <View style={{ ...styles.container, paddingTop: top }}>
-      <View style={{ flexDirection: "row", alignItems: "center" }}>
+    <View style={{ ...styles.container, marginTop: top }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
         {renderLeftOption()}
         <Text style={styles.title}>{title}</Text>
       </View>
@@ -68,10 +68,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 15,
-    gap: 10,
   },
   title: {
-    fontSize: 17,
+    fontSize: 19,
     fontWeight: "600",
     color: COLORS.primary,
   },
