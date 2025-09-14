@@ -8,8 +8,9 @@ export const LoginAction = async (dto: LoginDto) => {
     const { data } = await api.post<ResultDto<TokenDto>>("auth/login", dto);
     return data.data;
   } catch (error) {
+    console.log("error", error);
     if (isAxiosError(error)) {
-      console.log("Axios error", error.response?.data);
+      console.log("Axios error", error);
       throw new Error(error.response?.data.message);
     }
     throw new Error("Unespected error");

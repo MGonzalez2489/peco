@@ -1,4 +1,5 @@
 import { LoginDto } from "@infrastructure/dtos/auth";
+import { Button, InputText } from "@presentation/components";
 import { StackScreenProps } from "@react-navigation/stack";
 import { useAuthStore } from "@store/useAuthStore";
 import { COLORS } from "@styles/colors";
@@ -58,47 +59,28 @@ export const LoginScreen = ({ navigation }: Props) => {
               Inicia sesión para continuar con tus finanzas.
             </Text>
 
-            <TextInput
-              ref={emailInpRef}
-              style={ComponentStyles.input}
-              placeholder="Email"
-              placeholderTextColor="#A0A0A0"
+            <InputText
+              label="Email"
               value={values.email}
-              onChangeText={handleChange("email")}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              returnKeyType={"next"}
-              onSubmitEditing={() => passInpRef.current?.focus()}
+              placeholder="Email"
+              onChange={handleChange("email")}
+              errorMsg={touched.email ? errors.email : undefined}
             />
-            {errors.email && touched.email && errors.email && (
-              <Text>{errors.email} </Text>
-            )}
 
-            <TextInput
-              ref={passInpRef}
-              style={ComponentStyles.input}
+            <InputText
+              label="Contraseña"
               placeholder="Password"
-              placeholderTextColor="#A0A0A0"
-              secureTextEntry
+              isPassword={true}
               value={values.password}
-              onChangeText={handleChange("password")}
-              onSubmitEditing={() => handleSubmit()}
+              onChange={handleChange("password")}
+              errorMsg={touched.password ? errors.password : undefined}
             />
-            {errors.password && touched.password && errors.password && (
-              <Text>{errors.password}</Text>
-            )}
-
-            <TouchableOpacity
-              style={ComponentStyles.btnPrimary}
+            <Button
+              label="Entrar"
               onPress={() => handleSubmit()}
-              disabled={mutation.isPending}
-            >
-              {mutation.isPending ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={ComponentStyles.btnPrimaryText}>Entrar</Text>
-              )}
-            </TouchableOpacity>
+              isDisabled={mutation.isPending}
+              isLoading={mutation.isPending}
+            />
 
             <TouchableOpacity style={styles.link}>
               <Text style={styles.linkText}>Forgot your password?</Text>
