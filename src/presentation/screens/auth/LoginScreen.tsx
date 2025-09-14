@@ -3,17 +3,13 @@ import { Button, InputText } from "@presentation/components";
 import { StackScreenProps } from "@react-navigation/stack";
 import { useAuthStore } from "@store/useAuthStore";
 import { COLORS } from "@styles/colors";
-import { ComponentStyles } from "@styles/components";
 import { useMutation } from "@tanstack/react-query";
 import { Formik } from "formik";
-import { useRef } from "react";
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -24,10 +20,7 @@ interface Props extends StackScreenProps<AuthStackParams, "LoginScreen"> {}
 //TODO: Styling
 export const LoginScreen = ({ navigation }: Props) => {
   const { login } = useAuthStore();
-  const emailInpRef = useRef(null);
-  const passInpRef = useRef(null);
 
-  //
   const mutation = useMutation({
     mutationFn: (data: LoginDto) => login(data),
   });
@@ -117,7 +110,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: "bold",
     color: COLORS.primary,
-    marginBottom: 10,
+    marginBottom: 5,
   },
   subTitle: {
     marginBottom: 50,

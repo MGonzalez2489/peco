@@ -1,31 +1,25 @@
 import { LoginDto } from "@infrastructure/dtos/auth";
+import { Button, InputText } from "@presentation/components";
+import { AuthStackParams } from "@presentation/navigation";
 import { StackScreenProps } from "@react-navigation/stack";
 import { useAuthStore } from "@store/useAuthStore";
 import { COLORS } from "@styles/colors";
-import { ComponentStyles } from "@styles/components";
 import { useMutation } from "@tanstack/react-query";
 import { Formik } from "formik";
-import { useRef } from "react";
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
-import { AuthStackParams } from "src/presentation/navigation";
 
 interface Props extends StackScreenProps<AuthStackParams, "RegisterScreen"> {}
 
 //TODO: styling, confirm password validator
 export const RegisterScreen = ({ navigation }: Props) => {
   const { register } = useAuthStore();
-  const emailInpRef = useRef(null);
-  const passInpRef = useRef(null);
-  const confirmInpref = useRef(null);
 
   //
   const mutation = useMutation({
@@ -61,52 +55,40 @@ export const RegisterScreen = ({ navigation }: Props) => {
           <View style={styles.content}>
             <Text style={styles.title}>Crear cuenta</Text>
 
-            <TextInput
-              ref={emailInpRef}
-              style={ComponentStyles.input}
-              placeholder="Email"
-              placeholderTextColor="#A0A0A0"
+            <InputText
+              label="Email"
               value={values.email}
-              onChangeText={handleChange("email")}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              returnKeyType={"next"}
-              onSubmitEditing={() => passInpRef.current?.focus()}
+              placeholder="Email"
+              onChange={handleChange("email")}
+              errorMsg={touched.email ? errors.email : undefined}
             />
 
-            <TextInput
-              ref={passInpRef}
-              style={ComponentStyles.input}
-              placeholder="Password"
-              placeholderTextColor="#A0A0A0"
-              secureTextEntry
+            <InputText
+              label="Contraseña"
               value={values.password}
-              onChangeText={handleChange("password")}
-              onSubmitEditing={() => confirmInpref.current?.focus()}
+              placeholder="Contraseña"
+              isPassword={true}
+              onChange={handleChange("password")}
+              errorMsg={touched.password ? errors.password : undefined}
             />
 
-            <TextInput
-              ref={confirmInpref}
-              style={ComponentStyles.input}
-              placeholder="Confirm Password"
-              placeholderTextColor="#A0A0A0"
-              secureTextEntry
-              value={values.confirmPassword}
-              onChangeText={handleChange("confirmPassword")}
-              onSubmitEditing={() => handleSubmit()}
+            <InputText
+              label="Confirmar Contraseña"
+              value={values.password}
+              placeholder="Confirmar contraseña"
+              isPassword={true}
+              onChange={handleChange("confirmPassword")}
+              errorMsg={
+                touched.confirmPassword ? errors.confirmPassword : undefined
+              }
             />
 
-            <TouchableOpacity
-              style={styles.button}
+            <Button
+              label="Crear"
               onPress={() => handleSubmit()}
-              disabled={mutation.isPending}
-            >
-              {mutation.isPending ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={ComponentStyles.btnPrimaryText}>Crear</Text>
-              )}
-            </TouchableOpacity>
+              isDisabled={mutation.isPending}
+              isLoading={mutation.isPending}
+            />
           </View>
 
           <View style={styles.bottomContainer}>
