@@ -1,12 +1,12 @@
-import { createDrawerNavigator } from "@react-navigation/drawer";
-import { COLORS } from "@styles/colors";
-import { Home } from "lucide-react-native";
-import { HomeScreen } from "../screens/home/HomeScreen";
-import { AccountsNavigator } from "./AccountsNavigation";
-import { EntryNavigator } from "./EntryNavigation";
-import { PecoDrawer } from "@presentation/layout/Drawer";
-import { useAuthStore } from "@store/useAuthStore";
-import { AuthNavigator } from "./AuthNavigation";
+import { PecoDrawer } from '@presentation/layout/Drawer';
+import { createDrawerNavigator } from '@react-navigation/drawer';
+import { useAuthStore } from '@store/useAuthStore';
+import { COLORS } from '@styles/colors';
+import { Home } from 'lucide-react-native';
+import { HomeScreen } from '../screens/home/HomeScreen';
+import { AccountsNavigator } from './AccountsNavigation';
+import { AuthNavigator } from './AuthNavigation';
+import { EntryNavigator } from './EntryNavigation';
 
 export type MainDrawerParams = {
   Auth: undefined;
@@ -40,11 +40,7 @@ export const MainNavigator = () => {
           <Drawer.Screen name="Entries" component={EntryNavigator} />
         </Drawer.Group>
       ) : (
-        <Drawer.Screen
-          name="Auth"
-          component={AuthNavigator}
-          options={{ swipeEnabled: false }}
-        />
+        <Drawer.Screen name="Auth" component={AuthNavigator} options={{ swipeEnabled: false }} />
       )}
     </Drawer.Navigator>
   );

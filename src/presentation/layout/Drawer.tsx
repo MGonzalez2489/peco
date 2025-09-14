@@ -1,15 +1,15 @@
-import { useLogout } from "@presentation/hooks";
+import { useLogout } from '@presentation/hooks';
 import {
   DrawerContentComponentProps,
   DrawerContentScrollView,
   DrawerItemList,
-} from "@react-navigation/drawer";
-import { useAuthStore } from "@store/useAuthStore";
-import { COLORS } from "@styles/colors";
-import { LogOut } from "lucide-react-native";
-import React from "react";
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+} from '@react-navigation/drawer';
+import { useAuthStore } from '@store/useAuthStore';
+import { COLORS } from '@styles/colors';
+import { LogOut } from 'lucide-react-native';
+import React from 'react';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export const PecoDrawer = (props: DrawerContentComponentProps) => {
   const { top, bottom } = useSafeAreaInsets();
@@ -36,13 +36,8 @@ export const PecoDrawer = (props: DrawerContentComponentProps) => {
       )}
 
       {/* Content */}
-      <DrawerContentScrollView {...props}>
+      <DrawerContentScrollView {...props} contentContainerStyle={{ paddingTop: 20 }}>
         <DrawerItemList {...props} />
-        {/* <DrawerItem */}
-        {/*   label="test item" */}
-        {/*   icon={() => <HelpCircle />} */}
-        {/*   onPress={() => alert("hola")} */}
-        {/* /> */}
       </DrawerContentScrollView>
       {/* Footer */}
       <View>
@@ -63,9 +58,9 @@ const styles = StyleSheet.create({
   },
   header: {
     padding: 20,
-    alignItems: "center",
+    alignItems: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    borderBottomColor: '#eee',
   },
   profileImage: {
     width: 80,
@@ -75,18 +70,18 @@ const styles = StyleSheet.create({
   },
   profileName: {
     fontSize: 18,
-    fontWeight: "bold",
-    color: "#333",
+    fontWeight: 'bold',
+    color: '#333',
   },
   footer: {
     borderTopWidth: 1,
-    borderTopColor: "#eee",
+    borderTopColor: '#eee',
     paddingVertical: 10,
     paddingHorizontal: 20,
   },
   logoutButton: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 10,
     paddingVertical: 10,
   },

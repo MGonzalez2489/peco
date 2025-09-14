@@ -1,11 +1,11 @@
-import { LoginDto } from "@infrastructure/dtos/auth";
-import { Button, InputText } from "@presentation/components";
-import { AuthStackParams } from "@presentation/navigation";
-import { StackScreenProps } from "@react-navigation/stack";
-import { useAuthStore } from "@store/useAuthStore";
-import { COLORS } from "@styles/colors";
-import { useMutation } from "@tanstack/react-query";
-import { Formik } from "formik";
+import { LoginDto } from '@infrastructure/dtos/auth';
+import { Button, InputText } from '@presentation/components';
+import { AuthStackParams } from '@presentation/navigation';
+import { StackScreenProps } from '@react-navigation/stack';
+import { useAuthStore } from '@store/useAuthStore';
+import { COLORS } from '@styles/colors';
+import { useMutation } from '@tanstack/react-query';
+import { Formik } from 'formik';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -13,9 +13,9 @@ import {
   Text,
   TouchableOpacity,
   View,
-} from "react-native";
+} from 'react-native';
 
-interface Props extends StackScreenProps<AuthStackParams, "RegisterScreen"> {}
+interface Props extends StackScreenProps<AuthStackParams, 'RegisterScreen'> {}
 
 //TODO: styling, confirm password validator
 export const RegisterScreen = ({ navigation }: Props) => {
@@ -31,15 +31,13 @@ export const RegisterScreen = ({ navigation }: Props) => {
 
   return (
     <Formik
-      initialValues={{ email: "", password: "", confirmPassword: "" }}
+      initialValues={{ email: '', password: '', confirmPassword: '' }}
       validate={(values) => {
         const errors = {};
         if (!values.email) {
-          errors["email"] = "Required";
-        } else if (
-          !/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(values.email)
-        ) {
-          errors["email"] = "Invalid email address";
+          errors['email'] = 'Required';
+        } else if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(values.email)) {
+          errors['email'] = 'Invalid email address';
         }
         return errors;
       }}
@@ -49,7 +47,7 @@ export const RegisterScreen = ({ navigation }: Props) => {
     >
       {({ handleChange, handleSubmit, values, errors, touched }) => (
         <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.container}
         >
           <View style={styles.content}>
@@ -59,7 +57,7 @@ export const RegisterScreen = ({ navigation }: Props) => {
               label="Email"
               value={values.email}
               placeholder="Email"
-              onChange={handleChange("email")}
+              onChange={handleChange('email')}
               errorMsg={touched.email ? errors.email : undefined}
             />
 
@@ -68,7 +66,7 @@ export const RegisterScreen = ({ navigation }: Props) => {
               value={values.password}
               placeholder="Contraseña"
               isPassword={true}
-              onChange={handleChange("password")}
+              onChange={handleChange('password')}
               errorMsg={touched.password ? errors.password : undefined}
             />
 
@@ -77,10 +75,8 @@ export const RegisterScreen = ({ navigation }: Props) => {
               value={values.password}
               placeholder="Confirmar contraseña"
               isPassword={true}
-              onChange={handleChange("confirmPassword")}
-              errorMsg={
-                touched.confirmPassword ? errors.confirmPassword : undefined
-              }
+              onChange={handleChange('confirmPassword')}
+              errorMsg={touched.confirmPassword ? errors.confirmPassword : undefined}
             />
 
             <Button
@@ -95,7 +91,7 @@ export const RegisterScreen = ({ navigation }: Props) => {
             <Text style={styles.bottomText}>¿Ya tienes una cuenta?</Text>
             <TouchableOpacity
               style={styles.bottomLink}
-              onPress={() => navigation.navigate("LoginScreen")}
+              onPress={() => navigation.navigate('LoginScreen')}
             >
               <Text style={styles.bottomLinkText}>Inicia sesión</Text>
             </TouchableOpacity>
@@ -113,30 +109,30 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
     padding: 20,
   },
   title: {
     fontSize: 28,
-    fontWeight: "bold",
+    fontWeight: 'bold',
     color: COLORS.text,
     marginBottom: 50,
   },
 
   button: {
-    width: "100%",
+    width: '100%',
     height: 50,
     backgroundColor: COLORS.primary,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
     borderRadius: 100,
     marginTop: 10,
   },
   buttonText: {
     color: COLORS.white,
     fontSize: 18,
-    fontWeight: "bold",
+    fontWeight: 'bold',
   },
   link: {
     marginTop: 15,
@@ -144,16 +140,16 @@ const styles = StyleSheet.create({
   linkText: {
     color: COLORS.primary,
     fontSize: 14,
-    textDecorationLine: "underline",
+    textDecorationLine: 'underline',
   },
   bottomContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 40,
   },
   bottomText: {
-    color: "#666666",
+    color: '#666666',
     fontSize: 14,
   },
   bottomLink: {
@@ -162,6 +158,6 @@ const styles = StyleSheet.create({
   bottomLinkText: {
     color: COLORS.secondary,
     fontSize: 14,
-    fontWeight: "bold",
+    fontWeight: 'bold',
   },
 });
