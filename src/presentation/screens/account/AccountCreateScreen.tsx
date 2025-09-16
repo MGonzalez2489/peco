@@ -1,172 +1,126 @@
-import { CreateAccountDto } from "@infrastructure/dtos/accounts";
-import { useNavigation } from "@react-navigation/native";
-import { StackNavigationProp } from "@react-navigation/stack";
-import { useAccountStore } from "@store/useAccountStore";
-import { useCatalogsStore } from "@store/useCatalogsStore";
-import { COLORS } from "@styles/colors";
-import { ComponentStyles } from "@styles/components";
-import { useMutation } from "@tanstack/react-query";
-import { Formik } from "formik";
-import { useState } from "react";
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import DropDownPicker from "react-native-dropdown-picker";
-import { MainLayout } from "src/presentation/layout";
-import { AccountStackParams } from "src/presentation/navigation/AccountsNavigation";
+import { CreateAccountDto } from '@infrastructure/dtos/accounts';
+import { InputNumber, InputText } from '@presentation/components';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp, StackScreenProps } from '@react-navigation/stack';
+import { useAccountStore } from '@store/useAccountStore';
+import { useMutation } from '@tanstack/react-query';
+import { Formik, FormikProps } from 'formik';
+import { Check } from 'lucide-react-native';
+import { useEffect, useRef } from 'react';
+import { KeyboardAvoidingView, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { MainLayout } from 'src/presentation/layout';
+import { AccountStackParams } from 'src/presentation/navigation/AccountsNavigation';
 
 const initialValues = {
-  name: "",
-  balance: "0",
-  accountTypeId: "",
-  bank: "",
-  accountNumber: "",
+  name: '',
+  balance: 0,
+  accountTypeId: '',
+  bank: '',
+  accountNumber: '',
 };
 
-export const AccountCreateScreen = () => {
-  const [open, setOpen] = useState(false);
-  const [value, setValue] = useState(null);
-  const { accountTypes } = useCatalogsStore();
+type Props = StackScreenProps<AccountStackParams, 'AccountCreateScreen'>;
+//TODO: FORM VALIDATIONS
+export const AccountCreateScreen = ({ route }: Props) => {
   const { create } = useAccountStore();
   const navigation = useNavigation<StackNavigationProp<AccountStackParams>>();
-
-  const dItems = accountTypes.map((item) => ({
-    ...item,
-    icon: undefined,
-  }));
+  const accountType = route.params?.accountType;
+  const formikRef = useRef<FormikProps<any>>(null);
 
   const mutation = useMutation({
     mutationFn: (data: CreateAccountDto) => create(data),
     onSuccess(data) {
-      navigation.navigate("AccountCreateSuccessScreen", { account: data });
+      navigation.navigate('AccountCreateSuccessScreen', { account: data });
     },
     onError(error) {
-      console.log("Error creating account", error);
+      console.log('Error creating account', error);
       alert(error.message);
     },
   });
 
+  useEffect(() => {
+    navigation.setOptions({
+      title: `Cuenta de ${accountType.displayName}`,
+      headerStyle: {
+        backgroundColor: accountType.color,
+      },
+      headerTintColor: 'white',
+      headerTitleStyle: {
+        fontWeight: '800',
+      },
+      headerRight: () => (
+        <TouchableOpacity onPress={() => formikRef.current.submitForm()}>
+          <Check color={'white'} />
+        </TouchableOpacity>
+      ),
+      headerRightContainerStyle: {
+        paddingRight: 10,
+      },
+    });
+  }, [navigation, accountType]);
   return (
-    <MainLayout title="Crear cuenta">
+    <MainLayout title="Crear cuenta" showNavbar={false}>
       <Formik
+        innerRef={formikRef}
         initialValues={initialValues}
         onSubmit={(values) => {
-          const request = { ...values, balance: Number(values.balance) };
+          const request = {
+            ...values,
+            balance: Number(values.balance),
+            accountTypeId: accountType.publicId,
+          };
           mutation.mutate(request);
         }}
       >
-        {({
-          handleChange,
-          handleSubmit,
-          values,
-          errors,
-          touched,
-          setFieldValue,
-        }) => (
+        {({ handleChange, handleSubmit, values, errors, touched, setFieldValue }) => (
           <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.container}
           >
             <View>
               {/* Required Fields */}
               <View>
                 {/* Name */}
-                <Text style={ComponentStyles.inputLabel}>Nombre</Text>
-                <TextInput
-                  style={ComponentStyles.input}
-                  placeholder="Nombre de la cuenta"
-                  placeholderTextColor="#A0A0A0"
-                  keyboardType="default"
-                  autoCapitalize="none"
+                <InputText
                   value={values.name}
+                  label="Nombre"
+                  placeholder="Nombre de la cuenta"
                   autoCorrect={false}
-                  onChangeText={handleChange("name")}
-                />
-                {/* Initial Balance */}
-                <Text style={ComponentStyles.inputLabel}>Balance Inicial</Text>
-                <TextInput
-                  style={ComponentStyles.input}
-                  placeholder="Balance inicial"
-                  placeholderTextColor="#A0A0A0"
-                  keyboardType="numeric"
-                  autoCapitalize="none"
-                  value={values.balance}
-                  onChangeText={handleChange("balance")}
-                  onEndEditing={() => setOpen(true)}
+                  onChangeText={handleChange('name')}
                 />
 
-                {/* Account Type */}
-                <Text style={ComponentStyles.inputLabel}>Tipo</Text>
-                <DropDownPicker
-                  schema={{
-                    label: "displayName",
-                    value: "publicId",
-                    icon: "icon",
-                  }}
-                  open={open}
-                  value={value}
-                  setOpen={setOpen}
-                  items={dItems}
-                  setValue={setValue}
-                  onChangeValue={(selectedValue) => {
-                    setFieldValue("accountTypeId", selectedValue);
-                  }}
-                  placeholder="Tipo de Cuenta"
-                  style={ComponentStyles.input}
-                  listItemContainerStyle={{
-                    backgroundColor: COLORS.background,
-                  }}
-                  dropDownContainerStyle={{
-                    borderTopWidth: 0,
-                    borderColor: "#E0E0E0",
-                  }}
+                {/* Initial Balance */}
+                <InputNumber
+                  value={values.balance}
+                  label="Balance inicial"
+                  onChangeText={handleChange('balance')}
                 />
               </View>
               <View style={{ paddingTop: 30 }}></View>
               {/* Optional Fields */}
               <View>
                 {/* Bank */}
-                <Text style={ComponentStyles.inputLabel}>Banco</Text>
-                <TextInput
-                  style={ComponentStyles.input}
-                  placeholder="Banco"
-                  placeholderTextColor="#A0A0A0"
-                  keyboardType="default"
-                  autoCapitalize="none"
+                <InputText
                   value={values.bank}
-                  onChangeText={handleChange("bank")}
-                />
-                {/* Account Number */}
-                <Text style={ComponentStyles.inputLabel}>Numero de cuenta</Text>
-                <TextInput
-                  style={ComponentStyles.input}
-                  placeholder="Numero de cuenta"
-                  placeholderTextColor="#A0A0A0"
-                  keyboardType="default"
+                  onChangeText={handleChange('bank')}
+                  placeholder="Banco"
+                  label="Banco"
                   autoCapitalize="none"
+                />
+
+                {/* Account Number */}
+
+                <InputText
                   value={values.accountNumber}
-                  onChangeText={handleChange("accountNumber")}
+                  onChangeText={handleChange('accountNumber')}
+                  placeholder="Numero de cuenta"
+                  label="Numero de cuenta"
+                  autoCapitalize="none"
+                  keyboardType="number-pad"
                 />
               </View>
               <View style={{ paddingTop: 30 }}></View>
             </View>
-            <TouchableOpacity
-              style={ComponentStyles.btnPrimary}
-              onPress={() => handleSubmit()}
-            >
-              {mutation.isPending ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={ComponentStyles.btnPrimaryText}>Crear</Text>
-              )}
-            </TouchableOpacity>
           </KeyboardAvoidingView>
         )}
       </Formik>
@@ -177,6 +131,8 @@ export const AccountCreateScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: "space-between",
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 20,
   },
 });

@@ -13,6 +13,8 @@ export type MainDrawerParams = {
   Home: undefined;
   Accounts: undefined;
   Entries: undefined;
+
+  SelAccount: undefined;
 };
 
 const Drawer = createDrawerNavigator<MainDrawerParams>();

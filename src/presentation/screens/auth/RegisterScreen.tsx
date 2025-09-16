@@ -1,5 +1,6 @@
 import { LoginDto } from '@infrastructure/dtos/auth';
 import { Button, InputText } from '@presentation/components';
+import { MainLayout } from '@presentation/layout';
 import { AuthStackParams } from '@presentation/navigation';
 import { StackScreenProps } from '@react-navigation/stack';
 import { useAuthStore } from '@store/useAuthStore';
@@ -9,13 +10,14 @@ import { Formik } from 'formik';
 import {
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
 
-interface Props extends StackScreenProps<AuthStackParams, 'RegisterScreen'> {}
+type Props = StackScreenProps<AuthStackParams, 'RegisterScreen'>;
 
 //TODO: styling, confirm password validator
 export const RegisterScreen = ({ navigation }: Props) => {
@@ -30,75 +32,81 @@ export const RegisterScreen = ({ navigation }: Props) => {
   });
 
   return (
-    <Formik
-      initialValues={{ email: '', password: '', confirmPassword: '' }}
-      validate={(values) => {
-        const errors = {};
-        if (!values.email) {
-          errors['email'] = 'Required';
-        } else if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(values.email)) {
-          errors['email'] = 'Invalid email address';
-        }
-        return errors;
-      }}
-      onSubmit={(values) => {
-        mutation.mutate({ email: values.email, password: values.password });
-      }}
-    >
-      {({ handleChange, handleSubmit, values, errors, touched }) => (
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.container}
-        >
-          <View style={styles.content}>
-            <Text style={styles.title}>Crear cuenta</Text>
+    <MainLayout showNavbar={false} title="register">
+      <Formik
+        initialValues={{ email: '', password: '', confirmPassword: '' }}
+        validate={(values) => {
+          const errors = {};
+          if (!values.email) {
+            errors['email'] = 'Required';
+          } else if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(values.email)) {
+            errors['email'] = 'Invalid email address';
+          }
+          return errors;
+        }}
+        onSubmit={(values) => {
+          mutation.mutate({ email: values.email, password: values.password });
+        }}
+      >
+        {({ handleChange, handleSubmit, values, errors, touched }) => (
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.container}
+          >
+            <ScrollView contentContainerStyle={styles.scrollContent}>
+              <View style={styles.content}>
+                <Text style={styles.title}>Crear cuenta</Text>
 
-            <InputText
-              label="Email"
-              value={values.email}
-              placeholder="Email"
-              onChange={handleChange('email')}
-              errorMsg={touched.email ? errors.email : undefined}
-            />
+                <InputText
+                  label="Email"
+                  value={values.email}
+                  placeholder="Email"
+                  onChangeText={handleChange('email')}
+                  errorMsg={touched.email ? errors.email : undefined}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                />
 
-            <InputText
-              label="Contraseña"
-              value={values.password}
-              placeholder="Contraseña"
-              isPassword={true}
-              onChange={handleChange('password')}
-              errorMsg={touched.password ? errors.password : undefined}
-            />
+                <InputText
+                  label="Contraseña"
+                  value={values.password}
+                  placeholder="Contraseña"
+                  onChangeText={handleChange('password')}
+                  errorMsg={touched.password ? errors.password : undefined}
+                  autoCapitalize="none"
+                />
 
-            <InputText
-              label="Confirmar Contraseña"
-              value={values.password}
-              placeholder="Confirmar contraseña"
-              isPassword={true}
-              onChange={handleChange('confirmPassword')}
-              errorMsg={touched.confirmPassword ? errors.confirmPassword : undefined}
-            />
+                <InputText
+                  label="Confirmar Contraseña"
+                  value={values.password}
+                  placeholder="Confirmar contraseña"
+                  onChangeText={handleChange('confirmPassword')}
+                  errorMsg={touched.confirmPassword ? errors.confirmPassword : undefined}
+                  autoCapitalize="none"
+                />
 
-            <Button
-              label="Crear"
-              onPress={() => handleSubmit()}
-              isDisabled={mutation.isPending}
-              isLoading={mutation.isPending}
-            />
-          </View>
+                <Button
+                  label="Crear"
+                  onPress={() => handleSubmit()}
+                  isDisabled={mutation.isPending}
+                  isLoading={mutation.isPending}
+                />
+              </View>
+            </ScrollView>
 
-          <View style={styles.bottomContainer}>
-            <Text style={styles.bottomText}>¿Ya tienes una cuenta?</Text>
-            <TouchableOpacity
-              style={styles.bottomLink}
-              onPress={() => navigation.navigate('LoginScreen')}
-            >
-              <Text style={styles.bottomLinkText}>Inicia sesión</Text>
-            </TouchableOpacity>
-          </View>
-        </KeyboardAvoidingView>
-      )}
-    </Formik>
+            <View style={styles.bottomContainer}>
+              <Text style={styles.bottomText}>¿Ya tienes una cuenta?</Text>
+              <TouchableOpacity
+                style={styles.bottomLink}
+                onPress={() => navigation.navigate('LoginScreen')}
+              >
+                <Text style={styles.bottomLinkText}>Inicia sesión</Text>
+              </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
+        )}
+      </Formik>
+    </MainLayout>
   );
 };
 
@@ -113,11 +121,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
   },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+  },
+
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: COLORS.text,
-    marginBottom: 50,
+    color: COLORS.primary,
+    marginBottom: 5,
   },
 
   button: {

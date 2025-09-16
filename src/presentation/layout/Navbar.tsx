@@ -1,10 +1,9 @@
-import { MainDrawerParams } from "@presentation/navigation";
-import { DrawerNavigationProp } from "@react-navigation/drawer";
-import { useNavigation } from "@react-navigation/native";
-import { COLORS } from "@styles/colors";
-import { ChevronLeft, LucideIcon, TextAlignJustify } from "lucide-react-native";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { MainDrawerParams } from '@presentation/navigation';
+import { DrawerNavigationProp } from '@react-navigation/drawer';
+import { useNavigation } from '@react-navigation/native';
+import { COLORS } from '@styles/colors';
+import { ChevronLeft, LucideIcon, TextAlignJustify } from 'lucide-react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface Props {
   title: string;
@@ -13,16 +12,9 @@ interface Props {
   rightAction?: () => void;
   RightActionIcon?: LucideIcon;
 }
-export const Navbar = ({
-  title,
-  useDrawer = false,
-  rightAction,
-  RightActionIcon,
-}: Props) => {
-  const { top } = useSafeAreaInsets();
+export const Navbar = ({ title, useDrawer = false, rightAction, RightActionIcon }: Props) => {
   const { canGoBack, goBack } = useNavigation();
-  const mainNavigation =
-    useNavigation<DrawerNavigationProp<MainDrawerParams>>();
+  const mainNavigation = useNavigation<DrawerNavigationProp<MainDrawerParams>>();
 
   const RenderRightAction = () => {
     if (rightAction === undefined || RightActionIcon === undefined) return null;
@@ -51,8 +43,8 @@ export const Navbar = ({
   };
 
   return (
-    <View style={{ ...styles.container, marginTop: top }}>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+    <View style={styles.container}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
         {renderLeftOption()}
         <Text style={styles.title}>{title}</Text>
       </View>
@@ -64,14 +56,14 @@ export const Navbar = ({
 const styles = StyleSheet.create({
   container: {
     height: 50,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 15,
   },
   title: {
     fontSize: 19,
-    fontWeight: "600",
+    fontWeight: '600',
     color: COLORS.primary,
   },
 });

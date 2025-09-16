@@ -1,11 +1,21 @@
-import { ComponentStyles } from "@styles/components";
-import { ActivityIndicator, Text, TouchableOpacity } from "react-native";
+import { ComponentStyles } from '@styles/components';
+import { LucideIcon } from 'lucide-react-native';
+import {
+  ActivityIndicator,
+  Text,
+  TouchableOpacity,
+  TouchableOpacityProps,
+  View,
+} from 'react-native';
 
-interface Props {
+interface Props extends TouchableOpacityProps {
   label: string;
   onPress: () => void;
   isDisabled?: boolean;
   isLoading?: boolean;
+
+  LeftIcon?: LucideIcon;
+  RightIcon?: LucideIcon;
 }
 
 //TODO: param to configure style
@@ -16,17 +26,38 @@ export const Button = ({
   onPress,
   isDisabled = false,
   isLoading = false,
-}) => {
+  LeftIcon,
+  RightIcon,
+  ...rest
+}: Props) => {
+  const RenderLeftIcon = () => {
+    if (LeftIcon) {
+      return <LeftIcon color={'white'} />;
+    }
+  };
+  const RenderRightIcon = () => {
+    if (RightIcon) {
+      return <RightIcon color={'white'} />;
+    }
+  };
+
   return (
     <TouchableOpacity
-      style={ComponentStyles.btnPrimary}
+      {...rest}
+      style={[ComponentStyles.btnPrimary, rest.style]}
       onPress={onPress}
       disabled={isDisabled}
     >
       {isLoading ? (
         <ActivityIndicator color="#FFFFFF" />
       ) : (
-        <Text style={ComponentStyles.btnPrimaryText}>{label}</Text>
+        <View
+          style={{ flexDirection: 'row', gap: 10, alignItems: 'center', justifyContent: 'center' }}
+        >
+          {RenderLeftIcon()}
+          <Text style={ComponentStyles.btnPrimaryText}>{label}</Text>
+          {RenderRightIcon()}
+        </View>
       )}
     </TouchableOpacity>
   );

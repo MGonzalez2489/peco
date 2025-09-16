@@ -1,5 +1,5 @@
-import { createStackNavigator } from "@react-navigation/stack";
-import { LoginScreen, RegisterScreen } from "../screens/auth";
+import { createStackNavigator } from '@react-navigation/stack';
+import { LoginScreen, RegisterScreen } from '../screens/auth';
 
 export type AuthStackParams = {
   LoginScreen: undefined;

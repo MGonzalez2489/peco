@@ -1,6 +1,6 @@
-import { FlatList } from "react-native";
-import { AccountListItem } from "./AccountListItem";
-import { Account } from "@domain/entities";
+import { Account } from '@domain/entities';
+import { FlatList } from 'react-native';
+import { AccountListItem } from './AccountListItem';
 
 interface Props {
   accounts: Account[];
