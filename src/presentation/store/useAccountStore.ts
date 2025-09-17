@@ -1,8 +1,8 @@
-import { CreateAccount, LoadAccounts } from "@actions/account";
-import { Account } from "@domain/entities";
-import { CreateAccountDto } from "@infrastructure/dtos/accounts";
-import { create } from "zustand";
-import { devtools } from "zustand/middleware";
+import { CreateAccount, LoadAccounts } from '@actions/account';
+import { Account } from '@domain/entities';
+import { CreateAccountDto } from '@infrastructure/dtos/accounts';
+import { create } from 'zustand';
+import { devtools } from 'zustand/middleware';
 
 export interface AccountState {
   ids: string[];
@@ -40,11 +40,11 @@ export const useAccountStore = create<AccountState>()(
       return get().accounts.find((f) => f.publicId === accountId);
     },
     clearStore: () => {
-      console.log("entro para aca a limpiar");
+      console.log('entro para aca a limpiar');
       set({
         ids: [],
         accounts: [],
       });
     },
-  })),
+  }))
 );

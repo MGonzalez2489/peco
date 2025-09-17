@@ -1,8 +1,8 @@
-import { BaseEntity } from "./_base";
-import { Account } from "./account";
-import { EntryCategory } from "./EntryCategory";
-import { EntryStatus } from "./EntryStatus";
-import { EntryType } from "./EntryType";
+import { BaseEntity } from './_base';
+import { Account } from './account';
+import { EntryCategory } from './EntryCategory';
+import { EntryStatus } from './EntryStatus';
+import { EntryType } from './EntryType';
 
 export interface Entry extends BaseEntity {
   description: string;
