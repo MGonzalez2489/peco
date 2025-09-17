@@ -49,7 +49,7 @@ interface Props {
 
 export const EntryCreateScreen = ({ accountId }: Props) => {
   const { entryTypes, entryCategories } = useCatalogsStore();
-  const { accounts } = useAccountStore();
+  const { accounts, loadAccounts } = useAccountStore();
   const queryClient = useQueryClient();
 
   // Initialize default selected objects, using useMemo for efficiency
@@ -68,6 +68,8 @@ export const EntryCreateScreen = ({ accountId }: Props) => {
   const mutation = useMutation({
     mutationFn: (data: CreateEntryDto) => CreateEntry(data),
     onSuccess: (response: ResultDto<Entry>) => {
+      //TODO: LOAD ONLY ONE ACCOUNT OR UPDATE THE EXISTING ACCOUNT WITH THE NEW ENTRY INFO
+      loadAccounts();
       queryClient.invalidateQueries({ queryKey: ['entries', 'infinite'] });
 
       // You should navigate to a success screen or pop the stack

@@ -40,7 +40,6 @@ export const useAccountStore = create<AccountState>()(
       return get().accounts.find((f) => f.publicId === accountId);
     },
     clearStore: () => {
-      console.log('entro para aca a limpiar');
       set({
         ids: [],
         accounts: [],

@@ -3,15 +3,10 @@ import {
   loadEntryCategories,
   loadEntryStatuses,
   loadEntryTypes,
-} from "@actions/catalogs";
-import { SearchDto } from "@infrastructure/dtos/search.dto";
-import {
-  AccountType,
-  EntryCategory,
-  EntryStatus,
-  EntryType,
-} from "src/domain/entities";
-import { create } from "zustand";
+} from '@actions/catalogs';
+import { SearchDto } from '@infrastructure/dtos/search.dto';
+import { AccountType, EntryCategory, EntryStatus, EntryType } from 'src/domain/entities';
+import { create } from 'zustand';
 
 export interface CatalogsState {
   accountTypes: AccountType[];
@@ -32,13 +27,12 @@ export const useCatalogsStore = create<CatalogsState>()((set, get) => ({
     const search = new SearchDto();
     search.showAll = true;
 
-    const [accountTypes, entryCategories, entryStatuses, entryTypes] =
-      await Promise.all([
-        loadAccountTypes(search),
-        loadEntryCategories(search),
-        loadEntryStatuses(search),
-        loadEntryTypes(search),
-      ]);
+    const [accountTypes, entryCategories, entryStatuses, entryTypes] = await Promise.all([
+      loadAccountTypes(search),
+      loadEntryCategories(search),
+      loadEntryStatuses(search),
+      loadEntryTypes(search),
+    ]);
 
     set({
       accountTypes,
