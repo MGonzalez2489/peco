@@ -1,40 +1,41 @@
 import { Button } from '@presentation/components';
+import { MainLayout } from '@presentation/layout';
+import { EntryStackParams } from '@presentation/navigation';
 import { StackScreenProps } from '@react-navigation/stack';
 import { COLORS } from '@styles/colors';
 import { ArrowLeft, CheckCircle } from 'lucide-react-native';
 import { StyleSheet, Text, View } from 'react-native';
-import { MainLayout } from 'src/presentation/layout';
-import { AccountStackParams } from 'src/presentation/navigation/AccountsNavigation';
 
-type Props = StackScreenProps<AccountStackParams, 'AccountCreateSuccessScreen'>;
+type Props = StackScreenProps<EntryStackParams, 'EntryCreateSuccessScreen'>;
 
-//TODO: The back action seems weird because of the direction of the slide
-export const AccountCreateSuccessScreen = ({ navigation, route }: Props) => {
-  const account = route.params.account;
+export const EntryCreateSuccessScreen = ({ navigation, route }: Props) => {
+  const entry = route.params.entry;
+
+  const handleBack = () => {
+    navigation.reset({
+      index: 0,
+      routes: [
+        {
+          name: 'EntriesScreen',
+        },
+      ],
+    });
+  };
   return (
-    <MainLayout title="Create account success" showNavbar={false}>
+    <MainLayout title="" showNavbar={false}>
       <View style={styles.container}>
         <View style={styles.titleContainer}>
           <CheckCircle color={COLORS.secondary} size={80} />
-          <Text style={styles.title}>¡Cuenta {account.name} creada!</Text>
+          <Text style={styles.title}>¡Registro {entry.description} creado!</Text>
           <Text style={styles.Subtitles}>
-            Tu nueva cuenta ha sido creada exitosamente y está lista para ser usada.
+            Recuerda que tus transacciones afectan el balance general de la cuenta asignada.
           </Text>
         </View>
         <Button
           label="Regresar"
           style={{ marginTop: 80 }}
           LeftIcon={ArrowLeft}
-          onPress={() =>
-            navigation.reset({
-              index: 0,
-              routes: [
-                {
-                  name: 'AccountsScreen',
-                },
-              ],
-            })
-          }
+          onPress={handleBack}
         />
       </View>
     </MainLayout>

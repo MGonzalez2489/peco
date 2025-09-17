@@ -1,32 +1,33 @@
-import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
+import { CreateEntry } from '@actions/entries';
+import { Account, Entry, EntryCategory } from '@domain/entities';
+import { CreateEntryDto } from '@infrastructure/dtos/entries';
+import { ResultDto } from '@infrastructure/dtos/responses';
+import { Button, InputNumber, InputText } from '@presentation/components';
+import { MainLayout } from '@presentation/layout';
+import { EntryStackParams } from '@presentation/navigation';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { useAccountStore } from '@store/useAccountStore';
+import { useCatalogsStore } from '@store/useCatalogsStore';
+import { COLORS } from '@styles/colors';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Formik, FormikProps } from 'formik';
+import { ChevronRight } from 'lucide-react-native';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
-  Alert,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { Formik, FormikProps } from 'formik';
-import { useMutation } from '@tanstack/react-query';
-import { Check } from 'lucide-react-native';
-
-import { CreateEntry } from '@actions/entries';
-import { Account, EntryCategory } from '@domain/entities';
-import { CreateEntryDto } from '@infrastructure/dtos/entries';
-import { EntryCalculator } from '@presentation/components/entries';
-import { MainLayout } from '@presentation/layout';
-import { EntryStackParams } from '@presentation/navigation';
-import { useAccountStore } from '@store/useAccountStore';
-import { useCatalogsStore } from '@store/useCatalogsStore';
-import { COLORS } from '@styles/colors';
 
 // 1. Define Formik Values and use strong typing
 interface EntryFormValues {
-  amount: number | string; // Use string for initial state, will be number for payload
+  amount: number; // Use string for initial state, will be number for payload
   description: string;
   categoryId: string;
   entryTypeId: string;
@@ -42,17 +43,22 @@ const getInitialValues = (initialTypePublicId: string): EntryFormValues => ({
   accountId: '',
 });
 
-export const EntryCreateScreen: React.FC = () => {
+interface Props {
+  accountId?: string;
+}
+
+export const EntryCreateScreen = ({ accountId }: Props) => {
   const { entryTypes, entryCategories } = useCatalogsStore();
   const { accounts } = useAccountStore();
+  const queryClient = useQueryClient();
 
   // Initialize default selected objects, using useMemo for efficiency
   const defaultEntryType = useMemo(() => entryTypes[0], [entryTypes]);
-  const defaultAccount = useMemo(() => accounts[0], [accounts]);
+  const defaultAccount = useMemo(() => {
+    if (accountId) return accounts.find((f) => f.publicId === accountId);
+    else return accounts[0];
+  }, [accounts, accountId]);
   const defaultCategory = useMemo(() => entryCategories[0], [entryCategories]);
-
-  // State for the calculator input (since Formik can't easily handle its complex changes)
-  const [calculatorAmount, setCalculatorAmount] = useState('0');
 
   const navigation = useNavigation<StackNavigationProp<EntryStackParams>>();
   // 3. Use FormikProps with strong typing
@@ -61,19 +67,19 @@ export const EntryCreateScreen: React.FC = () => {
   // 4. Mutation setup
   const mutation = useMutation({
     mutationFn: (data: CreateEntryDto) => CreateEntry(data),
-    onSuccess: () => {
+    onSuccess: (response: ResultDto<Entry>) => {
+      queryClient.invalidateQueries({ queryKey: ['entries', 'infinite'] });
+
       // You should navigate to a success screen or pop the stack
-      navigation.goBack();
+      const nEntry = response.data;
+      navigation.navigate('EntryCreateSuccessScreen', { entry: nEntry });
+      // navigation.goBack();
       // Add a success toast/alert here if needed
     },
     onError: (error) => {
       Alert.alert('Error', error.message || 'Error al crear el registro.');
     },
   });
-
-  // --- Utility Functions ---
-
-  // 5. Use useCallback for stable functions, especially navigation callbacks
   const handleSelectAccount = useCallback(
     (setFieldValue) => {
       navigation.navigate('SelAccount', {
@@ -100,56 +106,6 @@ export const EntryCreateScreen: React.FC = () => {
     setFieldValue('entryTypeId', g.publicId);
   }, []);
 
-  // --- Navbar and Side Effects ---
-
-  // 6. Use a single, consolidated useEffect for navigation options
-  useEffect(() => {
-    // Get the current selected type from the form's state (if available) or default
-    const currentEntryType =
-      entryTypes.find((t) => t.publicId === formikRef.current?.values.entryTypeId) ||
-      defaultEntryType;
-
-    navigation.setOptions({
-      // Use the actual selected type's color for dynamic header styling
-      headerStyle: {
-        backgroundColor: currentEntryType.color,
-      },
-      headerTintColor: 'white',
-      headerTitleStyle: {
-        fontWeight: '800',
-      },
-      headerRight: () => (
-        <TouchableOpacity
-          onPress={() => formikRef.current?.submitForm()}
-          // Disable button while mutating
-          disabled={mutation.isPending}
-          style={styles.headerRightContainer}
-        >
-          <Check color={mutation.isPending ? 'gray' : 'white'} />
-        </TouchableOpacity>
-      ),
-    });
-
-    // Dependencies: navigation, formikRef, entryTypes, mutation.isPending
-  }, [navigation, formikRef.current?.values.entryTypeId, entryTypes, mutation.isPending]);
-
-  // 7. Initial Formik value population (One-time setup)
-  useEffect(() => {
-    if (formikRef.current) {
-      formikRef.current.setFieldValue('entryTypeId', defaultEntryType.publicId);
-      if (defaultAccount) {
-        formikRef.current.setFieldValue('accountId', defaultAccount.publicId);
-      }
-      if (defaultCategory) {
-        formikRef.current.setFieldValue('categoryId', defaultCategory.publicId);
-      }
-    }
-  }, [defaultEntryType, defaultAccount, defaultCategory]);
-
-  // --- Rendering Helpers ---
-
-  // 8. Move complex rendering logic outside the main component if possible,
-  // or wrap it in a useMemo to avoid re-creation on every render.
   const RenderEntryTypeOptions = useCallback(
     (setFieldValue: (field: string, value: any) => void) => {
       // Get the currently selected type ID from Formik, falling back to default
@@ -184,6 +140,19 @@ export const EntryCreateScreen: React.FC = () => {
     [entryTypes, defaultEntryType.publicId, handleEntryTypePress]
   );
 
+  // 7. Initial Formik value population (One-time setup)
+  useEffect(() => {
+    if (formikRef.current) {
+      formikRef.current.setFieldValue('entryTypeId', defaultEntryType.publicId);
+      if (defaultAccount) {
+        formikRef.current.setFieldValue('accountId', defaultAccount.publicId);
+      }
+      if (defaultCategory) {
+        formikRef.current.setFieldValue('categoryId', defaultCategory.publicId);
+      }
+    }
+  }, [defaultEntryType, defaultAccount, defaultCategory]);
+
   // Derive the selected objects from Formik state for rendering
   const getSelectedObjects = (values: EntryFormValues) => {
     const selEntryType =
@@ -194,85 +163,106 @@ export const EntryCreateScreen: React.FC = () => {
     return { selEntryType, selAccount, selEntryCat };
   };
 
-  // --- Main Render ---
   return (
-    <MainLayout title="" showNavbar={false}>
-      <Formik
-        innerRef={formikRef}
-        initialValues={getInitialValues(defaultEntryType.publicId)}
-        onSubmit={(values) => {
-          if (!defaultCategory || !defaultAccount) {
-            Alert.alert('Error', 'Debe seleccionar una cuenta y una categoría.');
-            return;
-          }
-
-          const payload: CreateEntryDto = {
-            description: values.description || '',
-            // Ensure amount is a number for the API call
-            amount: parseFloat(calculatorAmount) || 0,
-            categoryId: values.categoryId || defaultCategory.publicId,
-            entryTypeId: values.entryTypeId,
-            accountId: values.accountId || defaultAccount.publicId,
-          };
-
-          mutation.mutate(payload);
-        }}
+    <MainLayout title="Nueva Transaccion">
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        {({ handleSubmit, values, setFieldValue }) => {
-          const { selEntryType, selAccount, selEntryCat } = getSelectedObjects(values);
+        <Formik
+          innerRef={formikRef}
+          initialValues={getInitialValues(defaultEntryType.publicId)}
+          onSubmit={(values) => {
+            if (!defaultCategory || !defaultAccount) {
+              Alert.alert('Error', 'Debe seleccionar una cuenta y una categoría.');
+              return;
+            }
 
-          // Render logic moved inside the Formik render prop
-          return (
-            <KeyboardAvoidingView
-              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-              style={styles.container}
-            >
-              {/* Entry Type Options */}
-              {RenderEntryTypeOptions(setFieldValue)}
+            const payload: CreateEntryDto = {
+              description: values.description || '',
+              // Ensure amount is a number for the API call
+              amount: parseFloat(values.amount.toString()) || 0,
+              categoryId: values.categoryId || defaultCategory.publicId,
+              entryTypeId: values.entryTypeId,
+              accountId: values.accountId || defaultAccount.publicId,
+            };
 
-              {/* Amount Display */}
-              <View
-                style={{
-                  ...styles.amountDisplayContainer,
-                  backgroundColor: selEntryType.color,
-                }}
-              >
-                <View style={styles.amountTextRow}>
-                  <Text style={styles.signText}>{selEntryType.name === 'income' ? '+' : '-'}</Text>
-                  <Text style={styles.amountText}>{calculatorAmount}</Text>
-                </View>
+            mutation.mutate(payload);
+          }}
+        >
+          {({ handleChange, values, setFieldValue, handleSubmit }) => {
+            const { selEntryType, selAccount, selEntryCat } = getSelectedObjects(values);
 
-                {/* Account and Category Selectors */}
-                <View style={styles.selectRow}>
-                  {/* Cuenta */}
-                  <TouchableOpacity
-                    onPress={() => handleSelectAccount(setFieldValue)}
-                    style={styles.selectItem}
-                  >
-                    <Text style={styles.selectLabel}>Cuenta</Text>
-                    <Text style={styles.selectValue}>{selAccount?.name ?? 'Seleccionar'}</Text>
-                  </TouchableOpacity>
+            return (
+              <View style={styles.container}>
+                <View>
+                  {/* Entry Type Options */}
+                  {RenderEntryTypeOptions(setFieldValue)}
+                  {/* Description */}
+                  <InputText
+                    label="Descripcion"
+                    placeholder="Descripcion"
+                    value={values.description}
+                    onChangeText={handleChange('description')}
+                  />
 
-                  {/* Categoria */}
-                  <TouchableOpacity
+                  {/* Amount */}
+                  <InputNumber
+                    label="Cantidad"
+                    value={values.amount}
+                    keyboardType="decimal-pad"
+                    onChangeText={handleChange('amount')}
+                  />
+                  {/* Category */}
+                  <Text style={{ marginBottom: 5, color: COLORS.text }}>Categoria</Text>
+                  <Pressable
+                    style={{
+                      flexDirection: 'row',
+                      justifyContent: 'space-between',
+                      paddingVertical: 10,
+                      alignItems: 'center',
+
+                      height: 50,
+                      backgroundColor: COLORS.background,
+                      borderRadius: 8,
+                      paddingHorizontal: 15,
+                      marginBottom: 10,
+                      borderWidth: 1,
+                      borderColor: '#E0E0E0',
+                    }}
                     onPress={() => handleSelEntryCategory(setFieldValue)}
-                    style={styles.selectItem}
                   >
-                    <Text style={styles.selectLabel}>Categoria</Text>
-                    <Text style={styles.selectValue}>{selEntryCat?.name ?? 'Seleccionar'}</Text>
-                  </TouchableOpacity>
+                    <Text>{selEntryCat.name}</Text>
+                    <ChevronRight />
+                  </Pressable>
+                  {/* Account */}
+                  <Text style={{ marginBottom: 5, color: COLORS.text }}>Cuenta</Text>
+                  <Pressable
+                    style={{
+                      flexDirection: 'row',
+                      justifyContent: 'space-between',
+                      paddingVertical: 10,
+                      alignItems: 'center',
+                      height: 50,
+                      backgroundColor: COLORS.background,
+                      borderRadius: 8,
+                      paddingHorizontal: 15,
+                      marginBottom: 10,
+                      borderWidth: 1,
+                      borderColor: '#E0E0E0',
+                    }}
+                    onPress={() => handleSelectAccount(setFieldValue)}
+                  >
+                    <Text style={{ textTransform: 'capitalize' }}>{selAccount.name}</Text>
+                    <ChevronRight />
+                  </Pressable>
                 </View>
+                <Button label="Crear" onPress={handleSubmit} />
               </View>
-
-              {/* Calculator */}
-              <EntryCalculator handleValue={setCalculatorAmount} />
-
-              {/* Optional: Add a hidden input for description if needed later */}
-              {/* <TextInput value={values.description} onChangeText={handleChange('description')} /> */}
-            </KeyboardAvoidingView>
-          );
-        }}
-      </Formik>
+            );
+          }}
+        </Formik>
+      </KeyboardAvoidingView>
     </MainLayout>
   );
 };
@@ -280,17 +270,18 @@ export const EntryCreateScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  headerRightContainer: {
-    paddingRight: 10,
+    paddingHorizontal: 20,
+    justifyContent: 'space-between',
   },
   btnContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     backgroundColor: '#f3f3f3',
+    marginVertical: 10,
+    marginBottom: 20,
   },
   btn: {
-    paddingHorizontal: 60,
+    paddingHorizontal: 20,
     paddingVertical: 13,
     flex: 1,
     alignItems: 'center',
@@ -299,55 +290,16 @@ const styles = StyleSheet.create({
   btnText: {
     fontWeight: 'bold',
     color: 'white', // Ensure text color is set for non-active states
+    // shadowColor: '#000',
+    // shadowOffset: { width: 0, height: 1 },
+    // shadowOpacity: 0.7,
+    // shadowRadius: 1,
   },
   btnActive: {
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-  },
-  // --- New/Refined Styles for Amount Display ---
-  amountDisplayContainer: {
-    padding: 10,
-    minHeight: 200,
-    justifyContent: 'space-evenly',
-  },
-  amountTextRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingRight: 20,
-    paddingHorizontal: 15,
-  },
-  signText: {
-    fontSize: 50,
-    color: COLORS.primary,
-  },
-  amountText: {
-    height: 60,
-    fontSize: 50,
-    color: COLORS.primary,
-  },
-  selectRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 10,
-    marginTop: 10, // Added margin for better separation
-  },
-  selectItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  selectLabel: {
-    color: 'white',
-    textAlign: 'center',
-    fontWeight: '700',
-    paddingBottom: 3,
-  },
-  selectValue: {
-    color: 'white',
-    textTransform: 'capitalize',
-    textAlign: 'center',
+    // elevation: 8,
+    // shadowColor: '#000',
+    // shadowOffset: { width: 0, height: 4 },
+    // shadowOpacity: 0.3,
+    // shadowRadius: 4,
   },
 });

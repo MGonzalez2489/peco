@@ -12,11 +12,13 @@ export const InputText = ({ label, errorMsg, ...rest }: Props) => {
     <View style={styles.container}>
       {label && <Text style={styles.label}>{label}</Text>}
 
-      <TextInput
-        style={[styles.input, errorMsg && styles.inputError]}
-        placeholderTextColor="#A0A0A0"
-        {...rest}
-      />
+      <View>
+        <TextInput
+          style={[styles.input, errorMsg && styles.inputError]}
+          placeholderTextColor="#A0A0A0"
+          {...rest}
+        />
+      </View>
 
       {errorMsg && <Text style={styles.error}>{errorMsg}</Text>}
     </View>
@@ -33,7 +35,7 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
   input: {
-    width: '100%',
+    // width: '100%',
     height: 50,
     backgroundColor: COLORS.background,
     borderRadius: 8,

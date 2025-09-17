@@ -23,10 +23,7 @@ export const SelAccountModal = ({ route }: Props) => {
   };
 
   return (
-    <MainLayout title="Selecciona una cuenta" showNavbar={false}>
-      <Text style={{ paddingHorizontal: 15, fontSize: 20, paddingBottom: 20 }}>
-        Selecciona una cuenta
-      </Text>
+    <MainLayout title="Selecciona una cuenta" showNavbar={true}>
       <FlatList
         data={accounts}
         renderItem={({ item }) => (

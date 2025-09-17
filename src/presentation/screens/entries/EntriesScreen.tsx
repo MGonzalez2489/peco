@@ -15,7 +15,7 @@ export const EntriesScreen = () => {
   const { isLoading, data, fetchNextPage } = useInfiniteQuery({
     queryKey: ['entries', 'infinite'],
     initialPageParam: 1,
-    // staleTime: 1000 * 10,
+    staleTime: 1000 * 60,
     queryFn: async (params) => LoadEntries(params.pageParam),
     getNextPageParam: (lastPage, allPages) => {
       const newPage = lastPage.meta.hasNextPage ? allPages.length + 1 : null;

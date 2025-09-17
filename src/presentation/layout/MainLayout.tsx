@@ -29,7 +29,7 @@ export const MainLayout = ({
   const pTop = showNavbar ? insets.top : 0;
 
   return (
-    <View style={{ ...styles.container, paddingTop: pTop, paddingBottom: insets.bottom }}>
+    <View style={{ ...styles.container, paddingTop: insets.top, paddingBottom: insets.bottom }}>
       {showNavbar && (
         <Navbar
           title={title}
