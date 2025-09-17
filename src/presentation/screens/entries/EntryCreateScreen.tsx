@@ -1,5 +1,7 @@
+import { CreateEntry } from '@actions/entries';
 import { Account, EntryCategory } from '@domain/entities';
-import { formatCurrency } from '@infrastructure/utils';
+import { CreateEntryDto } from '@infrastructure/dtos/entries';
+import { EntryCalculator } from '@presentation/components/entries';
 import { MainLayout } from '@presentation/layout';
 import { EntryStackParams } from '@presentation/navigation';
 import { useNavigation } from '@react-navigation/native';
@@ -7,9 +9,10 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { useAccountStore } from '@store/useAccountStore';
 import { useCatalogsStore } from '@store/useCatalogsStore';
 import { COLORS } from '@styles/colors';
-import { Formik } from 'formik';
+import { useMutation } from '@tanstack/react-query';
+import { Formik, FormikProps } from 'formik';
 import { Check } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -33,6 +36,11 @@ export const EntryCreateScreen = () => {
   const [selEntryType, setSelEntryType] = useState(entryTypes[0]);
   const [selAccount, setSelAccount] = useState<Account | undefined>(undefined);
   const [selEntryCat, setSelEntryCat] = useState<EntryCategory | undefined>(undefined);
+
+  const navigation = useNavigation<StackNavigationProp<EntryStackParams>>();
+  const formikRef = useRef<FormikProps<any>>(null);
+
+  const [amount, setAmount] = useState('0');
 
   const renderEntryTypeOptions = (setFieldValue: any) => {
     return (
@@ -60,8 +68,6 @@ export const EntryCreateScreen = () => {
       </View>
     );
   };
-
-  const navigation = useNavigation<StackNavigationProp<EntryStackParams>>();
 
   //FIXME: this function throw a warning
   const handleSelectAccount = (setFieldValue) => {
@@ -94,16 +100,52 @@ export const EntryCreateScreen = () => {
     setSelAccount(accounts[0]);
   }, [accounts]);
 
+  useEffect(() => {
+    navigation.setOptions({
+      headerStyle: {
+        backgroundColor: selEntryType.color,
+      },
+      headerTintColor: 'white',
+      headerTitleStyle: {
+        fontWeight: '800',
+      },
+      headerRight: () => (
+        <TouchableOpacity onPress={() => formikRef.current.submitForm()}>
+          <Check color={'white'} />
+        </TouchableOpacity>
+      ),
+      headerRightContainerStyle: {
+        paddingRight: 10,
+      },
+    });
+  }, [navigation, selEntryType]);
+
+  const handleAmountChange = (value) => {
+    setAmount(value);
+  };
+
+  const mutation = useMutation({
+    mutationFn: (data: CreateEntryDto) => CreateEntry(data),
+    onError(error) {
+      alert(error.message);
+    },
+  });
+
   return (
-    <MainLayout
-      title=""
-      rightAction={() => alert('right')}
-      RightActionIcon={Check}
-      showNavbar={false}
-    >
+    <MainLayout title="" showNavbar={false}>
       <Formik
+        innerRef={formikRef}
         initialValues={{ ...initialValues, entryTypeId: selEntryType.publicId }}
-        onSubmit={(values) => console.log('submit', values)}
+        onSubmit={(values) => {
+          const payload = {
+            description: '',
+            amount: Number(amount),
+            categoryId: selEntryCat.publicId,
+            entryTypeId: selEntryType.publicId,
+            accountId: selAccount.publicId,
+          };
+          mutation.mutate(payload);
+        }}
       >
         {({ handleChange, handleSubmit, values, errors, touched, setFieldValue }) => (
           <KeyboardAvoidingView
@@ -111,92 +153,89 @@ export const EntryCreateScreen = () => {
             style={styles.container}
           >
             {/* main view */}
-            <View>
-              {renderEntryTypeOptions(setFieldValue)}
+            {renderEntryTypeOptions(setFieldValue)}
 
-              {/* amount */}
+            {/* amount */}
+            <View
+              style={{
+                backgroundColor: selEntryType.color,
+                padding: 15,
+                minHeight: 150,
+                justifyContent: 'center',
+              }}
+            >
               <View
                 style={{
-                  backgroundColor: selEntryType.color,
-                  padding: 15,
-                  minHeight: 150,
-                  justifyContent: 'center',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  paddingRight: 20,
                 }}
               >
-                <View
+                <Text
                   style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    paddingRight: 20,
+                    fontSize: 50,
+                    color: COLORS.primary,
+                    paddingHorizontal: 15,
                   }}
                 >
-                  <Text
-                    style={{
-                      fontSize: 50,
-                      color: COLORS.primary,
-                      paddingHorizontal: 15,
-                    }}
-                  >
-                    {selEntryType.name === 'income' ? '+' : '-'}
-                  </Text>
-                  <Text
-                    style={{
-                      height: 60,
-                      fontSize: 50,
-                      color: COLORS.primary,
-                    }}
-                  >
-                    {formatCurrency(values.amount)}
-                  </Text>
-                </View>
+                  {selEntryType.name === 'income' ? '+' : '-'}
+                </Text>
+                <Text
+                  style={{
+                    height: 60,
+                    fontSize: 50,
+                    color: COLORS.primary,
+                  }}
+                >
+                  {amount}
+                </Text>
               </View>
-
-              {/* otras opciones */}
-              <View
-                style={{
-                  backgroundColor: selEntryType.color,
-                  flexDirection: 'row',
-                  justifyContent: 'space-between',
-                  paddingVertical: 10,
-                  paddingHorizontal: 40,
-                }}
-              >
-                {/* Cuenta */}
-                <TouchableOpacity onPress={() => handleSelectAccount(setFieldValue)}>
-                  <Text
-                    style={{
-                      color: 'white',
-                      textAlign: 'center',
-                      fontWeight: '700',
-                      paddingBottom: 3,
-                    }}
-                  >
-                    Cuenta
-                  </Text>
-                  <Text
-                    style={{ color: 'white', textTransform: 'capitalize', textAlign: 'center' }}
-                  >
-                    {selAccount?.name}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleSelEntryCategory(setFieldValue)}>
-                  <Text
-                    style={{
-                      color: 'white',
-                      textAlign: 'center',
-                      fontWeight: '700',
-                      paddingBottom: 3,
-                    }}
-                  >
-                    Categoria
-                  </Text>
-                  <Text style={{ color: 'white', textAlign: 'center' }}>{selEntryCat?.name}</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* aqui van los numeros */}
             </View>
+
+            {/* otras opciones */}
+            <View
+              style={{
+                backgroundColor: selEntryType.color,
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                paddingVertical: 10,
+                paddingHorizontal: 40,
+              }}
+            >
+              {/* Cuenta */}
+              <TouchableOpacity onPress={() => handleSelectAccount(setFieldValue)}>
+                <Text
+                  style={{
+                    color: 'white',
+                    textAlign: 'center',
+                    fontWeight: '700',
+                    paddingBottom: 3,
+                  }}
+                >
+                  Cuenta
+                </Text>
+                <Text style={{ color: 'white', textTransform: 'capitalize', textAlign: 'center' }}>
+                  {selAccount?.name}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => handleSelEntryCategory(setFieldValue)}>
+                <Text
+                  style={{
+                    color: 'white',
+                    textAlign: 'center',
+                    fontWeight: '700',
+                    paddingBottom: 3,
+                  }}
+                >
+                  Categoria
+                </Text>
+                <Text style={{ color: 'white', textAlign: 'center' }}>{selEntryCat?.name}</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* aqui van los numeros */}
+            <EntryCalculator handleValue={handleAmountChange} />
           </KeyboardAvoidingView>
         )}
       </Formik>
@@ -207,7 +246,6 @@ export const EntryCreateScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'space-between',
   },
   btnContainer: {
     flexDirection: 'row',

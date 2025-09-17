@@ -1,19 +1,19 @@
-import { LoadEntries } from "@actions/entries/load-entries";
-import { groupEntriesByDate } from "@infrastructure/utils";
-import { FabButton } from "@presentation/components";
-import { EntryList } from "@presentation/components/entries";
-import { MainLayout } from "@presentation/layout";
-import { EntryStackParams } from "@presentation/navigation";
-import { useNavigation } from "@react-navigation/native";
-import { StackNavigationProp } from "@react-navigation/stack";
-import { useInfiniteQuery } from "@tanstack/react-query";
-import { StyleSheet, View } from "react-native";
+import { LoadEntries } from '@actions/entries/load-entries';
+import { groupEntriesByDate } from '@infrastructure/utils';
+import { FabButton } from '@presentation/components';
+import { EntryList } from '@presentation/components/entries';
+import { MainLayout } from '@presentation/layout';
+import { EntryStackParams } from '@presentation/navigation';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { useInfiniteQuery } from '@tanstack/react-query';
+import { StyleSheet, View } from 'react-native';
 
 export const EntriesScreen = () => {
   const navigation = useNavigation<StackNavigationProp<EntryStackParams>>();
 
   const { isLoading, data, fetchNextPage } = useInfiniteQuery({
-    queryKey: ["entries", "infinite"],
+    queryKey: ['entries', 'infinite'],
     initialPageParam: 1,
     staleTime: 1000 * 10,
     queryFn: async (params) => LoadEntries(params.pageParam),
@@ -29,14 +29,10 @@ export const EntriesScreen = () => {
   return (
     <MainLayout title="Entries" useDrawer={true}>
       <View style={styles.transactionsContainer}>
-        <EntryList
-          group={grupedData}
-          fetchNextPage={fetchNextPage}
-          showAccount={true}
-        />
+        <EntryList group={grupedData} fetchNextPage={fetchNextPage} showAccount={true} />
       </View>
 
-      <FabButton onPress={() => navigation.navigate("EntryCreateScreen")} />
+      <FabButton onPress={() => navigation.navigate('EntryCreateScreen')} />
     </MainLayout>
   );
 };

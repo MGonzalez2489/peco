@@ -20,7 +20,6 @@ const initialValues = {
 };
 
 type Props = StackScreenProps<AccountStackParams, 'AccountCreateScreen'>;
-//TODO: FORM VALIDATIONS
 export const AccountCreateScreen = ({ route }: Props) => {
   const { create } = useAccountStore();
   const navigation = useNavigation<StackNavigationProp<AccountStackParams>>();
@@ -63,6 +62,14 @@ export const AccountCreateScreen = ({ route }: Props) => {
       <Formik
         innerRef={formikRef}
         initialValues={initialValues}
+        validate={(values) => {
+          const errors = {};
+          if (!values.name) {
+            errors['name'] = 'Required';
+          }
+
+          return errors;
+        }}
         onSubmit={(values) => {
           const request = {
             ...values,
@@ -72,7 +79,7 @@ export const AccountCreateScreen = ({ route }: Props) => {
           mutation.mutate(request);
         }}
       >
-        {({ handleChange, handleSubmit, values, errors, touched, setFieldValue }) => (
+        {({ handleChange, handleSubmit, values, errors, touched }) => (
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.container}
@@ -87,6 +94,7 @@ export const AccountCreateScreen = ({ route }: Props) => {
                   placeholder="Nombre de la cuenta"
                   autoCorrect={false}
                   onChangeText={handleChange('name')}
+                  errorMsg={touched.name ? errors.name : undefined}
                 />
 
                 {/* Initial Balance */}

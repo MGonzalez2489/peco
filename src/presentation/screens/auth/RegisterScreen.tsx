@@ -41,6 +41,10 @@ export const RegisterScreen = ({ navigation }: Props) => {
             errors['email'] = 'Required';
           } else if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(values.email)) {
             errors['email'] = 'Invalid email address';
+          } else if (!values.password) errors['password'] = 'Required';
+          else if (!values.confirmPassword) errors['confirmPassword'] = 'Required';
+          else if (values.password !== values.confirmPassword) {
+            errors['confirmPassword'] = 'Invalid matching value';
           }
           return errors;
         }}
@@ -74,15 +78,17 @@ export const RegisterScreen = ({ navigation }: Props) => {
                   onChangeText={handleChange('password')}
                   errorMsg={touched.password ? errors.password : undefined}
                   autoCapitalize="none"
+                  secureTextEntry={true}
                 />
 
                 <InputText
                   label="Confirmar Contraseña"
-                  value={values.password}
+                  value={values.confirmPassword}
                   placeholder="Confirmar contraseña"
                   onChangeText={handleChange('confirmPassword')}
                   errorMsg={touched.confirmPassword ? errors.confirmPassword : undefined}
                   autoCapitalize="none"
+                  secureTextEntry={true}
                 />
 
                 <Button

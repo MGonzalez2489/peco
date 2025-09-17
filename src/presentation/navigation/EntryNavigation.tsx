@@ -17,7 +17,11 @@ export const EntryNavigator = () => {
   return (
     <Stack.Navigator initialRouteName="EntriesScreen" screenOptions={{ headerShown: false }}>
       <Stack.Screen name="EntriesScreen" component={EntriesScreen} />
-      <Stack.Screen name="EntryCreateScreen" component={EntryCreateScreen} />
+      <Stack.Screen
+        name="EntryCreateScreen"
+        component={EntryCreateScreen}
+        options={{ headerShown: true, headerBackButtonDisplayMode: 'minimal', title: '' }}
+      />
 
       <Stack.Screen
         name="SelAccount"

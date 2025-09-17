@@ -25,6 +25,9 @@ export const LoginScreen = ({ navigation }: Props) => {
 
   const mutation = useMutation({
     mutationFn: (data: LoginDto) => login(data),
+    onError(error) {
+      alert(error.message);
+    },
   });
 
   return (
