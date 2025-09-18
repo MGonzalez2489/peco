@@ -1,16 +1,25 @@
-import { Entry } from '@domain/entities';
 import { GroupedEntriesDto } from '@infrastructure/dtos/entries';
 import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { SectionList, StyleSheet, Text } from 'react-native';
 import { EntryListItem } from './entry-list-item';
+
+type ListComponent = React.ReactElement | null;
 
 interface Props {
   group: GroupedEntriesDto[];
   fetchNextPage: any;
   showAccount?: boolean;
+  listHeaderComponent?: ListComponent;
+  listFooterComponent?: ListComponent;
 }
-export const EntryList = ({ group, fetchNextPage, showAccount = false }: Props) => {
+export const EntryList = ({
+  group,
+  fetchNextPage,
+  showAccount = false,
+  listFooterComponent,
+  listHeaderComponent,
+}: Props) => {
   const queryClient = useQueryClient();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -22,30 +31,28 @@ export const EntryList = ({ group, fetchNextPage, showAccount = false }: Props) 
     setIsRefreshing(false);
   };
 
-  const renderItem = ({ item }: { item: { date: string; entries: Entry[] } }) => (
-    <View>
-      <Text>{item.date}</Text>
-      <FlatList
-        data={item.entries}
-        renderItem={({ item: entry }) => <EntryListItem entry={entry} showAccount={showAccount} />}
-        keyExtractor={(entry) => entry.publicId}
-      />
-    </View>
+  const renderSectionHeader = ({ section: { title } }: { section: GroupedEntriesDto }) => (
+    <Text style={styles.sectionHeader}>{title}</Text>
   );
 
   return (
-    <FlatList
-      data={group}
-      renderItem={renderItem}
-      keyExtractor={(item) => item.date}
+    <SectionList
+      sections={group}
+      keyExtractor={(item) => item.publicId}
+      renderItem={({ item }) => <EntryListItem entry={item} showAccount={showAccount} />}
+      onRefresh={onPullToRefresh}
+      refreshing={isRefreshing}
+      renderSectionHeader={renderSectionHeader}
+      stickySectionHeadersEnabled={false}
+      showsVerticalScrollIndicator={false}
+      onEndReached={fetchNextPage}
+      onEndReachedThreshold={0.7}
       ListEmptyComponent={
         <Text style={styles.emptyListText}>No hay transacciones registradas.</Text>
       }
-      onEndReached={fetchNextPage}
-      onEndReachedThreshold={0.8}
-      onRefresh={onPullToRefresh}
-      refreshing={isRefreshing}
-      style={{ paddingHorizontal: 10 }}
+      // contentContainerStyle={{ flex: 1 }}
+      ListHeaderComponent={listHeaderComponent}
+      ListFooterComponent={listFooterComponent}
     />
   );
 };
@@ -55,5 +62,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 20,
     color: '#666',
+  },
+  sectionHeader: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#777',
+    marginTop: 15,
+    marginBottom: 8,
+    paddingHorizontal: 5,
   },
 });

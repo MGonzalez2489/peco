@@ -24,19 +24,12 @@ export const AccountsNavigator = () => {
       {/* CreateAccount */}
       <Stack.Group
         screenOptions={{
-          headerShown: true,
+          headerShown: false,
           headerShadowVisible: false,
           headerBackButtonDisplayMode: 'minimal',
         }}
       >
-        <Stack.Screen
-          name="SelAccountType"
-          component={SelAccountTypeModal}
-          options={{
-            title: 'Tipo de cuenta',
-            headerShown: true,
-          }}
-        />
+        <Stack.Screen name="SelAccountType" component={SelAccountTypeModal} />
         <Stack.Screen name="AccountCreateScreen" component={AccountCreateScreen} />
         <Stack.Screen name="AccountCreateSuccessScreen" component={AccountCreateSuccessScreen} />
       </Stack.Group>

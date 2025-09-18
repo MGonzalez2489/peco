@@ -7,6 +7,8 @@ export const COLORS = {
 
   darkGray: '#2D2D2D',
   lightGray: '#9B9B9B',
+
+  secondaryText: '#777777',
 };
 
 //TODO:

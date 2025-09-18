@@ -9,21 +9,44 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useAccountStore } from '@store/useAccountStore';
 import { useCatalogsStore } from '@store/useCatalogsStore';
-import { COLORS } from '@styles/colors';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Formik, FormikProps } from 'formik';
-import { ChevronRight } from 'lucide-react-native';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { ArrowLeft, Banknote, Edit3, Minus, Plus, Tag } from 'lucide-react-native';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+
+interface SelectorButtonProps {
+  label: string;
+  value: string;
+  icon: React.ElementType;
+  onPress: () => void;
+}
+
+// --- Componentes Reutilizables ---
+
+const SelectorButton = ({ label, value, icon: IconComponent, onPress }: SelectorButtonProps) => (
+  <TouchableOpacity style={styles.selectorButton} onPress={onPress}>
+    <View style={styles.selectorIconWrapper}>
+      <IconComponent size={24} color="#000" />
+    </View>
+    <View style={styles.selectorTextContent}>
+      <Text style={styles.selectorLabel}>{label}</Text>
+      <Text style={styles.selectorValue}>{value}</Text>
+    </View>
+    <View style={styles.selectorArrow}>
+      <ArrowLeft size={20} color="#999" style={{ transform: [{ rotate: '180deg' }] }} />
+    </View>
+  </TouchableOpacity>
+);
 
 // 1. Define Formik Values and use strong typing
 interface EntryFormValues {
@@ -56,14 +79,12 @@ export const EntryCreateScreen = ({ accountId }: Props) => {
   const defaultEntryType = useMemo(() => entryTypes[0], [entryTypes]);
   const defaultAccount = useMemo(() => {
     if (accountId) return accounts.find((f) => f.publicId === accountId);
-    else return accounts[0];
+    else return accounts.find((f) => f.isRoot);
   }, [accounts, accountId]);
   const defaultCategory = useMemo(() => entryCategories[0], [entryCategories]);
-
   const navigation = useNavigation<StackNavigationProp<EntryStackParams>>();
   // 3. Use FormikProps with strong typing
   const formikRef = useRef<FormikProps<EntryFormValues>>(null);
-
   // 4. Mutation setup
   const mutation = useMutation({
     mutationFn: (data: CreateEntryDto) => CreateEntry(data),
@@ -92,7 +113,6 @@ export const EntryCreateScreen = ({ accountId }: Props) => {
     },
     [navigation]
   );
-
   const handleSelEntryCategory = useCallback(
     (setFieldValue) => {
       navigation.navigate('SelEntryCategory', {
@@ -103,44 +123,9 @@ export const EntryCreateScreen = ({ accountId }: Props) => {
     },
     [navigation]
   );
-
   const handleEntryTypePress = useCallback((g: typeof defaultEntryType, setFieldValue) => {
     setFieldValue('entryTypeId', g.publicId);
   }, []);
-
-  const RenderEntryTypeOptions = useCallback(
-    (setFieldValue: (field: string, value: any) => void) => {
-      // Get the currently selected type ID from Formik, falling back to default
-      const selectedTypeId = formikRef.current?.values.entryTypeId || defaultEntryType.publicId;
-
-      return (
-        <View style={styles.btnContainer}>
-          {entryTypes.map((g) => (
-            <TouchableOpacity
-              key={g.publicId}
-              style={[
-                styles.btn,
-                selectedTypeId === g.publicId
-                  ? { ...styles.btnActive, backgroundColor: g.color }
-                  : {},
-              ]}
-              onPress={() => handleEntryTypePress(g, setFieldValue)}
-            >
-              <Text
-                style={[
-                  styles.btnText,
-                  selectedTypeId !== g.publicId && { color: COLORS.primary }, // Apply primary color if not active
-                ]}
-              >
-                {g.displayName}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      );
-    },
-    [entryTypes, defaultEntryType.publicId, handleEntryTypePress]
-  );
 
   // 7. Initial Formik value population (One-time setup)
   useEffect(() => {
@@ -165,11 +150,45 @@ export const EntryCreateScreen = ({ accountId }: Props) => {
     return { selEntryType, selAccount, selEntryCat };
   };
 
+  const RenderEntryTypeOptions = useCallback(
+    (setFieldValue: (field: string, value: any) => void) => {
+      // Get the currently selected type ID from Formik, falling back to default
+      const selectedTypeId = formikRef.current?.values.entryTypeId || defaultEntryType.publicId;
+
+      return (
+        <View style={styles.typeToggleContainer}>
+          {entryTypes.map((e) => (
+            <TouchableOpacity
+              key={e.publicId}
+              onPress={() => handleEntryTypePress(e, setFieldValue)}
+              style={[
+                styles.typeButton,
+                {
+                  backgroundColor: selectedTypeId === e.publicId ? e.color : '#eee',
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.typeButtonText,
+                  { color: selectedTypeId === e.publicId ? '#fff' : '#000' },
+                ]}
+              >
+                {e.displayName}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      );
+    },
+    [entryTypes, defaultEntryType.publicId, handleEntryTypePress]
+  );
+
   return (
-    <MainLayout title="Nueva Transaccion">
+    <MainLayout title="Nueva transaccion">
       <KeyboardAvoidingView
-        style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
       >
         <Formik
           innerRef={formikRef}
@@ -196,69 +215,64 @@ export const EntryCreateScreen = ({ accountId }: Props) => {
             const { selEntryType, selAccount, selEntryCat } = getSelectedObjects(values);
 
             return (
-              <View style={styles.container}>
-                <View>
-                  {/* Entry Type Options */}
-                  {RenderEntryTypeOptions(setFieldValue)}
-                  {/* Description */}
-                  <InputText
-                    label="Descripcion"
-                    placeholder="Descripcion"
-                    value={values.description}
-                    onChangeText={handleChange('description')}
-                  />
+              <View style={{ flex: 1 }}>
+                <ScrollView showsVerticalScrollIndicator={false}>
+                  <View>
+                    {/* 1. Selector de Ingreso/Gasto (Segmented Control Estilizado) */}
+                    {RenderEntryTypeOptions(setFieldValue)}
+                    {/* Description */}
+                    <InputText
+                      label="Descripción (Opcional)"
+                      placeholder="Compra en supermercado, Pago de nómina..."
+                      LeftIcon={Edit3}
+                      value={values.description}
+                      onChangeText={handleChange('description')}
+                    />
 
-                  {/* Amount */}
-                  <InputNumber
-                    label="Cantidad"
-                    value={values.amount}
-                    keyboardType="decimal-pad"
-                    onChangeText={handleChange('amount')}
-                  />
-                  {/* Category */}
-                  <Text style={{ marginBottom: 5, color: COLORS.text }}>Categoria</Text>
-                  <Pressable
-                    style={{
-                      flexDirection: 'row',
-                      justifyContent: 'space-between',
-                      paddingVertical: 10,
-                      alignItems: 'center',
+                    {/* Amount */}
+                    <View style={styles.amountInputContainer}>
+                      <Text style={[styles.amountLabel, { color: selEntryType.color }]}>
+                        {selEntryType.displayName}
+                      </Text>
+                      <View style={styles.amountInputRow}>
+                        <InputNumber
+                          LeftIcon={selEntryType.name === 'income' ? Plus : Minus}
+                          keyboardType="numeric"
+                          value={values.amount}
+                          placeholder="0.00"
+                          onChangeText={handleChange('amount')}
+                        />
+                      </View>
+                    </View>
 
-                      height: 50,
-                      backgroundColor: COLORS.background,
-                      borderRadius: 8,
-                      paddingHorizontal: 15,
-                      marginBottom: 10,
-                      borderWidth: 1,
-                      borderColor: '#E0E0E0',
-                    }}
-                    onPress={() => handleSelEntryCategory(setFieldValue)}
-                  >
-                    <Text>{selEntryCat.name}</Text>
-                    <ChevronRight />
-                  </Pressable>
-                  {/* Account */}
-                  <Text style={{ marginBottom: 5, color: COLORS.text }}>Cuenta</Text>
-                  <Pressable
-                    style={{
-                      flexDirection: 'row',
-                      justifyContent: 'space-between',
-                      paddingVertical: 10,
-                      alignItems: 'center',
-                      height: 50,
-                      backgroundColor: COLORS.background,
-                      borderRadius: 8,
-                      paddingHorizontal: 15,
-                      marginBottom: 10,
-                      borderWidth: 1,
-                      borderColor: '#E0E0E0',
-                    }}
-                    onPress={() => handleSelectAccount(setFieldValue)}
-                  >
-                    <Text style={{ textTransform: 'capitalize' }}>{selAccount.name}</Text>
-                    <ChevronRight />
-                  </Pressable>
-                </View>
+                    <View style={styles.inputGroup}>
+                      {/* 4. Selectores de Categoría y Cuenta */}
+                      <Text style={styles.sectionLabel}>Clasificación</Text>
+
+                      <SelectorButton
+                        label="Categoría"
+                        value={selEntryCat.name}
+                        icon={Tag}
+                        onPress={() => handleSelEntryCategory(setFieldValue)}
+                      />
+
+                      <SelectorButton
+                        label="Cuenta"
+                        value={selAccount.name}
+                        icon={Banknote}
+                        onPress={() => handleSelectAccount(setFieldValue)}
+                      />
+
+                      {/* 5. Otros Campos Comunes (Ej: Fecha) */}
+                      {/* <SelectorButton */}
+                      {/*   label="Fecha" */}
+                      {/*   value={new Date().toLocaleDateString()} */}
+                      {/*   icon={Calendar} */}
+                      {/*   onPress={() => console.log('Abrir selector de Fecha')} */}
+                      {/* /> */}
+                    </View>
+                  </View>
+                </ScrollView>
                 <Button label="Crear" onPress={handleSubmit} />
               </View>
             );
@@ -269,39 +283,93 @@ export const EntryCreateScreen = ({ accountId }: Props) => {
   );
 };
 
+// --- Estilos ---
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingHorizontal: 20,
-    justifyContent: 'space-between',
-  },
-  btnContainer: {
+  // 1. Selector de Tipo (Toggle)
+  typeToggleContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    backgroundColor: '#f3f3f3',
-    marginVertical: 10,
-    marginBottom: 20,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    marginVertical: 15,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#eee',
   },
-  btn: {
-    paddingHorizontal: 20,
-    paddingVertical: 13,
+  typeButton: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 10,
+    margin: 3, // Margen para el efecto de botón flotante dentro del contenedor
   },
-  btnText: {
+  typeButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+
+  // 2. Campo de Cantidad Prominente
+  amountInputContainer: {
+    alignItems: 'center',
+    paddingVertical: 20,
+    marginBottom: 20,
+  },
+  amountLabel: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 5,
+  },
+  amountInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  amountInput: {
+    fontSize: 48,
     fontWeight: 'bold',
-    color: 'white', // Ensure text color is set for non-active states
-    // shadowColor: '#000',
-    // shadowOffset: { width: 0, height: 1 },
-    // shadowOpacity: 0.7,
-    // shadowRadius: 1,
+    padding: 0,
+    minWidth: 100, // Asegura un tamaño mínimo
+    textAlign: 'center',
   },
-  btnActive: {
-    // elevation: 8,
-    // shadowColor: '#000',
-    // shadowOffset: { width: 0, height: 4 },
-    // shadowOpacity: 0.3,
-    // shadowRadius: 4,
+
+  // 3 & 4. Grupo de Inputs y Selectores
+  inputGroup: {
+    gap: 15,
+  },
+  sectionLabel: {
+    fontSize: 14,
+    color: '#666',
+    paddingLeft: 5,
+  },
+
+  // Componente SelectorButton (Imitando un Input estilizado)
+  selectorButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 15,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  selectorIconWrapper: {
+    marginRight: 10,
+  },
+  selectorTextContent: {
+    flex: 1,
+  },
+  selectorLabel: {
+    fontSize: 12,
+    color: '#999',
+    marginBottom: 2,
+  },
+  selectorValue: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#000',
+    textTransform: 'capitalize',
+  },
+  selectorArrow: {
+    paddingLeft: 10,
   },
 });

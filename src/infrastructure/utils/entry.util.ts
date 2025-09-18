@@ -1,5 +1,5 @@
-import { Entry } from "@domain/entities";
-import { GroupedEntriesDto } from "@infrastructure/dtos/entries";
+import { Entry } from '@domain/entities';
+import { GroupedEntriesDto } from '@infrastructure/dtos/entries';
 
 export const groupEntriesByDate = (entries: Entry[]): GroupedEntriesDto[] => {
   if (!entries || entries.length === 0) {
@@ -16,7 +16,7 @@ export const groupEntriesByDate = (entries: Entry[]): GroupedEntriesDto[] => {
   }, new Map<string, Entry[]>());
 
   return Array.from(groupedMap, ([date, entries]) => ({
-    date,
-    entries,
+    title: date,
+    data: entries,
   }));
 };

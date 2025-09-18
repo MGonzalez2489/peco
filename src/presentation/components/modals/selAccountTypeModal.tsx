@@ -28,7 +28,6 @@ export const SelAccountTypeModal = ({ route }: Props) => {
     <TouchableOpacity
       style={{
         flex: 1,
-        marginHorizontal: 10,
         marginBottom: 15,
         paddingHorizontal: 30,
         paddingVertical: 20,
@@ -55,8 +54,8 @@ export const SelAccountTypeModal = ({ route }: Props) => {
   );
 
   return (
-    <MainLayout title="Selecciona un tipo de cuenta" showNavbar={false}>
-      <View style={{ paddingHorizontal: 20 }}>
+    <MainLayout title="Selecciona un tipo de cuenta" showNavbar={true}>
+      <View>
         <Text style={{ color: COLORS.text }}>
           Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt
           ut labore...
