@@ -18,8 +18,8 @@ export const AccountsScreen = () => {
     setTotalBalance(newBalance);
   }, [accounts]);
 
-  return (
-    <MainLayout title="Cuentas" useDrawer={true}>
+  const headerListComponent = (
+    <>
       {/* Tarjeta de Resumen Global (Total Balance) */}
       <View style={styles.summaryCard}>
         <Text style={styles.summaryTitle}>Balance Total </Text>
@@ -29,8 +29,12 @@ export const AccountsScreen = () => {
 
       {/* Lista de Cuentas */}
       <Text style={styles.listTitle}>Tus Cuentas Disponibles</Text>
+    </>
+  );
 
-      <AccountList accounts={accounts} />
+  return (
+    <MainLayout title="Cuentas" useDrawer={true}>
+      <AccountList accounts={accounts} listHeaderComponent={headerListComponent} />
 
       {/* Botón de Acción Flotante */}
       <FabButton onPress={() => navigation.navigate('AccountCreateScreen')} />
@@ -41,32 +45,6 @@ export const AccountsScreen = () => {
 // --- Estilos ---
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8F8F8', // Fondo gris muy suave para destacar las tarjetas
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingBottom: 10,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#000',
-  },
-  headerButton: {
-    padding: 10,
-  },
-  scrollContent: {
-    paddingHorizontal: 15,
-  },
-
   // Summary Card
   summaryCard: {
     backgroundColor: '#fff',
@@ -103,50 +81,4 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     paddingHorizontal: 5,
   },
-
-  // Floating Action Button
-  floatingActionButton: {
-    backgroundColor: '#000',
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'absolute',
-    right: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 5,
-  },
 });
-
-// import { FabButton } from '@presentation/components';
-// import { AccountList } from '@presentation/components/accounts';
-// import { MainLayout } from '@presentation/layout';
-// import { AccountStackParams } from '@presentation/navigation/AccountsNavigation';
-// import { useNavigation } from '@react-navigation/native';
-// import { StackNavigationProp } from '@react-navigation/stack';
-// import { useAccountStore } from '@store/useAccountStore';
-// import { StyleSheet, View } from 'react-native';
-//
-// export const AccountsScreen = () => {
-//   const { accounts } = useAccountStore();
-//   const navigation = useNavigation<StackNavigationProp<AccountStackParams>>();
-//
-//   return (
-//     <MainLayout title="Cuentas" useDrawer={true}>
-//       <View style={styles.container}>
-//         <AccountList accounts={accounts} />
-//       </View>
-//       <FabButton onPress={() => navigation.navigate('SelAccountType')} />
-//     </MainLayout>
-//   );
-// };
-//
-// const styles = StyleSheet.create({
-//   container: {
-//     flex: 1,
-//   },
-// });

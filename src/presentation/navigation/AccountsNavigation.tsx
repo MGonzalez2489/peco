@@ -22,17 +22,16 @@ export const AccountsNavigator = () => {
       <Stack.Screen name="AccountsScreen" component={AccountsScreen} />
       <Stack.Screen name="AccountScreen" component={AccountScreen} />
       {/* CreateAccount */}
-      <Stack.Group
-        screenOptions={{
-          headerShown: false,
-          headerShadowVisible: false,
-          headerBackButtonDisplayMode: 'minimal',
-        }}
-      >
-        <Stack.Screen name="SelAccountType" component={SelAccountTypeModal} />
-        <Stack.Screen name="AccountCreateScreen" component={AccountCreateScreen} />
-        <Stack.Screen name="AccountCreateSuccessScreen" component={AccountCreateSuccessScreen} />
-      </Stack.Group>
+    </Stack.Navigator>
+  );
+};
+
+export const CreateAccountNavigator = () => {
+  return (
+    <Stack.Navigator>
+      <Stack.Screen name="SelAccountType" component={SelAccountTypeModal} />
+      <Stack.Screen name="AccountCreateScreen" component={AccountCreateScreen} />
+      <Stack.Screen name="AccountCreateSuccessScreen" component={AccountCreateSuccessScreen} />
     </Stack.Navigator>
   );
 };

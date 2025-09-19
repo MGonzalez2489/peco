@@ -12,8 +12,8 @@ import { useAuthStore } from './presentation/store/useAuthStore';
 
 const queryClient = new QueryClient();
 export const PecoApp = () => {
-  const { load, isAuthenticated, token, logout } = useAuthStore();
-  const { loadAccounts, accounts, clearStore } = useAccountStore();
+  const { load, isAuthenticated } = useAuthStore();
+  const { loadAccounts, accounts } = useAccountStore();
   const { loadCatalogs } = useCatalogsStore();
 
   //TODO: See where to load data in background
@@ -24,14 +24,6 @@ export const PecoApp = () => {
       loadCatalogs();
     }
   }, [isAuthenticated, load, loadAccounts, loadCatalogs, accounts.length]);
-
-  useEffect(() => {
-    if (!token) {
-      alert('session completed');
-      logout();
-      clearStore();
-    }
-  }, [token, clearStore, logout]);
 
   return (
     <SafeAreaProvider>

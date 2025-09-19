@@ -35,11 +35,17 @@ export const useCatalogsStore = create<CatalogsState>()((set, get) => ({
       loadEntryTypes(search),
     ]);
 
-    accountTypes.map((f) => (f.iconItem = getIconComponent(f.icon)));
+    //account types
+    accountTypes.map((f) => (f.iconItem = getIconComponent(f.icon))); // 1. Filtrar las categorías padre
+
+    const parentCats = entryCategories.filter((f) => !f.parent); // 2. Asignar las subcategorías a los padres de forma segura
+    parentCats.map(
+      (f) => (f.subCategories = entryCategories.filter((g) => g.parent?.publicId === f.publicId))
+    );
 
     set({
       accountTypes,
-      entryCategories,
+      entryCategories: parentCats,
       entryStatuses,
       entryTypes,
     });

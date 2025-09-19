@@ -1,5 +1,5 @@
-import { BaseEntity } from "./_base";
-import { EntryType } from "./EntryType";
+import { BaseEntity } from './_base';
+import { EntryType } from './EntryType';
 
 export interface EntryCategory extends BaseEntity {
   name: string;

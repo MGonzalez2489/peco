@@ -240,7 +240,7 @@ export const EntryCreateScreen = ({ accountId }: Props) => {
                           keyboardType="numeric"
                           value={values.amount}
                           placeholder="0.00"
-                          onChangeText={handleChange('amount')}
+                          onChangeText={(val) => setFieldValue('balance', val)}
                         />
                       </View>
                     </View>

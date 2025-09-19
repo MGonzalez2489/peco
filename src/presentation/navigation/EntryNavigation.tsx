@@ -9,7 +9,12 @@ export type EntryStackParams = {
   EntryCreateScreen: undefined;
   EntryCreateSuccessScreen: { entry: Entry };
   SelAccount: { onSelect: (account: Account) => void };
-  SelEntryCategory: { onSelect: (entryCategory: EntryCategory) => void };
+  SelEntryCategory: {
+    onSelect: (category: EntryCategory) => void;
+    selectedCategory?: EntryCategory;
+    categoryList?: EntryCategory[];
+    title?: string;
+  };
 };
 
 const Stack = createStackNavigator<EntryStackParams>();

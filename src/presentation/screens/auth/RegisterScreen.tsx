@@ -72,6 +72,7 @@ export const RegisterScreen = ({ navigation }: Props) => {
             <ScrollView
               contentContainerStyle={styles.scrollContent}
               keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
             >
               <View style={styles.logoSpacer}>
                 <Text>Logo</Text>

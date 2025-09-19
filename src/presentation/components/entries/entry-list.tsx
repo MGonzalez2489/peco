@@ -50,7 +50,6 @@ export const EntryList = ({
       ListEmptyComponent={
         <Text style={styles.emptyListText}>No hay transacciones registradas.</Text>
       }
-      // contentContainerStyle={{ flex: 1 }}
       ListHeaderComponent={listHeaderComponent}
       ListFooterComponent={listFooterComponent}
     />

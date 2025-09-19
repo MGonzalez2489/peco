@@ -277,14 +277,12 @@ export const AccountCreateScreen = () => {
   );
 };
 
-// --- Estilos ---
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 20, // Suficiente espacio para que el contenido no quede pegado al botón
+    paddingBottom: 20,
   },
   sectionTitle: {
     fontSize: 20,
@@ -341,7 +339,7 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     paddingVertical: 10,
-    backgroundColor: 'white', // Fondo para que el botón no flote sobre el scroll
+    backgroundColor: 'white',
     borderTopWidth: 1,
     borderTopColor: '#eee',
   },
