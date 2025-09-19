@@ -19,14 +19,26 @@ import { AuthStackParams } from 'src/presentation/navigation';
 
 type Props = StackScreenProps<AuthStackParams, 'LoginScreen'>;
 
-//TODO: Styling
+const validateLogin = (values: LoginDto) => {
+  const errors: Record<string, string> = {};
+  if (!values.email) {
+    errors['email'] = 'El email es requerido.';
+  } else if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(values.email)) {
+    errors['email'] = 'Dirección de email no válida.';
+  }
+  if (!values.password) {
+    errors['password'] = 'La contraseña es requerida.';
+  }
+  return errors;
+};
+
 export const LoginScreen = ({ navigation }: Props) => {
   const { login } = useAuthStore();
 
   const mutation = useMutation({
     mutationFn: (data: LoginDto) => login(data),
     onError(error) {
-      alert(error.message);
+      alert(`Error de sesión: ${error.message}`);
     },
   });
 
@@ -34,40 +46,36 @@ export const LoginScreen = ({ navigation }: Props) => {
     <MainLayout showNavbar={false} title="login">
       <Formik
         initialValues={{ email: '', password: '' }}
-        validate={(values) => {
-          const errors = {};
-          if (!values.email) {
-            errors['email'] = 'Required';
-          } else if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(values.email)) {
-            errors['email'] = 'Invalid email address';
-          }
-          return errors;
-        }}
+        validate={validateLogin}
         onSubmit={(values) => mutation.mutate(values)}
       >
         {({ handleChange, handleSubmit, values, errors, touched }) => (
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={styles.container}
+            style={styles.keyboardContainer}
           >
-            <ScrollView contentContainerStyle={styles.scrollContent}>
-              <View style={styles.content}>
+            <ScrollView
+              contentContainerStyle={styles.scrollContent}
+              keyboardShouldPersistTaps="handled"
+            >
+              <View style={styles.logoSpacer}>
+                <Text>Logo</Text>
+              </View>
+              <View style={styles.formContent}>
                 <Text style={styles.title}>Bienvenido de nuevo</Text>
                 <Text style={styles.subTitle}>Inicia sesión para continuar con tus finanzas.</Text>
-
                 <InputText
                   label="Email"
                   value={values.email}
-                  placeholder="Email"
+                  placeholder="ejemplo@correo.com"
                   onChangeText={handleChange('email')}
                   errorMsg={touched.email ? errors.email : undefined}
                   keyboardType="email-address"
                   autoCapitalize="none"
                 />
-
                 <InputText
                   label="Contraseña"
-                  placeholder="Password"
+                  placeholder="Ingresa tu contraseña"
                   value={values.password}
                   onChangeText={handleChange('password')}
                   errorMsg={touched.password ? errors.password : undefined}
@@ -75,26 +83,33 @@ export const LoginScreen = ({ navigation }: Props) => {
                   onSubmitEditing={() => handleSubmit()}
                   autoCapitalize="none"
                 />
-
+                {/* Link de Recuperación */}
+                <TouchableOpacity
+                  style={styles.link}
+                  onPress={() => {
+                    /* navigation.navigate('ForgotPasswordScreen') */
+                  }}
+                >
+                  <Text style={styles.linkText}>¿Olvidaste tu contraseña?</Text>
+                </TouchableOpacity>
+                <View style={styles.spacer} />
                 <Button
                   label="Entrar"
                   onPress={() => handleSubmit()}
                   isDisabled={mutation.isPending}
                   isLoading={mutation.isPending}
                 />
-
-                <TouchableOpacity style={styles.link}>
-                  <Text style={styles.linkText}>Forgot your password?</Text>
-                </TouchableOpacity>
               </View>
             </ScrollView>
+
+            {/* Contenedor de Registro (Sticky) */}
             <View style={styles.bottomContainer}>
               <Text style={styles.bottomText}>¿No tienes cuenta?</Text>
               <TouchableOpacity
                 style={styles.bottomLink}
                 onPress={() => navigation.navigate('RegisterScreen')}
               >
-                <Text style={styles.bottomLinkText}>Registrate</Text>
+                <Text style={styles.bottomLinkText}>Regístrate</Text>
               </TouchableOpacity>
             </View>
           </KeyboardAvoidingView>
@@ -105,47 +120,64 @@ export const LoginScreen = ({ navigation }: Props) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
+  keyboardContainer: {
     flex: 1,
     backgroundColor: COLORS.white,
   },
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
+    paddingVertical: 20,
   },
-  content: {
-    flex: 1,
+  logoSpacer: {
+    minHeight: 120,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  formContent: {
+    width: '100%',
+  },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: COLORS.primary,
+    fontSize: 32,
+    fontWeight: '700',
+    color: COLORS.text,
     marginBottom: 5,
   },
   subTitle: {
-    marginBottom: 50,
-    fontSize: 15,
-    color: '#a8b0b9',
+    marginBottom: 40,
+    fontSize: 16,
+    color: COLORS.secondaryText,
   },
-
+  passwordInput: {
+    marginTop: 10,
+    marginBottom: 10,
+  },
   link: {
-    marginTop: 15,
+    alignSelf: 'flex-end',
+    marginBottom: 30,
   },
   linkText: {
     color: COLORS.primary,
     fontSize: 14,
-    textDecorationLine: 'underline',
+    fontWeight: '600',
+  },
+  spacer: {
+    // Empuja el botón hacia abajo, pero es flexible
+    flex: 1,
+    minHeight: 20,
   },
   bottomContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 40,
+    paddingVertical: 15,
+    paddingBottom: Platform.OS === 'ios' ? 30 : 15,
+    borderTopWidth: 1,
+    borderTopColor: '#EEEEEE',
+    backgroundColor: COLORS.white,
   },
   bottomText: {
-    color: '#666666',
+    color: COLORS.secondaryText,
     fontSize: 14,
   },
   bottomLink: {
