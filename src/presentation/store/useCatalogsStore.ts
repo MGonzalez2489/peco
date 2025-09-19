@@ -5,6 +5,7 @@ import {
   loadEntryTypes,
 } from '@actions/catalogs';
 import { SearchDto } from '@infrastructure/dtos/search.dto';
+import { getIconComponent } from '@infrastructure/utils';
 import { AccountType, EntryCategory, EntryStatus, EntryType } from 'src/domain/entities';
 import { create } from 'zustand';
 
@@ -33,6 +34,8 @@ export const useCatalogsStore = create<CatalogsState>()((set, get) => ({
       loadEntryStatuses(search),
       loadEntryTypes(search),
     ]);
+
+    accountTypes.map((f) => (f.iconItem = getIconComponent(f.icon)));
 
     set({
       accountTypes,

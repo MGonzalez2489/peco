@@ -7,9 +7,9 @@ import { AccountStackParams } from '@presentation/navigation';
 import { StackScreenProps } from '@react-navigation/stack';
 import { useAccountStore } from '@store/useAccountStore';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { ArrowLeft, CircleDollarSign, Pencil, Search } from 'lucide-react-native';
+import { ArrowLeft, Pencil, Search } from 'lucide-react-native';
 import React, { useRef } from 'react';
-import { Dimensions, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import { LineChart } from 'react-native-chart-kit';
 
 // --- Configuración y Data de Ejemplo ---
@@ -20,6 +20,7 @@ export const AccountScreen = ({ route }: Props) => {
   const accountIdRef = useRef(route.params.accountId);
   const { getById } = useAccountStore();
   const account = getById(accountIdRef.current);
+  const IconComponent = account.type.iconItem;
 
   const queryKey = `entries_${accountIdRef.current}`;
   //TODO: implement pull to refresh
@@ -114,7 +115,7 @@ export const AccountScreen = ({ route }: Props) => {
     <>
       <View style={styles.walletInfoContainer}>
         <View style={[styles.walletIcon, { backgroundColor: account.type.color }]}>
-          <CircleDollarSign size={24} color="#fff" />
+          <IconComponent size={24} color="#fff" />
         </View>
         <View>
           <Text style={styles.walletName}>{account.name}</Text>

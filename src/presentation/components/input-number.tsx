@@ -1,16 +1,56 @@
-import { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, TextInput, TextInputProps, View } from 'react-native';
-import { COLORS } from '@styles/colors';
 import { LucideIcon } from 'lucide-react-native';
+import { COLORS } from '@styles/colors';
 
-// Define the component's props. It expects a 'value' of type 'number' or 'null'.
-interface Props extends Omit<TextInputProps, 'value'> {
+interface Props extends Omit<TextInputProps, 'value' | 'onChangeText'> {
   label?: string;
-  value: number | null;
+  value: number | null | undefined;
   errorMsg?: string;
   LeftIcon?: LucideIcon;
   RightIcon?: LucideIcon;
+  onChangeText: (value: number | null) => void;
 }
+
+/**
+ * Limpia el texto de entrada, permitiendo solo números, un punto decimal y un signo negativo
+ * en la posición inicial. Retorna la cadena limpia para la visualización.
+ */
+const cleanNumericInput = (text: string): string => {
+  // Si la entrada es nula o indefinida, devolvemos cadena vacía.
+  if (!text) return '';
+
+  let cleanedText = text.replace(',', '.'); // Permite comas como decimales
+
+  // 1. Verificar el signo negativo inicial y aislarlo.
+  const hasInitialMinus = cleanedText.startsWith('-');
+  if (hasInitialMinus) {
+    // Removemos el '-' inicial para la limpieza general
+    cleanedText = cleanedText.substring(1);
+  }
+
+  // 2. Eliminar todos los caracteres que NO sean números ni el punto decimal.
+  cleanedText = cleanedText.replace(/[^0-9.]/g, '');
+
+  // 3. Limitar a un solo punto decimal.
+  const parts = cleanedText.split('.');
+  if (parts.length > 2) {
+    // Mantenemos el número, el punto, y la segunda parte (sin otros puntos)
+    cleanedText = parts[0] + '.' + parts.slice(1).join('');
+  }
+
+  // 4. PRESERVAR EL SIGNO NEGATIVO: Reinsertar el '-' si existía.
+  if (hasInitialMinus) {
+    // EXCEPCIÓN: Si el usuario escribe solo '-' y luego cualquier cosa que se limpia a '',
+    // queremos que el input siga siendo '-'.
+    if (cleanedText === '' && text.includes('-')) {
+      return '-';
+    }
+    return '-' + cleanedText;
+  }
+
+  return cleanedText;
+};
 
 export const InputNumber = ({
   label,
@@ -19,38 +59,55 @@ export const InputNumber = ({
   LeftIcon,
   RightIcon,
   style: externalStyle,
-
+  onChangeText,
   ...rest
 }: Props) => {
-  // Convert the number value to a string for display in the TextInput.
-  // We use an empty string for null to prevent the TextInput from crashing.
-  const stringValue = value !== null ? String(value) : '';
+  // Valor de la prop convertido a string (lo que Formik tiene)
+  const stringValue = value !== null && value !== undefined ? String(value) : '';
 
-  // A local state to handle the input text while the user is typing.
-  const [internalValue, setInternalValue] = useState(stringValue);
+  // Estado local para la edición del usuario (el texto que está escribiendo)
+  const [tempValue, setTempValue] = useState(stringValue);
 
-  const handleOnChange = (text: string) => {
-    // Update the internal state with the text the user is typing.
-    setInternalValue(text);
-
-    const numericValue = parseFloat(text);
-
-    // Check if the input is a valid number, including handling decimals.
-    if (!isNaN(numericValue) && rest.onChangeText) {
-      // Call the parent's onChangeText handler with the numeric value.
-      rest.onChangeText(numericValue as any);
-    }
-    // If the input is empty, pass null or 0 to the parent to clear the value.
-    else if (text === '' && rest.onChangeText) {
-      rest.onChangeText(null as any);
-    }
-  };
+  // Sincronización inteligente: Solo si la prop externa cambia y no coincide con la edición actual
   useEffect(() => {
-    setInternalValue(stringValue);
+    if (stringValue !== tempValue) {
+      setTempValue(stringValue);
+    }
   }, [stringValue]);
 
+  const stableHandleOnChange = (text: string) => {
+    const cleanedText = cleanNumericInput(text);
+
+    // 1. Actualiza el estado local (Lo que el usuario ve)
+    setTempValue(cleanedText);
+
+    // 2. Lógica para enviar el valor al componente padre (Formik)
+
+    // Caso A: Si el input está vacío, enviamos null
+    if (cleanedText === '') {
+      onChangeText(null);
+      return;
+    }
+
+    // 🚨 Caso B: Si es un número INCOMPLETO ('-' o termina en '.'),
+    // NO actualizamos el padre (return). Dejamos que el estado local maneje la visualización.
+    if (cleanedText === '-' || cleanedText.endsWith('.')) {
+      return;
+    }
+
+    // Caso C: Es un número completo (ej: -10, 5.5, 0)
+    const numericValue = parseFloat(cleanedText);
+
+    // Si es un número válido
+    if (!isNaN(numericValue)) {
+      onChangeText(numericValue);
+    } else {
+      onChangeText(null);
+    }
+  };
+
   const inputPaddingStyle = {
-    paddingLeft: LeftIcon ? 45 : 15, // 15 (padding base) + 30 (espacio para ícono)
+    paddingLeft: LeftIcon ? 45 : 15,
     paddingRight: RightIcon ? 45 : 15,
   };
 
@@ -59,42 +116,25 @@ export const InputNumber = ({
       {label && <Text style={styles.label}>{label}</Text>}
 
       <View style={[styles.inputWrapper, errorMsg && styles.inputError]}>
-        {/* Ícono Izquierdo */}
         {LeftIcon && (
           <View style={styles.leftIconContainer}>
-            {/* Clonamos el ícono para asegurar que se puede renderizar y que tenga un tamaño/color por defecto */}
             <LeftIcon size={20} color="#999" />
-            {/* {React.cloneElement(LeftIcon, { */}
-            {/*   size: LeftIcon.props.size || 20, */}
-            {/*   color: LeftIcon.props.color || '#999', */}
-            {/* })} */}
           </View>
         )}
 
-        {/* Input Principal */}
         <TextInput
-          style={[
-            styles.input,
-            inputPaddingStyle, // Aplicamos el padding dinámico
-            externalStyle, // Aplicamos el estilo que venga de fuera (si existe)
-          ]}
-          value={internalValue}
-          onChangeText={handleOnChange}
-          keyboardType="numeric" // Ensure the numeric keyboard is always shown. */}
-          {...rest}
-          clearTextOnFocus={true}
+          style={[styles.input, inputPaddingStyle, externalStyle]}
+          value={tempValue}
+          onChangeText={stableHandleOnChange}
+          // Clave para permitir el signo negativo
+          keyboardType="numbers-and-punctuation"
           placeholderTextColor="#A0A0A0"
           {...rest}
         />
 
-        {/* Ícono Derecho */}
         {RightIcon && (
           <View style={styles.rightIconContainer}>
             <RightIcon size={20} color="#999" />
-            {/* {React.cloneElement(rightIcon, { */}
-            {/*   size: rightIcon.props.size || 20, */}
-            {/*   color: rightIcon.props.color || '#999', */}
-            {/* })} */}
           </View>
         )}
       </View>
@@ -103,6 +143,8 @@ export const InputNumber = ({
     </View>
   );
 };
+
+// --- Estilos (Sin Cambios Relevantes) ---
 const styles = StyleSheet.create({
   container: {
     width: '100%',
@@ -110,30 +152,25 @@ const styles = StyleSheet.create({
   },
   label: {
     marginBottom: 5,
-    // Asegúrate de definir COLORS.text
-    // color: COLORS.text,
-    color: '#333', // Usamos un color por defecto si COLORS no está definido aquí
+    color: '#333',
     fontWeight: '500',
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
     height: 45,
-    // Asegúrate de definir COLORS.background
     backgroundColor: COLORS.background,
-    // backgroundColor: '#fff',
     borderRadius: 8,
     marginBottom: 10,
     borderWidth: 1,
     borderColor: '#E0E0E0',
-    overflow: 'hidden', // Mantiene los elementos dentro de los bordes
+    overflow: 'hidden',
   },
   input: {
-    flex: 1, // Permite que el TextInput ocupe el espacio restante
+    flex: 1,
     height: '100%',
     paddingHorizontal: 15,
     fontSize: 16,
-    // Quitamos el border y el backgroundColor, ya están en inputWrapper
     borderWidth: 0,
     backgroundColor: 'transparent',
   },
@@ -143,11 +180,10 @@ const styles = StyleSheet.create({
   leftIconContainer: {
     position: 'absolute',
     left: 10,
-    zIndex: 1, // Asegura que el ícono esté sobre el input
+    zIndex: 1,
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    // Opcional: Añado un poco de margen para separación visual si es necesario
   },
   rightIconContainer: {
     position: 'absolute',

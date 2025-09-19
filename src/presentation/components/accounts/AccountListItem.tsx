@@ -1,6 +1,7 @@
+import { formatCurrency } from '@infrastructure/utils';
 import { DrawerNavigationProp } from '@react-navigation/drawer';
 import { useNavigation } from '@react-navigation/native';
-import { ChevronRight, DollarSignIcon } from 'lucide-react-native';
+import { ChevronRight } from 'lucide-react-native';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Account } from 'src/domain/entities';
 import { MainDrawerParams } from 'src/presentation/navigation';
@@ -13,6 +14,7 @@ export const AccountListItem = ({ account }: Props) => {
   const navigation = useNavigation<DrawerNavigationProp<MainDrawerParams>>();
   // Determine balance style (positive or negative)
   const isNegative = account.balance < 0;
+  const IconComponent = account.type.iconItem;
 
   return (
     <TouchableOpacity
@@ -21,7 +23,7 @@ export const AccountListItem = ({ account }: Props) => {
     >
       <View style={styles.itemLeft}>
         <View style={[styles.accountIcon, { backgroundColor: account.type.color }]}>
-          <DollarSignIcon size={24} color="#fff" />
+          <IconComponent size={24} color="#fff" />
         </View>
         <View>
           <Text style={styles.accountName}>{account.name}</Text>
@@ -35,7 +37,7 @@ export const AccountListItem = ({ account }: Props) => {
             isNegative ? styles.negativeBalance : styles.positiveBalance,
           ]}
         >
-          {Math.abs(account.balance).toFixed(2)}
+          {formatCurrency(account.balance)}
         </Text>
         <ChevronRight size={20} color="#999" />
       </View>

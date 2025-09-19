@@ -1,18 +1,18 @@
-import { NavigationContainer } from "@react-navigation/native";
-import { useAccountStore } from "@store/useAccountStore";
-import { useCatalogsStore } from "@store/useCatalogsStore";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useEffect } from "react";
-import { StatusBar, StyleSheet } from "react-native";
-import { SafeAreaProvider } from "react-native-safe-area-context";
-import { MainNavigator } from "./presentation/navigation";
-import { useAuthStore } from "./presentation/store/useAuthStore";
+import { NavigationContainer } from '@react-navigation/native';
+import { useAccountStore } from '@store/useAccountStore';
+import { useCatalogsStore } from '@store/useCatalogsStore';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { StatusBar, StyleSheet } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { MainNavigator } from './presentation/navigation';
+import { useAuthStore } from './presentation/store/useAuthStore';
 
 //TODO: use AuthProvider
 
 const queryClient = new QueryClient();
 export const PecoApp = () => {
-  const { load, isAuthenticated } = useAuthStore();
+  const { load, isAuthenticated, token, logout } = useAuthStore();
   const { loadAccounts, accounts, clearStore } = useAccountStore();
   const { loadCatalogs } = useCatalogsStore();
 
@@ -23,7 +23,15 @@ export const PecoApp = () => {
       loadAccounts();
       loadCatalogs();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, load, loadAccounts, loadCatalogs, accounts.length]);
+
+  useEffect(() => {
+    if (!token) {
+      alert('session completed');
+      logout();
+      clearStore();
+    }
+  }, [token, clearStore, logout]);
 
   return (
     <SafeAreaProvider>

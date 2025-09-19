@@ -44,7 +44,12 @@ export const Navbar = ({ title, useDrawer = false, rightAction, RightActionIcon 
 
   return (
     <View style={styles.container}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          gap: 5,
+        }}
+      >
         {renderLeftOption()}
         <Text style={styles.title}>{title}</Text>
       </View>

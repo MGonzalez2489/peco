@@ -8,24 +8,6 @@ import { useAccountStore } from '@store/useAccountStore';
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-// --- Data de Ejemplo (Simulando Cuentas) ---
-
-// Función utilitaria para obtener el ícono según el tipo de cuenta
-// const getAccountIcon = (type: string) => {
-//   switch (type.toLowerCase()) {
-//     case 'banco':
-//     case 'ahorro':
-//       return Banknote;
-//     case 'tarjeta':
-//       return CreditCard;
-//     case 'efectivo':
-//     default:
-//       return DollarSign;
-//   }
-// };
-
-// --- Pantalla Principal ---
-
 export const AccountsScreen = () => {
   const navigation = useNavigation<StackNavigationProp<AccountStackParams>>();
   const { accounts } = useAccountStore();

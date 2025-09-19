@@ -1,41 +1,42 @@
 import { Button } from '@presentation/components';
+import { MainLayout } from '@presentation/layout';
+import { AccountStackParams } from '@presentation/navigation';
 import { StackScreenProps } from '@react-navigation/stack';
 import { COLORS } from '@styles/colors';
 import { ArrowLeft, CheckCircle } from 'lucide-react-native';
+import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { MainLayout } from 'src/presentation/layout';
-import { AccountStackParams } from 'src/presentation/navigation/AccountsNavigation';
 
 type Props = StackScreenProps<AccountStackParams, 'AccountCreateSuccessScreen'>;
 
-//TODO: The back action seems weird because of the direction of the slide
 export const AccountCreateSuccessScreen = ({ navigation, route }: Props) => {
   const account = route.params.account;
+
+  const handleGoBack = () => {
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'AccountsScreen' }],
+    });
+  };
+
   return (
-    <MainLayout title="Create account success" showNavbar={false}>
+    <MainLayout title="Cuenta Creada" showNavbar={false}>
       <View style={styles.container}>
-        <View style={styles.titleContainer}>
-          <CheckCircle color={COLORS.secondary} size={80} />
-          <Text style={styles.title}>¡Cuenta {account.name} creada!</Text>
-          <Text style={styles.Subtitles}>
-            Tu nueva cuenta ha sido creada exitosamente y está lista para ser usada.
+        <View style={styles.contentWrapper}>
+          <CheckCircle color={COLORS.secondary} size={90} />
+          <Text style={styles.title}>¡Felicidades!</Text>
+          <Text style={styles.subtitle}>
+            La cuenta <Text style={styles.accountName}>{account.name}</Text> se ha creado
+            correctamente.
+          </Text>
+          <Text style={styles.bodyText}>
+            Ya está lista para que registres tus movimientos y comiences a administrar tus finanzas.
           </Text>
         </View>
-        <Button
-          label="Regresar"
-          style={{ marginTop: 80 }}
-          LeftIcon={ArrowLeft}
-          onPress={() =>
-            navigation.reset({
-              index: 0,
-              routes: [
-                {
-                  name: 'AccountsScreen',
-                },
-              ],
-            })
-          }
-        />
+
+        <View style={styles.buttonContainer}>
+          <Button label="Volver a Cuentas" LeftIcon={ArrowLeft} onPress={handleGoBack} />
+        </View>
       </View>
     </MainLayout>
   );
@@ -44,33 +45,44 @@ export const AccountCreateSuccessScreen = ({ navigation, route }: Props) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'space-evenly',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 30,
+    paddingTop: 80,
+    paddingBottom: 40,
   },
-  titleContainer: {
+  contentWrapper: {
     justifyContent: 'center',
     alignItems: 'center',
+    flex: 1,
   },
   title: {
-    fontSize: 20,
-    fontWeight: '300',
-    marginTop: 20,
-    marginBottom: 15,
+    fontSize: 32,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginTop: 25,
+    marginBottom: 10,
   },
-  Subtitles: {
-    color: '#666666',
+  subtitle: {
+    fontSize: 18,
+    fontWeight: '500',
+    color: COLORS.text,
     textAlign: 'center',
+    marginBottom: 10,
   },
-  link: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 100,
-    gap: 5,
+  accountName: {
+    fontWeight: '700',
+    color: COLORS.secondary,
   },
-  linkText: {
-    fontWeight: '600',
-    fontSize: 15,
-    color: COLORS.primary,
+  bodyText: {
+    fontSize: 16,
+    color: COLORS.secondaryText,
+    textAlign: 'center',
+    marginTop: 10,
+    lineHeight: 24,
+    maxWidth: 300,
+  },
+  buttonContainer: {
+    width: '100%',
   },
 });

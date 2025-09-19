@@ -1,56 +1,51 @@
-import React, { useState, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {
-  ArrowLeft,
-  Check,
-  DollarSign,
-  CreditCard,
-  Banknote,
-  MapPin,
-  Hash,
-} from 'lucide-react-native';
-import { Button, InputText } from '@presentation/components';
+import { AccountType } from '@domain/entities';
+import { CreateAccountDto } from '@infrastructure/dtos/accounts';
+import { Button, InputNumber, InputText } from '@presentation/components';
 import { MainLayout } from '@presentation/layout';
-// Asumiendo que InputText está disponible y funciona correctamente
+import { AccountStackParams } from '@presentation/navigation';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { useAccountStore } from '@store/useAccountStore';
+import { useCatalogsStore } from '@store/useCatalogsStore';
+import { useMutation } from '@tanstack/react-query';
+import { Formik, FormikProps } from 'formik';
+import { Banknote, Check, DollarSign, Hash, MapPin } from 'lucide-react-native';
+import React, { useCallback, useRef, useState } from 'react';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
-// --- Tipos y Data ---
-type AccountType = 'Debito' | 'Efectivo' | 'Ahorros';
+// --- CONSTANTES Y VALORES INICIALES ---
 
-// ... (Definiciones de ACCOUNT_TYPES y TypeSelectionCard, que permanecen igual) ...
+const INITIAL_VALUES: CreateAccountDto = {
+  name: '',
+  balance: 0,
+  accountTypeId: '',
+  bank: '',
+  accountNumber: '',
+};
 
-const ACCOUNT_TYPES = [
-  {
-    id: 'Debito',
-    label: 'Débito',
-    icon: CreditCard,
-    color: '#00B8D9',
-    description: 'Cuentas para gastos diarios o tarjetas vinculadas.',
-  },
-  {
-    id: 'Efectivo',
-    label: 'Efectivo',
-    icon: DollarSign,
-    color: '#34C759',
-    description: 'Para manejar dinero en efectivo, carteras o billeteras.',
-  },
-  {
-    id: 'Ahorros',
-    label: 'Ahorros',
-    icon: Banknote,
-    color: '#9747FF',
-    description: 'Cuentas con propósito de ahorro o inversión a largo plazo.',
-  },
-];
+// --- COMPONENTE TypeSelectionCard (Memoizado) ---
 
 interface TypeCardProps {
-  type: (typeof ACCOUNT_TYPES)[0];
+  type: AccountType;
   isSelected: boolean;
   onSelect: (type: AccountType) => void;
 }
 
-const TypeSelectionCard = ({ type, isSelected, onSelect }: TypeCardProps) => {
-  const IconComponent = type.icon;
+// 1. Optimización: Memoizar para evitar re-render innecesarios de las tarjetas.
+const TypeSelectionCard = React.memo(({ type, isSelected, onSelect }: TypeCardProps) => {
+  // Nota: Asumiendo que type.iconItem es un Componente React (LucideIcon).
+  const IconComponent = type.iconItem;
+
+  // 2. Optimización: Usar publicId como clave en el manejo del tipo (más seguro que todo el objeto).
+  const handlePress = () => onSelect(type);
 
   return (
     <TouchableOpacity
@@ -59,173 +54,237 @@ const TypeSelectionCard = ({ type, isSelected, onSelect }: TypeCardProps) => {
         { backgroundColor: type.color },
         isSelected && styles.typeCardSelected,
       ]}
-      onPress={() => onSelect(type.id as AccountType)}
+      onPress={handlePress}
     >
       <View style={styles.typeCardIconTitle}>
         <IconComponent size={30} color="#fff" />
-        <Text style={styles.typeCardTitle}>{type.label}</Text>
+        <Text style={styles.typeCardTitle}>{type.displayName}</Text>
       </View>
       {isSelected && <Check size={24} color="#fff" style={styles.checkIcon} />}
       <Text style={styles.typeCardDescription}>{type.description}</Text>
     </TouchableOpacity>
   );
-};
+});
 
-// --- Pantalla Principal ---
+// --- PANTALLA PRINCIPAL ---
 
 export const AccountCreateScreen = () => {
-  const insets = useSafeAreaInsets();
+  const { accountTypes } = useCatalogsStore();
   const [selectedType, setSelectedType] = useState<AccountType | null>(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    initialBalance: '',
-    bank: '',
-    accountNumber: '',
+
+  const { create } = useAccountStore();
+  const navigation = useNavigation<StackNavigationProp<AccountStackParams>>();
+  const formikRef = useRef<FormikProps<CreateAccountDto>>(null);
+
+  const selectedTypeId = selectedType?.publicId || '';
+
+  const mutation = useMutation({
+    mutationFn: (data: CreateAccountDto) => create(data),
+    onSuccess(data) {
+      navigation.navigate('AccountCreateSuccessScreen', { account: data });
+    },
+    onError(error) {
+      console.error('Error creating account', error);
+      alert(error.message);
+    },
   });
 
-  // 1. Referencias para el scroll
+  // 4. Optimización: Centralizar la lógica de scroll en una función useCallback.
   const scrollViewRef = useRef<ScrollView>(null);
-  const formRef = useRef<View>(null); // Referencia al contenedor del formulario
+  const formRef = useRef<View>(null);
 
-  const isFormValid = selectedType && formData.name && formData.initialBalance;
-
-  const handleTypeSelect = (type: AccountType) => {
+  const handleTypeSelect = useCallback((type: AccountType) => {
     setSelectedType(type);
 
-    // 2. Esperar el siguiente ciclo de renderizado para que el formulario se monte
     setTimeout(() => {
-      // 3. Medir y hacer scroll al formulario
       formRef.current?.measureLayout(
         scrollViewRef.current as any,
         (x, y) => {
-          scrollViewRef.current?.scrollTo({ y: y, animated: true });
+          scrollViewRef.current?.scrollTo({ y: y - 20, animated: true });
         },
         () => console.log('Error midiendo el layout')
       );
     }, 100);
-  };
+  }, []); // Dependencias vacías, solo se crea una vez.
 
-  const handleCreateAccount = () => {
-    if (isFormValid) {
-      Alert.alert('Éxito', `Cuenta de ${selectedType} creada: ${formData.name}`);
-    } else {
-      Alert.alert('Error', 'Por favor, selecciona un tipo y completa los campos obligatorios.');
-    }
-  };
+  // 5. Optimización: Uso de React.useMemo para el validador (Formik)
+  const validateForm = React.useMemo(
+    () => (values: CreateAccountDto) => {
+      const errors: Record<string, string> = {};
 
-  // const renderHeader = () => (
-  //   <View style={[styles.header, { paddingTop: insets.top }]}>
-  //     <TouchableOpacity style={styles.headerButton}>
-  //       <ArrowLeft size={24} color="#000" />
-  //     </TouchableOpacity>
-  //     <Text style={styles.headerTitle}>Crear Cuenta</Text>
-  //     <View style={{ width: 44 }} />
-  //   </View>
-  // );
+      if (!values.name) {
+        errors.name = 'El nombre de la cuenta es obligatorio.';
+      }
+      // Añadir validación para el tipo de cuenta.
+      if (!selectedTypeId) {
+        errors.accountTypeId = 'Debe seleccionar un tipo de cuenta.';
+      }
+
+      // Convertir el balance a número para la validación de formato si es necesario,
+      // o asumir que InputNumber ya maneja la entrada segura.
+      if (isNaN(Number(values.balance))) {
+        errors.balance = 'El balance debe ser un número.';
+      }
+
+      return errors;
+    },
+    [selectedTypeId]
+  ); // Se recalcula si el ID del tipo de cuenta cambia.
+
+  // 6. Optimización: Simplificar la función onSubmit (Formik)
+  const handleSubmit = useCallback(
+    (values: CreateAccountDto) => {
+      if (!selectedType) {
+        alert('Debe seleccionar un tipo de cuenta para continuar.');
+        return;
+      }
+
+      // Asegurar que el balance sea un número antes de mutar
+      const request: CreateAccountDto = {
+        ...values,
+        balance: Number(values.balance), // Asumiendo que values.balance puede ser string si viene de un InputNumber no procesado.
+        accountTypeId: selectedType.publicId, // Usar el publicId del objeto seleccionado
+      };
+
+      // Nota: Es mejor validar `values.balance` como string en Formik si `InputNumber`
+      // no garantiza que el valor sea un número en el estado de Formik.
+      mutation.mutate(request);
+    },
+    [mutation, selectedType]
+  );
+
+  // 7. Optimización: Separar el renderizado condicional del formulario en un componente auxiliar.
+  // Esto no solo mejora la legibilidad sino que ayuda al rendimiento de Formik.
+  const RenderFormSection = React.useCallback(() => {
+    if (!selectedType || !formikRef.current) return null;
+
+    const { handleChange, values, errors, touched, setFieldValue } = formikRef.current;
+    const isEfectivo = selectedType.displayName === 'Efectivo';
+
+    return (
+      <View ref={formRef} style={styles.formContainer}>
+        <Text style={styles.sectionTitle}>
+          2. Detalles de la Cuenta ({selectedType.displayName})
+        </Text>
+
+        {/* Input Name */}
+        <InputText
+          label="Nombre de la Cuenta"
+          placeholder="Ej: Cuenta de Cheques"
+          value={values.name}
+          onChangeText={handleChange('name')}
+          LeftIcon={Banknote}
+          autoCapitalize="none"
+          autoCorrect={false}
+          errorMsg={touched.name && errors.name ? errors.name : undefined}
+        />
+
+        {/* Input Balance */}
+        <InputNumber
+          label="Balance Inicial"
+          placeholder="0"
+          value={values.balance}
+          onChangeText={(val) => setFieldValue('balance', val)}
+          LeftIcon={DollarSign}
+          errorMsg={touched.balance && errors.balance ? errors.balance : undefined}
+        />
+
+        {/* Campos Condicionales (Bancos) */}
+        {!isEfectivo && (
+          <>
+            <InputText
+              label="Banco"
+              placeholder="Ej: Banco Nacional S.A."
+              value={values.bank}
+              onChangeText={handleChange('bank')}
+              LeftIcon={MapPin}
+            />
+            <InputText
+              label="Número de Cuenta (Opcional)"
+              placeholder="Número de cuenta o Alias"
+              keyboardType="number-pad"
+              value={values.accountNumber}
+              onChangeText={handleChange('accountNumber')}
+              LeftIcon={Hash}
+            />
+          </>
+        )}
+
+        <View style={{ height: 20 }} />
+      </View>
+    );
+  }, [selectedType]); // Solo re-renderiza cuando el tipo seleccionado cambia.
 
   return (
     <MainLayout title="Crear cuenta">
-      {/* ScrollView con Referencia */}
-      <ScrollView ref={scrollViewRef} showsVerticalScrollIndicator={false}>
-        {/* PASO 1: Selector Visual de Tipo */}
-        <Text style={styles.sectionTitle}>1. Selecciona el Tipo de Cuenta</Text>
-        <Text style={styles.sectionSubtitle}>
-          Define cómo se comportarán tus transacciones en esta cuenta.
-        </Text>
+      {/* 8. Optimización: La KeyboardAvoidingView debe envolver el Formik/ScrollView, no viceversa si se usa MainLayout. */}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.container}
+      >
+        <Formik
+          innerRef={formikRef}
+          initialValues={INITIAL_VALUES}
+          validate={validateForm} // Usar el validador memoizado
+          onSubmit={handleSubmit} // Usar el submit memoizado
+          enableReinitialize={false} // No es necesario re-inicializar
+        >
+          {({ handleSubmit, isValid }) => (
+            <>
+              {/* ScrollView es el contenedor principal del contenido que se desplaza */}
+              <ScrollView
+                ref={scrollViewRef}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.scrollContent}
+              >
+                {/* PASO 1: Selector Visual de Tipo */}
+                <Text style={styles.sectionTitle}>1. Selecciona el Tipo de Cuenta</Text>
+                <Text style={styles.sectionSubtitle}>
+                  Define cómo se comportarán tus transacciones en esta cuenta.
+                </Text>
 
-        <View style={styles.typeSelectionContainer}>
-          {ACCOUNT_TYPES.map((type) => (
-            <TypeSelectionCard
-              key={type.id}
-              type={type}
-              isSelected={selectedType === type.id}
-              onSelect={handleTypeSelect} // Usamos la nueva función con scroll
-            />
-          ))}
-        </View>
+                <View style={styles.typeSelectionContainer}>
+                  {accountTypes.map((type) => (
+                    <TypeSelectionCard
+                      key={type.publicId}
+                      type={type}
+                      isSelected={selectedType?.publicId === type.publicId} // Comparar por ID
+                      onSelect={handleTypeSelect}
+                    />
+                  ))}
+                </View>
 
-        {/* PASO 2: Formulario de Detalles (Referencia para scroll) */}
-        {selectedType && (
-          <View ref={formRef} style={styles.formContainer}>
-            <Text style={styles.sectionTitle}>2. Detalles de la Cuenta ({selectedType})</Text>
+                {/* PASO 2: Formulario (Renderizado optimizado) */}
+                {selectedType && <RenderFormSection />}
+              </ScrollView>
 
-            <InputText
-              label="Nombre de la Cuenta"
-              placeholder="Ej: Cuenta de Cheques"
-              value={formData.name}
-              onChangeText={(text) => setFormData({ ...formData, name: text })}
-              LeftIcon={Banknote}
-            />
-
-            <InputText
-              label="Balance Inicial"
-              placeholder="0"
-              keyboardType="numeric"
-              value={formData.initialBalance}
-              onChangeText={(text) => setFormData({ ...formData, initialBalance: text })}
-              LeftIcon={DollarSign}
-            />
-
-            {/* Campos Condicionales para Cuentas Bancarias */}
-            {selectedType !== 'Efectivo' && (
-              <>
-                <InputText
-                  label="Banco"
-                  placeholder="Ej: Banco Nacional S.A."
-                  value={formData.bank}
-                  onChangeText={(text) => setFormData({ ...formData, bank: text })}
-                  leftIcon={<MapPin color="#000" />}
-                />
-                <InputText
-                  label="Número de Cuenta (Opcional)"
-                  placeholder="Número de cuenta o Alias"
-                  keyboardType="number-pad"
-                  value={formData.accountNumber}
-                  onChangeText={(text) => setFormData({ ...formData, accountNumber: text })}
-                  leftIcon={<Hash color="#000" />}
-                />
-              </>
-            )}
-
-            <View style={{ height: 20 }} />
-          </View>
-        )}
-      </ScrollView>
-
-      {/* Botón de Creación Flotante o Fijo */}
-      {selectedType && <Button label="Crear cuenta" onPress={() => console.log('crear cuenta')} />}
+              {/* Botón de Creación Fijo (Usa el `isValid` de Formik) */}
+              {selectedType && (
+                <View style={styles.buttonContainer}>
+                  <Button
+                    label="Crear"
+                    onPress={handleSubmit}
+                    disabled={!isValid || mutation.isPending} // Deshabilitar si no es válido o está cargando
+                    isLoading={mutation.isPending}
+                  />
+                </View>
+              )}
+            </>
+          )}
+        </Formik>
+      </KeyboardAvoidingView>
     </MainLayout>
   );
 };
 
-// --- Estilos (Solo cambios relevantes al flujo) ---
+// --- Estilos ---
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F8F8',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingBottom: 10,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#000',
-  },
-  headerButton: {
-    padding: 10,
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 100,
+    paddingBottom: 20, // Suficiente espacio para que el contenido no quede pegado al botón
   },
   sectionTitle: {
     fontSize: 20,
@@ -280,154 +339,10 @@ const styles = StyleSheet.create({
   formContainer: {
     gap: 10,
   },
-  bottomActionBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#fff',
-    paddingHorizontal: 20,
-    paddingTop: 15,
+  buttonContainer: {
+    paddingVertical: 10,
+    backgroundColor: 'white', // Fondo para que el botón no flote sobre el scroll
     borderTopWidth: 1,
     borderTopColor: '#eee',
   },
-  createButton: {
-    backgroundColor: '#000',
-    padding: 15,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  createButtonDisabled: {
-    backgroundColor: '#999',
-  },
-  createButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
 });
-
-// import { CreateAccountDto } from '@infrastructure/dtos/accounts';
-// import { Button, InputNumber, InputText } from '@presentation/components';
-// import { useNavigation } from '@react-navigation/native';
-// import { StackNavigationProp, StackScreenProps } from '@react-navigation/stack';
-// import { useAccountStore } from '@store/useAccountStore';
-// import { useMutation } from '@tanstack/react-query';
-// import { Formik, FormikProps } from 'formik';
-// import { useRef } from 'react';
-// import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
-// import { MainLayout } from 'src/presentation/layout';
-// import { AccountStackParams } from 'src/presentation/navigation/AccountsNavigation';
-//
-// const initialValues = {
-//   name: '',
-//   balance: 0,
-//   accountTypeId: '',
-//   bank: '',
-//   accountNumber: '',
-// };
-//
-// type Props = StackScreenProps<AccountStackParams, 'AccountCreateScreen'>;
-// export const AccountCreateScreen = ({ route }: Props) => {
-//   const { create } = useAccountStore();
-//   const navigation = useNavigation<StackNavigationProp<AccountStackParams>>();
-//   const accountType = route.params?.accountType;
-//   const formikRef = useRef<FormikProps<any>>(null);
-//
-//   const mutation = useMutation({
-//     mutationFn: (data: CreateAccountDto) => create(data),
-//     onSuccess(data) {
-//       navigation.navigate('AccountCreateSuccessScreen', { account: data });
-//     },
-//     onError(error) {
-//       console.log('Error creating account', error);
-//       alert(error.message);
-//     },
-//   });
-//
-//   return (
-//     <MainLayout title="Crear cuenta" showNavbar={true}>
-//       <Formik
-//         innerRef={formikRef}
-//         initialValues={initialValues}
-//         validate={(values) => {
-//           const errors = {};
-//           if (!values.name) {
-//             errors['name'] = 'Required';
-//           }
-//
-//           return errors;
-//         }}
-//         onSubmit={(values) => {
-//           const request = {
-//             ...values,
-//             balance: Number(values.balance),
-//             accountTypeId: accountType.publicId,
-//           };
-//           mutation.mutate(request);
-//         }}
-//       >
-//         {({ handleChange, handleSubmit, values, errors, touched }) => (
-//           <KeyboardAvoidingView
-//             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-//             style={styles.container}
-//           >
-//             <View>
-//               {/* Required Fields */}
-//               <View>
-//                 {/* Name */}
-//                 <InputText
-//                   value={values.name}
-//                   label="Nombre"
-//                   placeholder="Nombre de la cuenta"
-//                   autoCorrect={false}
-//                   onChangeText={handleChange('name')}
-//                   errorMsg={touched.name ? errors.name : undefined}
-//                 />
-//
-//                 {/* Initial Balance */}
-//                 <InputNumber
-//                   value={values.balance}
-//                   label="Balance inicial"
-//                   onChangeText={handleChange('balance')}
-//                 />
-//               </View>
-//               <View style={{ paddingTop: 30 }}></View>
-//               {/* Optional Fields */}
-//               <View>
-//                 {/* Bank */}
-//                 <InputText
-//                   value={values.bank}
-//                   onChangeText={handleChange('bank')}
-//                   placeholder="Banco"
-//                   label="Banco"
-//                   autoCapitalize="none"
-//                 />
-//
-//                 {/* Account Number */}
-//
-//                 <InputText
-//                   value={values.accountNumber}
-//                   onChangeText={handleChange('accountNumber')}
-//                   placeholder="Numero de cuenta"
-//                   label="Numero de cuenta"
-//                   autoCapitalize="none"
-//                   keyboardType="number-pad"
-//                 />
-//               </View>
-//               <View style={{ paddingTop: 30 }}></View>
-//             </View>
-//             <Button label="Crear" onPress={handleSubmit} />
-//           </KeyboardAvoidingView>
-//         )}
-//       </Formik>
-//     </MainLayout>
-//   );
-// };
-//
-// const styles = StyleSheet.create({
-//   container: {
-//     flex: 1,
-//     justifyContent: 'space-between',
-//   },
-// });
