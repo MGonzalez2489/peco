@@ -12,6 +12,7 @@ import { create } from 'zustand';
 export interface CatalogsState {
   accountTypes: AccountType[];
   entryCategories: EntryCategory[];
+  groupedEntryCategories: EntryCategory[];
   entryTypes: EntryType[];
   entryStatuses: EntryStatus[];
 
@@ -23,6 +24,7 @@ export const useCatalogsStore = create<CatalogsState>()((set, get) => ({
   entryCategories: [],
   entryTypes: [],
   entryStatuses: [],
+  groupedEntryCategories: [],
 
   loadCatalogs: async () => {
     const search = new SearchDto();
@@ -45,7 +47,8 @@ export const useCatalogsStore = create<CatalogsState>()((set, get) => ({
 
     set({
       accountTypes,
-      entryCategories: parentCats,
+      entryCategories,
+      groupedEntryCategories: parentCats,
       entryStatuses,
       entryTypes,
     });

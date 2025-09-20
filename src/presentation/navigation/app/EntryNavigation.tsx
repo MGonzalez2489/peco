@@ -1,4 +1,4 @@
-import { EntryCategory } from '@domain/entities';
+import { Account, Entry, EntryCategory } from '@domain/entities';
 import { SelAccountModal, SelEntryCategoryModal } from '@presentation/components/modals';
 import {
   CreateEntryConfirmationScreen,
@@ -13,7 +13,7 @@ export type EntryStackParams = {
   // EntryDetails: { id: string };
 
   CreateEntryForm: undefined;
-  CreateEntryConfirmation: undefined;
+  CreateEntryConfirmation: { entry: Entry };
 
   // UpdateEntryForm: undefined;
   // UpdateEntryConfirmation: undefined;
@@ -22,8 +22,15 @@ export type EntryStackParams = {
   // DeleteEntryConfirmation: undefined;
 
   SelectEntryType: undefined;
-  SelectAccount: undefined;
-  SelectEntryCategory: { onSelect: (selected: EntryCategory) => void };
+  SelectAccount: {
+    onSelect: (selected: Account) => void;
+  };
+  SelectEntryCategory: {
+    onSelect: (selected: EntryCategory) => void;
+    selectedCategory?: EntryCategory;
+    categoryList?: EntryCategory[];
+    title?: string;
+  };
 };
 
 const Stack = createStackNavigator<EntryStackParams>();

@@ -1,4 +1,3 @@
-// Importaciones se mantienen
 import { EntryCategory } from '@domain/entities';
 import { MainLayout } from '@presentation/layout';
 import { EntryStackParams } from '@presentation/navigation';
@@ -9,7 +8,7 @@ import { ChevronRight, TriangleAlert } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-type Props = StackScreenProps<EntryStackParams, 'SelEntryCategory'>;
+type Props = StackScreenProps<EntryStackParams, 'SelectEntryCategory'>;
 
 // --- COMPONENTE DE ITEM DE CATEGORÍA REUSABLE ---
 interface CategoryItemProps {
@@ -23,7 +22,7 @@ interface CategoryItemProps {
 const CategoryItem = React.memo(
   ({ category, onSelect, onDrillDown, isSelected }: CategoryItemProps) => {
     // Un item es navegable si tiene subcategorías
-    const isDrillable = !category.parent; //category.subCategories && category.subCategories.length > 0;
+    const isDrillable = category.subCategories && category.subCategories.length > 0;
 
     const handlePress = () => {
       if (isDrillable) {
@@ -59,10 +58,11 @@ const CategoryItem = React.memo(
 
 // --- COMPONENTE PRINCIPAL CON LÓGICA DRILL-DOWN (CORREGIDO) ---
 export const SelEntryCategoryModal = ({ route, navigation }: Props) => {
-  const { entryCategories } = useCatalogsStore(); // La lista a renderizar es la que viene de los parámetros, o las categorías principales por defecto
+  const { groupedEntryCategories } = useCatalogsStore(); // La lista a renderizar es la que viene de los parámetros, o las categorías principales por defecto
   // Filtramos las categorías que tienen padre (asumiendo que los padres se filtran por !cat.parent)
 
-  const currentList = route.params?.categoryList || entryCategories.filter((cat) => !cat.parent); // Usamos el ID para la comparación
+  const currentList =
+    route.params?.categoryList || groupedEntryCategories.filter((cat) => !cat.parent); // Usamos el ID para la comparación
 
   const [selectedCategory, setSelectedCategory] = useState<EntryCategory | undefined>(
     route.params?.selectedCategory
@@ -74,15 +74,15 @@ export const SelEntryCategoryModal = ({ route, navigation }: Props) => {
     if (onSelect) {
       onSelect(value);
     }
-    navigation.goBack();
+    navigation.popToTop();
   }; // 2. Maneja el "Drill-Down" (navega a la sub-lista)
 
   const handleDrillDown = (parentCategory: EntryCategory) => {
-    navigation.push('SelEntryCategory', {
+    navigation.push('SelectEntryCategory', {
       onSelect: route.params?.onSelect, // Mantenemos el callback original
       selectedCategory: selectedCategory, // Mantenemos la selección
-      categoryList: parentCategory.subCategories, // Pasamos la nueva lista
       title: parentCategory.name, // Usamos el nombre del padre como título
+      categoryList: parentCategory.subCategories,
     });
   }; // El título se basa en si estamos viendo la lista principal o una sub-lista
 

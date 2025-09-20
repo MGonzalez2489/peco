@@ -95,7 +95,7 @@ export const CreateEntryScreen = ({ accountId }: Props) => {
 
       // You should navigate to a success screen or pop the stack
       const nEntry = response.data;
-      navigation.navigate('EntryCreateSuccessScreen', { entry: nEntry });
+      navigation.navigate('CreateEntryConfirmation', { entry: nEntry });
       // navigation.goBack();
       // Add a success toast/alert here if needed
     },
@@ -103,26 +103,7 @@ export const CreateEntryScreen = ({ accountId }: Props) => {
       Alert.alert('Error', error.message || 'Error al crear el registro.');
     },
   });
-  const handleSelectAccount = useCallback(
-    (setFieldValue) => {
-      navigation.push('SelAccount', {
-        onSelect: (account: Account) => {
-          setFieldValue('accountId', account.publicId);
-        },
-      });
-    },
-    [navigation]
-  );
-  const handleSelEntryCategory = useCallback(
-    (setFieldValue) => {
-      navigation.push('SelectEntryCategory', {
-        onSelect: (entryCategory: EntryCategory) => {
-          setFieldValue('categoryId', entryCategory.publicId);
-        },
-      });
-    },
-    [navigation]
-  );
+
   const handleEntryTypePress = useCallback((g: typeof defaultEntryType, setFieldValue) => {
     setFieldValue('entryTypeId', g.publicId);
   }, []);
@@ -214,6 +195,24 @@ export const CreateEntryScreen = ({ accountId }: Props) => {
           {({ handleChange, values, setFieldValue, handleSubmit }) => {
             const { selEntryType, selAccount, selEntryCat } = getSelectedObjects(values);
 
+            const handleSelectAccount = () => {
+              navigation.push('SelectAccount', {
+                onSelect: (account: Account) => {
+                  // setFieldValue es la función más reciente
+                  setFieldValue('accountId', account.publicId);
+                },
+              });
+            };
+
+            const handleSelEntryCategory = () => {
+              navigation.push('SelectEntryCategory', {
+                onSelect: (entryCategory: EntryCategory) => {
+                  // setFieldValue es la función más reciente
+                  setFieldValue('categoryId', entryCategory.publicId);
+                },
+              });
+            };
+
             return (
               <View style={{ flex: 1 }}>
                 <ScrollView showsVerticalScrollIndicator={false}>
@@ -253,14 +252,14 @@ export const CreateEntryScreen = ({ accountId }: Props) => {
                         label="Categoría"
                         value={selEntryCat.name}
                         icon={Tag}
-                        onPress={() => handleSelEntryCategory(setFieldValue)}
+                        onPress={handleSelEntryCategory}
                       />
 
                       <SelectorButton
                         label="Cuenta"
                         value={selAccount.name}
                         icon={Banknote}
-                        onPress={() => handleSelectAccount(setFieldValue)}
+                        onPress={handleSelectAccount}
                       />
 
                       {/* 5. Otros Campos Comunes (Ej: Fecha) */}

@@ -6,7 +6,7 @@ import { COLORS } from '@styles/colors';
 import { ArrowLeft, CheckCircle } from 'lucide-react-native';
 import { StyleSheet, Text, View } from 'react-native';
 
-type Props = StackScreenProps<EntryStackParams, 'EntryCreateSuccessScreen'>;
+type Props = StackScreenProps<EntryStackParams, 'CreateEntryConfirmation'>;
 
 export const CreateEntryConfirmationScreen = ({ navigation, route }: Props) => {
   const entry = route.params.entry;
@@ -16,7 +16,7 @@ export const CreateEntryConfirmationScreen = ({ navigation, route }: Props) => {
       index: 0,
       routes: [
         {
-          name: 'EntriesScreen',
+          name: 'EntryDashboardScreen',
         },
       ],
     });
