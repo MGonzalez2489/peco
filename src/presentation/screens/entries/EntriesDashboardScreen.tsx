@@ -10,7 +10,7 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { SearchIcon, TrendingDown, TrendingUp } from 'lucide-react-native';
 import { StyleSheet, Text, View } from 'react-native';
 
-export const EntriesScreen = () => {
+export const EntriesDashboardScreen = () => {
   const navigation = useNavigation<StackNavigationProp<EntryStackParams>>();
 
   const { isLoading, data, fetchNextPage } = useInfiniteQuery({
@@ -57,7 +57,7 @@ export const EntriesScreen = () => {
         </View>
       </View>
 
-      <FabButton onPress={() => navigation.navigate('EntryCreateScreen')} />
+      <FabButton onPress={() => navigation.navigate('CreateEntryForm')} />
     </MainLayout>
   );
 };

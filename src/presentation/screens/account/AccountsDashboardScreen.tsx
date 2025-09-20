@@ -1,14 +1,14 @@
 import { FabButton } from '@presentation/components';
 import { AccountList } from '@presentation/components/accounts';
 import { MainLayout } from '@presentation/layout';
-import { AccountStackParams } from '@presentation/navigation';
+import { AccountStackParams } from '@presentation/navigation/app';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useAccountStore } from '@store/useAccountStore';
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-export const AccountsScreen = () => {
+export const AccountsDashboardScreen = () => {
   const navigation = useNavigation<StackNavigationProp<AccountStackParams>>();
   const { accounts } = useAccountStore();
   const [totalBalance, setTotalBalance] = useState(0);
@@ -37,7 +37,7 @@ export const AccountsScreen = () => {
       <AccountList accounts={accounts} listHeaderComponent={headerListComponent} />
 
       {/* Botón de Acción Flotante */}
-      <FabButton onPress={() => navigation.navigate('AccountCreateScreen')} />
+      <FabButton onPress={() => navigation.navigate('CreateAccountForm')} />
     </MainLayout>
   );
 };

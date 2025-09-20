@@ -70,7 +70,7 @@ interface Props {
   accountId?: string;
 }
 
-export const EntryCreateScreen = ({ accountId }: Props) => {
+export const CreateEntryScreen = ({ accountId }: Props) => {
   const { entryTypes, entryCategories } = useCatalogsStore();
   const { accounts, loadAccounts } = useAccountStore();
   const queryClient = useQueryClient();
@@ -105,7 +105,7 @@ export const EntryCreateScreen = ({ accountId }: Props) => {
   });
   const handleSelectAccount = useCallback(
     (setFieldValue) => {
-      navigation.navigate('SelAccount', {
+      navigation.push('SelAccount', {
         onSelect: (account: Account) => {
           setFieldValue('accountId', account.publicId);
         },
@@ -115,7 +115,7 @@ export const EntryCreateScreen = ({ accountId }: Props) => {
   );
   const handleSelEntryCategory = useCallback(
     (setFieldValue) => {
-      navigation.navigate('SelEntryCategory', {
+      navigation.push('SelectEntryCategory', {
         onSelect: (entryCategory: EntryCategory) => {
           setFieldValue('categoryId', entryCategory.publicId);
         },

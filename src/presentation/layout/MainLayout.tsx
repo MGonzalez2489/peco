@@ -1,8 +1,8 @@
 import { COLORS } from '@styles/colors';
 import { LucideIcon } from 'lucide-react-native';
 import { StyleSheet, View } from 'react-native';
-import { Navbar } from './Navbar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Navbar } from './Navbar';
 
 interface Props {
   title: string;
@@ -26,7 +26,6 @@ export const MainLayout = ({
   showNavbar = true,
 }: Props) => {
   const insets = useSafeAreaInsets();
-  const pTop = showNavbar ? insets.top : 0;
 
   return (
     <View style={{ ...styles.container, paddingTop: insets.top, paddingBottom: insets.bottom }}>

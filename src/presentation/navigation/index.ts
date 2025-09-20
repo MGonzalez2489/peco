@@ -1,5 +1,5 @@
+export * from './RootNavigation';
+
 export * from './AuthNavigation';
-export * from './MainNavigation';
-export * from './AccountsNavigation';
-export * from './EntryNavigation';
-export * from './SettingsNavigation';
+export * from './app/EntryNavigation';
+export * from './app/SettingsNavigation';

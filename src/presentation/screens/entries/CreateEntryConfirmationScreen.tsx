@@ -8,7 +8,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 type Props = StackScreenProps<EntryStackParams, 'EntryCreateSuccessScreen'>;
 
-export const EntryCreateSuccessScreen = ({ navigation, route }: Props) => {
+export const CreateEntryConfirmationScreen = ({ navigation, route }: Props) => {
   const entry = route.params.entry;
 
   const handleBack = () => {

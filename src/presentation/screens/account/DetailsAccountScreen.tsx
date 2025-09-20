@@ -16,7 +16,7 @@ import { LineChart } from 'react-native-chart-kit';
 const screenWidth = Dimensions.get('window').width;
 
 type Props = StackScreenProps<AccountStackParams, 'AccountScreen'>;
-export const AccountScreen = ({ route }: Props) => {
+export const DetailAccountScreen = ({ route }: Props) => {
   const accountIdRef = useRef(route.params.accountId);
   const { getById } = useAccountStore();
   const account = getById(accountIdRef.current);

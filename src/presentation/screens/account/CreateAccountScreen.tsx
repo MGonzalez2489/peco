@@ -68,7 +68,7 @@ const TypeSelectionCard = React.memo(({ type, isSelected, onSelect }: TypeCardPr
 
 // --- PANTALLA PRINCIPAL ---
 
-export const AccountCreateScreen = () => {
+export const CreateAccountScreen = () => {
   const { accountTypes } = useCatalogsStore();
   const [selectedType, setSelectedType] = useState<AccountType | null>(null);
 

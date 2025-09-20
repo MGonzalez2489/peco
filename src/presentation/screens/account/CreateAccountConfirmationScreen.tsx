@@ -9,7 +9,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 type Props = StackScreenProps<AccountStackParams, 'AccountCreateSuccessScreen'>;
 
-export const AccountCreateSuccessScreen = ({ navigation, route }: Props) => {
+export const CreateAccountConfirmationScreen = ({ navigation, route }: Props) => {
   const account = route.params.account;
 
   const handleGoBack = () => {
