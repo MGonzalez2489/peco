@@ -1,7 +1,7 @@
+import { StorageAdapter } from '@config/adapters';
 import { API_URL_ANDROID, API_URL_IOS, STAGE } from '@env';
 import axios from 'axios';
 import { Platform } from 'react-native';
-import { StorageAdapter } from '../adapters/storage.adapter';
 
 const testUrl = Platform.OS === 'ios' ? API_URL_IOS : API_URL_ANDROID;
 

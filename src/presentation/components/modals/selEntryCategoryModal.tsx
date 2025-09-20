@@ -74,7 +74,7 @@ export const SelEntryCategoryModal = ({ route, navigation }: Props) => {
     if (onSelect) {
       onSelect(value);
     }
-    navigation.popToTop();
+    navigation.popTo('CreateEntryForm');
   }; // 2. Maneja el "Drill-Down" (navega a la sub-lista)
 
   const handleDrillDown = (parentCategory: EntryCategory) => {

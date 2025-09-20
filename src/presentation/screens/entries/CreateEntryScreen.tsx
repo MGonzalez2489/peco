@@ -180,10 +180,11 @@ export const CreateEntryScreen = ({ accountId }: Props) => {
               return;
             }
 
+            console.log('amount', values.amount);
+
             const payload: CreateEntryDto = {
               description: values.description || '',
-              // Ensure amount is a number for the API call
-              amount: parseFloat(values.amount.toString()) || 0,
+              amount: values.amount,
               categoryId: values.categoryId || defaultCategory.publicId,
               entryTypeId: values.entryTypeId,
               accountId: values.accountId || defaultAccount.publicId,
@@ -239,7 +240,7 @@ export const CreateEntryScreen = ({ accountId }: Props) => {
                           keyboardType="numeric"
                           value={values.amount}
                           placeholder="0.00"
-                          onChangeText={(val) => setFieldValue('balance', val)}
+                          onChangeText={(val) => setFieldValue('amount', val)}
                         />
                       </View>
                     </View>

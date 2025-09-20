@@ -26,13 +26,13 @@ export const PecoApp = () => {
   }, [isAuthenticated, load, loadAccounts, loadCatalogs, accounts.length]);
 
   return (
-    <SafeAreaProvider>
-      <QueryClientProvider client={queryClient}>
+    <QueryClientProvider client={queryClient}>
+      <SafeAreaProvider>
         <NavigationContainer>
           <RootNavigator />
         </NavigationContainer>
-      </QueryClientProvider>
-    </SafeAreaProvider>
+      </SafeAreaProvider>
+    </QueryClientProvider>
   );
 };
 
