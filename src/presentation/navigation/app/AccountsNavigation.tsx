@@ -11,7 +11,7 @@ export type AccountStackParams = {
   AccountDetails: { id: string };
 
   CreateAccountForm: undefined;
-  CreateAccountConfirmation: undefined;
+  CreateAccountConfirmation: { id: string };
 
   UpdateAccountForm: undefined;
   UpdateAccountConfirmation: undefined;

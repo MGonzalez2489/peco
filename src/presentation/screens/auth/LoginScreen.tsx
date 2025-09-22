@@ -38,7 +38,7 @@ export const LoginScreen = ({ navigation }: Props) => {
   const mutation = useMutation({
     mutationFn: (data: LoginDto) => login(data),
     onError(error) {
-      alert(`Error de sesión: ${error.message}`);
+      alert(error.message);
     },
   });
 

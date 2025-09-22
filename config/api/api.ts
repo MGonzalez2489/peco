@@ -30,6 +30,7 @@ api.interceptors.response.use(
       await StorageAdapter.clearStorage();
       console.log('Sesion expirada o no autorizada');
     }
+    throw error;
   }
 );
 

@@ -1,21 +1,24 @@
 import { Button } from '@presentation/components';
 import { MainLayout } from '@presentation/layout';
-import { AccountStackParams } from '@presentation/navigation';
+import { AccountStackParams } from '@presentation/navigation/app';
 import { StackScreenProps } from '@react-navigation/stack';
+import { useAccountStore } from '@store/useAccountStore';
 import { COLORS } from '@styles/colors';
 import { ArrowLeft, CheckCircle } from 'lucide-react-native';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-type Props = StackScreenProps<AccountStackParams, 'AccountCreateSuccessScreen'>;
+type Props = StackScreenProps<AccountStackParams, 'CreateAccountConfirmation'>;
 
 export const CreateAccountConfirmationScreen = ({ navigation, route }: Props) => {
-  const account = route.params.account;
+  const { getById } = useAccountStore();
+  const id = route.params.id;
+  const account = getById(id);
 
   const handleGoBack = () => {
     navigation.reset({
       index: 0,
-      routes: [{ name: 'AccountsScreen' }],
+      routes: [{ name: 'AccountDashboard' }],
     });
   };
 

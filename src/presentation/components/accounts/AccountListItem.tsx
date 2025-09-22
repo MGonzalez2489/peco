@@ -1,17 +1,17 @@
 import { formatCurrency } from '@infrastructure/utils';
-import { DrawerNavigationProp } from '@react-navigation/drawer';
+import { AccountStackParams } from '@presentation/navigation/app';
 import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
 import { ChevronRight } from 'lucide-react-native';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Account } from 'src/domain/entities';
-import { MainDrawerParams } from 'src/presentation/navigation';
 
 interface Props {
   account: Account;
 }
 
 export const AccountListItem = ({ account }: Props) => {
-  const navigation = useNavigation<DrawerNavigationProp<MainDrawerParams>>();
+  const navigation = useNavigation<StackNavigationProp<AccountStackParams>>();
   // Determine balance style (positive or negative)
   const isNegative = account.balance < 0;
   const IconComponent = account.type.iconItem;
@@ -19,7 +19,7 @@ export const AccountListItem = ({ account }: Props) => {
   return (
     <TouchableOpacity
       style={styles.accountItemCard}
-      onPress={() => navigation.navigate('AccountScreen', { accountId: account.publicId })}
+      onPress={() => navigation.navigate('AccountDetails', { id: account.publicId })}
     >
       <View style={styles.itemLeft}>
         <View style={[styles.accountIcon, { backgroundColor: account.type.color }]}>

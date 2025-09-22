@@ -2,7 +2,7 @@ import { AccountType } from '@domain/entities';
 import { CreateAccountDto } from '@infrastructure/dtos/accounts';
 import { Button, InputNumber, InputText } from '@presentation/components';
 import { MainLayout } from '@presentation/layout';
-import { AccountStackParams } from '@presentation/navigation';
+import { AccountStackParams } from '@presentation/navigation/app';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useAccountStore } from '@store/useAccountStore';
@@ -81,7 +81,7 @@ export const CreateAccountScreen = () => {
   const mutation = useMutation({
     mutationFn: (data: CreateAccountDto) => create(data),
     onSuccess(data) {
-      navigation.navigate('AccountCreateSuccessScreen', { account: data });
+      navigation.navigate('CreateAccountConfirmation', { id: data.publicId });
     },
     onError(error) {
       console.error('Error creating account', error);

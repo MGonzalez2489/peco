@@ -19,7 +19,6 @@ import {
 
 type Props = StackScreenProps<AuthStackParams, 'RegisterScreen'>;
 
-// Función de validación (traducida y mejor estructurada)
 const validateRegister = (values: any) => {
   // Usamos 'any' ya que LoginDto no incluye confirmPassword
   const errors: Record<string, string> = {};
@@ -50,7 +49,7 @@ export const RegisterScreen = ({ navigation }: Props) => {
   const mutation = useMutation({
     mutationFn: (data: LoginDto) => register(data),
     onError(error) {
-      alert(`Error de registro: ${error}`);
+      alert(error);
     },
   });
 
@@ -60,7 +59,6 @@ export const RegisterScreen = ({ navigation }: Props) => {
         initialValues={{ email: '', password: '', confirmPassword: '' }}
         validate={validateRegister}
         onSubmit={(values) => {
-          // Solo enviamos email y password al backend, como en tu lógica original
           mutation.mutate({ email: values.email, password: values.password });
         }}
       >
@@ -166,8 +164,8 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   title: {
-    fontSize: 32, // Tamaño grande para el título
-    fontWeight: '700', // Más audaz
+    fontSize: 32,
+    fontWeight: '700',
     color: COLORS.text,
     marginBottom: 5,
   },

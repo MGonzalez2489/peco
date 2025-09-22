@@ -3,21 +3,20 @@ import { formatCurrency, groupEntriesByDate } from '@infrastructure/utils';
 import { InputText } from '@presentation/components';
 import { EntryList } from '@presentation/components/entries';
 import { MainLayout } from '@presentation/layout';
-import { AccountStackParams } from '@presentation/navigation';
+import { AccountStackParams } from '@presentation/navigation/app';
 import { StackScreenProps } from '@react-navigation/stack';
 import { useAccountStore } from '@store/useAccountStore';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { ArrowLeft, Pencil, Search } from 'lucide-react-native';
+import { ArrowLeft, EllipsisVertical, Search } from 'lucide-react-native';
 import React, { useRef } from 'react';
 import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import { LineChart } from 'react-native-chart-kit';
 
-// --- Configuración y Data de Ejemplo ---
 const screenWidth = Dimensions.get('window').width;
 
-type Props = StackScreenProps<AccountStackParams, 'AccountScreen'>;
+type Props = StackScreenProps<AccountStackParams, 'AccountDetails'>;
 export const DetailAccountScreen = ({ route }: Props) => {
-  const accountIdRef = useRef(route.params.accountId);
+  const accountIdRef = useRef(route.params.id);
   const { getById } = useAccountStore();
   const account = getById(accountIdRef.current);
   const IconComponent = account.type.iconItem;
@@ -135,7 +134,11 @@ export const DetailAccountScreen = ({ route }: Props) => {
   );
 
   return (
-    <MainLayout title="Detalles" RightActionIcon={Pencil} rightAction={() => alert('editar')}>
+    <MainLayout
+      title="Detalles"
+      RightActionIcon={EllipsisVertical}
+      rightAction={() => alert('editar')}
+    >
       <EntryList
         group={grupedData}
         fetchNextPage={fetchNextPage}

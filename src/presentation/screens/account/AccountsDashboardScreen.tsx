@@ -24,7 +24,7 @@ export const AccountsDashboardScreen = () => {
       <View style={styles.summaryCard}>
         <Text style={styles.summaryTitle}>Balance Total </Text>
         <Text style={styles.totalBalanceText}>${totalBalance}</Text>
-        <Text style={styles.summarySubtitle}>Incluye todas las cuentas en USD</Text>
+        <Text style={styles.summarySubtitle}>Incluye todas las cuentas registradas</Text>
       </View>
 
       {/* Lista de Cuentas */}
