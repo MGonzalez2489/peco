@@ -6,13 +6,12 @@ import { MainLayout } from '@presentation/layout';
 import { AccountStackParams } from '@presentation/navigation/app';
 import { StackScreenProps } from '@react-navigation/stack';
 import { useAccountStore } from '@store/useAccountStore';
+import { COLORS } from '@styles/colors';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { ArrowLeft, EllipsisVertical, Search } from 'lucide-react-native';
+import { Edit3, EllipsisVertical, Search, Trash2 } from 'lucide-react-native';
 import React, { useRef } from 'react';
-import { Dimensions, StyleSheet, Text, View } from 'react-native';
-import { LineChart } from 'react-native-chart-kit';
-
-const screenWidth = Dimensions.get('window').width;
+import { Button, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import RBSheet from 'react-native-raw-bottom-sheet';
 
 type Props = StackScreenProps<AccountStackParams, 'AccountDetails'>;
 export const DetailAccountScreen = ({ route }: Props) => {
@@ -37,78 +36,7 @@ export const DetailAccountScreen = ({ route }: Props) => {
 
   const allEntries = data?.pages.flatMap((page) => page.data) || [];
   const grupedData = groupEntriesByDate(allEntries);
-
-  const MOCK_CHART_DATA = {
-    labels: ['Sep 1', 'Sep 7', 'Sep 15'],
-    datasets: [
-      {
-        data: [100, 150, 120, 200, 180, 250, 150, 180, 160, 190, 220, 170, 210, 230, 190], // 15 días
-        color: (opacity = 1) => account.type.color, //(opacity = 1) => `rgba(142, 68, 173, ${opacity})`, // Color de la línea (morado)
-      },
-    ],
-  };
-
-  // Header personalizado (simulando el navbar)
-  // TODO: DONT FORGET RIGHT ITEMS
-  // const renderHeader = () => (
-  //   <View style={[styles.header, { paddingTop: insets.top }]}>
-  //     <TouchableOpacity style={styles.headerButton}>
-  //       <ArrowLeft size={24} color="#000" />
-  //     </TouchableOpacity>
-  //     <Text style={styles.headerTitle}>Wallet details</Text>
-  //     <View style={{ flexDirection: 'row', gap: 10 }}>
-  //       <TouchableOpacity style={styles.headerButton}>
-  //         <UserPlus size={24} color="#000" />
-  //       </TouchableOpacity>
-  //       <TouchableOpacity style={styles.headerButton}>
-  //         <MoreHorizontal size={24} color="#000" />
-  //       </TouchableOpacity>
-  //     </View>
-  //   </View>
-  // );
-
-  // Renderiza el gráfico de línea
-  const renderChart = () => (
-    <View style={styles.chartContainer}>
-      {/* Resumen de Gasto del Mes */}
-      <View style={styles.spendingSummary}>
-        <Text style={styles.monthSpendingAmount}>$124.52</Text>
-        <Text style={styles.monthSpendingLabel}>Spent</Text>
-        <View style={styles.chartNavigation}>
-          <ArrowLeft size={20} color="#000" />
-          <ArrowLeft size={20} color="#000" style={{ transform: [{ scaleX: -1 }] }} />
-        </View>
-      </View>
-
-      {/* Gráfico de Línea - Se usa una librería externa como react-native-chart-kit */}
-      <Text>Chart</Text>
-      <LineChart
-        data={MOCK_CHART_DATA}
-        width={screenWidth - 20} // Ancho total de la pantalla menos el padding horizontal
-        height={200}
-        chartConfig={{
-          backgroundColor: '#fff',
-          backgroundGradientFrom: '#fff',
-          backgroundGradientTo: '#fff',
-          decimalPlaces: 2,
-          color: (opacity = 1) => account.type.color, // Color principal de la línea
-          labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-          style: {
-            borderRadius: 16,
-          },
-          propsForDots: {
-            r: '0', // Ocultar los puntos
-          },
-        }}
-        bezier // Curva suave
-        style={styles.chartStyle}
-        withInnerLines={false} // Quitar líneas internas
-        withVerticalLines={false} // Quitar líneas verticales
-        withHorizontalLabels={false} // Quitar etiquetas horizontales (montos)
-        // Se asume que el tooltip ($82.75 Sep 7, 2025) es un componente superpuesto/manual
-      />
-    </View>
-  );
+  const refRBSheet = useRef(undefined);
 
   const headerList = (
     <>
@@ -121,10 +49,6 @@ export const DetailAccountScreen = ({ route }: Props) => {
           <Text style={styles.walletBalance}>{formatCurrency(account.balance)}</Text>
         </View>
       </View>
-      {/* Fecha y Gráfico */}
-      {/* TODO: MOCK */}
-      <Text style={styles.dateLabel}>September, 2025</Text>
-      {renderChart()}
 
       {/* SearchBar */}
       <InputText LeftIcon={Search} placeholder="Buscar transacciones" />
@@ -137,8 +61,36 @@ export const DetailAccountScreen = ({ route }: Props) => {
     <MainLayout
       title="Detalles"
       RightActionIcon={EllipsisVertical}
-      rightAction={() => alert('editar')}
+      rightAction={() => refRBSheet.current.open()}
     >
+      <RBSheet
+        ref={refRBSheet}
+        height={200} // Altura ajustada para 3 opciones
+        customStyles={{
+          container: styles.sheetContainer,
+          draggableIcon: styles.draggableIcon,
+        }}
+      >
+        <View style={styles.contentContainer}>
+          {/* Encabezado: Nombre de la Cuenta */}
+          <Text style={styles.headerText}>Acciones para: {account.name}</Text>
+
+          {/* Opción 1: Editar Cuenta */}
+          <TouchableOpacity style={styles.actionButton} onPress={() => console.log('a')}>
+            <Edit3 size={24} color={COLORS.primary} />
+            <Text style={styles.actionText}>Editar Cuenta</Text>
+          </TouchableOpacity>
+
+          {/* Opción 2: Eliminar Cuenta */}
+          <TouchableOpacity
+            style={[styles.actionButton, styles.deleteButton]}
+            onPress={() => console.log('b')}
+          >
+            <Trash2 size={24} color={'red'} />
+            <Text style={[styles.actionText, styles.deleteText]}>Eliminar Cuenta</Text>
+          </TouchableOpacity>
+        </View>
+      </RBSheet>
       <EntryList
         group={grupedData}
         fetchNextPage={fetchNextPage}
@@ -289,5 +241,45 @@ const styles = StyleSheet.create({
   navBarButtonTextDark: {
     color: '#fff', // El color en la imagen parece ser blanco
     fontWeight: '600',
+  },
+  ////////////////////////////////
+  sheetContainer: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 15,
+  },
+  draggableIcon: {
+    backgroundColor: COLORS.secondaryText,
+  },
+  contentContainer: {
+    paddingTop: 10,
+  },
+  headerText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.secondaryText,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 15,
+    paddingHorizontal: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  actionText: {
+    fontSize: 18,
+    marginLeft: 15,
+    color: COLORS.text,
+    fontWeight: '500',
+  },
+  deleteButton: {
+    marginTop: 5,
+    borderBottomWidth: 0, // No border for the last item
+  },
+  deleteText: {
+    color: COLORS.danger || '#D32F2F',
   },
 });

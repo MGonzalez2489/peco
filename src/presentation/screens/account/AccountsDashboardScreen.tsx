@@ -1,3 +1,4 @@
+import { formatCurrency } from '@infrastructure/utils';
 import { FabButton } from '@presentation/components';
 import { AccountList } from '@presentation/components/accounts';
 import { MainLayout } from '@presentation/layout';
@@ -23,7 +24,7 @@ export const AccountsDashboardScreen = () => {
       {/* Tarjeta de Resumen Global (Total Balance) */}
       <View style={styles.summaryCard}>
         <Text style={styles.summaryTitle}>Balance Total </Text>
-        <Text style={styles.totalBalanceText}>${totalBalance}</Text>
+        <Text style={styles.totalBalanceText}>{formatCurrency(totalBalance)}</Text>
         <Text style={styles.summarySubtitle}>Incluye todas las cuentas registradas</Text>
       </View>
 
@@ -42,10 +43,7 @@ export const AccountsDashboardScreen = () => {
   );
 };
 
-// --- Estilos ---
-
 const styles = StyleSheet.create({
-  // Summary Card
   summaryCard: {
     backgroundColor: '#fff',
     borderRadius: 15,
@@ -72,8 +70,6 @@ const styles = StyleSheet.create({
     color: '#999',
     marginTop: 10,
   },
-
-  // Account List
   listTitle: {
     fontSize: 18,
     fontWeight: '700',
