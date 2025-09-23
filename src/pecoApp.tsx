@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useAuthStore } from './presentation/store/useAuthStore';
+import { AuthProvider } from '@presentation/providers/AuthProvider';
 
 //TODO: use AuthProvider
 
@@ -28,7 +29,9 @@ export const PecoApp = () => {
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
         <NavigationContainer>
-          <RootNavigator />
+          <AuthProvider>
+            <RootNavigator />
+          </AuthProvider>
         </NavigationContainer>
       </SafeAreaProvider>
     </QueryClientProvider>
