@@ -1,4 +1,3 @@
-
 You are an expert in TypeScript, Angular, and scalable web application development. You write functional, maintainable, performant, and accessible code following Angular and TypeScript best practices.
 
 ## TypeScript Best Practices
@@ -6,6 +5,12 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 - Use strict type checking
 - Prefer type inference when the type is obvious
 - Avoid the `any` type; use `unknown` when type is uncertain
+
+## Code Style
+
+- **All code, comments, and documentation must be written in English.**
+- Use English for variable names, function names, and commit messages.
+- Do not use natural language comments in other languages; translate them to English.
 
 ## Angular Best Practices
 
