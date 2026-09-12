@@ -7,13 +7,6 @@ import { MovimientoFormModalComponent } from './features/movimientos/componentes
   selector: 'app-root',
   imports: [RouterOutlet, NavbarComponent, MovimientoFormModalComponent],
   template: `
-    <a
-      href="#contenido"
-      class="absolute left-4 top-4 z-50 -translate-y-full rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-lg transition focus:translate-y-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
-    >
-      Saltar al contenido
-    </a>
-
     <div
       class="min-h-dvh bg-slate-50 text-slate-900 selection:bg-indigo-500/20 dark:bg-slate-950 dark:text-slate-100"
     >
@@ -28,10 +21,7 @@ import { MovimientoFormModalComponent } from './features/movimientos/componentes
       </main>
     </div>
 
-    <app-movimiento-form-modal
-      [isOpen]="modalAbierto()"
-      (cerrado)="modalAbierto.set(false)"
-    />
+    <app-movimiento-form-modal [isOpen]="modalAbierto()" (cerrado)="modalAbierto.set(false)" />
   `,
 })
 export class AppComponent {
