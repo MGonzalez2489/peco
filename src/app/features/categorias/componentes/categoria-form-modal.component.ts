@@ -171,7 +171,11 @@ export class CategoriaFormModalComponent {
     const editar = this.categoria();
     if (!this.isOpen()) return;
 
+    const saldo = this.form.controls.saldoInicial;
+
     if (editar) {
+      saldo.clearValidators();
+      saldo.updateValueAndValidity();
       this.form.reset({
         nombre: editar.nombre,
         saldoInicial: null,
@@ -179,6 +183,8 @@ export class CategoriaFormModalComponent {
         color: (editar.color as ColorCategoria) ?? 'indigo',
       });
     } else {
+      saldo.setValidators([Validators.required, Validators.min(0)]);
+      saldo.updateValueAndValidity();
       this.form.reset({
         nombre: '',
         saldoInicial: null,
