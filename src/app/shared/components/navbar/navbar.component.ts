@@ -20,6 +20,7 @@ export class NavbarComponent {
     {label: 'Movimientos', route: '/movements', icon: 'movements'},
     {label: 'Categorías', route: '/categories', icon: 'categories'},
     {label: 'Ajustes', route: '/preferences', icon: 'settings'},
+    {label: 'Cambios', route: '/logs', icon: 'logs'},
   ];
 
   private readonly currentRoute = toSignal(
