@@ -1,0 +1,50 @@
+<section class="space-y-6">
+  <div>
+    <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Categories</h1>
+    <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+      Sink funds with a balance and a goal to organize your money.
+    </p>
+  </div>
+
+  <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+    @for (category of categories(); track category.id) {
+      <a
+        [routerLink]="['/categories', category.id]"
+        class="block rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950"
+        [attr.aria-label]="'View details of ' + category.name"
+      >
+        <app-stat-card
+          [title]="category.name"
+          [amount]="category.currentBalance"
+          [color]="category.color ?? 'indigo'"
+          [goal]="category.targetGoal"
+          [subtext]="categorySubtext(category.targetGoal)"
+        />
+      </a>
+    }
+
+    <button
+      type="button"
+      (click)="modalOpen.set(true)"
+      class="flex min-h-32 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-300 text-slate-500 transition hover:border-indigo-400 hover:text-indigo-600 dark:border-slate-700 dark:text-slate-400 dark:hover:border-indigo-500 dark:hover:text-indigo-400"
+    >
+      <span
+        class="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800"
+      >
+        <svg
+          class="h-5 w-5"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke-width="2"
+          stroke="currentColor"
+          aria-hidden="true"
+        >
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+        </svg>
+      </span>
+      <span class="text-sm font-semibold">New category</span>
+    </button>
+  </div>
+</section>
+
+<app-category-form-modal [isOpen]="modalOpen()" [category]="null" (closed)="modalOpen.set(false)" />

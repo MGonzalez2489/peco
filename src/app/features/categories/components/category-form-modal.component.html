@@ -1,0 +1,141 @@
+<app-modal
+  [isOpen]="isOpen()"
+  [title]="category() ? 'Edit category' : 'New category'"
+  (closed)="closed.emit()"
+>
+  <form [formGroup]="form" (ngSubmit)="save()" class="mt-5 space-y-4" novalidate>
+    @if (category(); as editing) {
+      <div
+        class="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3 text-sm dark:bg-slate-800/60"
+      >
+        <span class="text-slate-500 dark:text-slate-400">Current balance</span>
+        <span class="font-semibold text-slate-900 dark:text-white">
+          {{ formatCurrency(editing.currentBalance) }}
+        </span>
+      </div>
+    }
+
+    <div>
+      <label
+        for="cat-name"
+        class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
+      >
+        Name
+      </label>
+      <input
+        id="cat-name"
+        formControlName="name"
+        type="text"
+        autocomplete="off"
+        placeholder="e.g. Vacation"
+        class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+        [attr.aria-invalid]="form.controls.name.touched && form.controls.name.invalid"
+      />
+      @if (errorFor(form.controls.name); as error) {
+        <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ error }}</p>
+      }
+    </div>
+
+    @if (!category()) {
+      <div>
+        <label
+          for="cat-balance"
+          class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
+        >
+          Initial balance
+        </label>
+        <input
+          id="cat-balance"
+          formControlName="initialBalance"
+          type="number"
+          min="0"
+          step="0.01"
+          inputmode="decimal"
+          placeholder="0.00"
+          class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+          [attr.aria-invalid]="
+            form.controls.initialBalance.touched && form.controls.initialBalance.invalid
+          "
+        />
+        @if (errorFor(form.controls.initialBalance); as error) {
+          <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ error }}</p>
+        }
+      </div>
+    }
+
+    <div>
+      <label
+        for="cat-goal"
+        class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
+      >
+        Goal <span class="font-normal text-slate-400 dark:text-slate-500">(optional)</span>
+      </label>
+      <input
+        id="cat-goal"
+        formControlName="targetGoal"
+        type="number"
+        min="0"
+        step="0.01"
+        inputmode="decimal"
+        placeholder="0.00"
+        class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+        [attr.aria-invalid]="form.controls.targetGoal.touched && form.controls.targetGoal.invalid"
+      />
+      @if (errorFor(form.controls.targetGoal); as error) {
+        <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ error }}</p>
+      }
+    </div>
+
+    <fieldset>
+      <legend class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+        Color
+      </legend>
+      <div class="flex flex-wrap gap-2">
+        @for (option of colorOptions; track option.key) {
+          <button
+            type="button"
+            (click)="form.controls.color.setValue(option.key)"
+            class="flex h-9 w-9 items-center justify-center rounded-full transition"
+            [class]="
+              form.controls.color.value === option.key
+                ? option.classes +
+                  ' ring-2 ring-slate-400/70 ring-offset-2 ring-offset-white dark:ring-offset-slate-900'
+                : option.classes
+            "
+            [attr.aria-pressed]="form.controls.color.value === option.key"
+            [attr.aria-label]="'Use color ' + option.key"
+          >
+            @if (form.controls.color.value === option.key) {
+              <svg
+                class="h-4 w-4 text-white"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="3"
+                stroke="currentColor"
+                aria-hidden="true"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+              </svg>
+            }
+          </button>
+        }
+      </div>
+    </fieldset>
+
+    <div class="flex justify-end gap-2 pt-2">
+      <button
+        type="button"
+        (click)="closed.emit()"
+        class="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+      >
+        Cancel
+      </button>
+      <button
+        type="submit"
+        class="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm shadow-indigo-600/30 transition hover:bg-indigo-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
+      >
+        {{ category() ? 'Save changes' : 'Create category' }}
+      </button>
+    </div>
+  </form>
+</app-modal>

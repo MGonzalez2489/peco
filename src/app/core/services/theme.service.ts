@@ -1,35 +1,35 @@
-import { Injectable, computed, effect, signal } from '@angular/core';
+import {Injectable, computed, effect, signal} from '@angular/core';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 
 const THEME_STORAGE_KEY = 'peco.theme';
 
-@Injectable({ providedIn: 'root' })
+@Injectable({providedIn: 'root'})
 export class ThemeService {
-  readonly themeMode = signal<ThemeMode>(this.leerPreferenciaGuardada());
+  readonly themeMode = signal<ThemeMode>(this.readSavedPreference());
 
   private readonly media = window.matchMedia('(prefers-color-scheme: dark)');
 
-  private readonly sistemaOscuro = signal(this.media.matches);
+  private readonly systemDark = signal(this.media.matches);
 
-  readonly esOscuro = computed(() => {
+  readonly isDark = computed(() => {
     switch (this.themeMode()) {
       case 'light':
         return false;
       case 'dark':
         return true;
       default:
-        return this.sistemaOscuro();
+        return this.systemDark();
     }
   });
 
   constructor() {
-    this.media.addEventListener('change', (evento) => {
-      this.sistemaOscuro.set(evento.matches);
+    this.media.addEventListener('change', (event) => {
+      this.systemDark.set(event.matches);
     });
 
     effect(() => {
-      document.documentElement.classList.toggle('dark', this.esOscuro());
+      document.documentElement.classList.toggle('dark', this.isDark());
     });
 
     effect(() => {
@@ -37,14 +37,12 @@ export class ThemeService {
     });
   }
 
-  setThemeMode(modo: ThemeMode): void {
-    this.themeMode.set(modo);
+  setThemeMode(mode: ThemeMode): void {
+    this.themeMode.set(mode);
   }
 
-  private leerPreferenciaGuardada(): ThemeMode {
-    const guardado = localStorage.getItem(THEME_STORAGE_KEY);
-    return guardado === 'light' || guardado === 'dark' || guardado === 'system'
-      ? guardado
-      : 'system';
+  private readSavedPreference(): ThemeMode {
+    const saved = localStorage.getItem(THEME_STORAGE_KEY);
+    return saved === 'light' || saved === 'dark' || saved === 'system' ? saved : 'system';
   }
 }

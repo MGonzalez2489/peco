@@ -13,14 +13,13 @@
     "importHelpers": true,
     "target": "ES2022",
     "module": "preserve",
-    "baseUrl": "./",
     "paths": {
       "@core/*": ["./src/app/core/*"],
       "@shared/*": ["./src/app/shared/*"],
-      "@features/categories/*": ["./src/app/features/categorias/*"],
+      "@features/categories/*": ["./src/app/features/categories/*"],
       "@features/dashboard/*": ["./src/app/features/dashboard/*"],
-      "@features/movements/*": ["./src/app/features/movimientos/*"],
-      "@features/settings/*": ["./src/app/features/preferencias/*"]
+      "@features/movements/*": ["./src/app/features/movements/*"],
+      "@features/preferences/*": ["./src/app/features/preferences/*"]
     }
   },
   "angularCompilerOptions": {

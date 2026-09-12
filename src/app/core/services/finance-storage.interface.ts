@@ -1,25 +1,20 @@
-import { InjectionToken, Signal, inject } from '@angular/core';
-import {
-  Categoria,
-  CrearCategoriaDTO,
-  CrearMovimientoDTO,
-  Movimiento,
-} from '../models/finance.model';
-import { LocalFinanceService } from './local-finance.service';
+import {InjectionToken, Signal, inject} from '@angular/core';
+import {Category, CreateCategoryDTO, CreateMovementDTO, Movement} from '../models/finance.model';
+import {LocalFinanceService} from './local-finance.service';
 
-export interface IFinanceStorage {
-  readonly categorias: Signal<readonly Categoria[]>;
-  readonly movimientos: Signal<readonly Movimiento[]>;
-  readonly saldoTotal: Signal<number>;
+export interface FinanceStorage {
+  readonly categories: Signal<readonly Category[]>;
+  readonly movements: Signal<readonly Movement[]>;
+  readonly totalBalance: Signal<number>;
 
-  agregarCategoria(dto: CrearCategoriaDTO): void;
-  actualizarCategoria(id: string, dto: CrearCategoriaDTO): void;
-  eliminarCategoria(id: string, categoriaDestinoId?: string): void;
-  registrarMovimiento(dto: CrearMovimientoDTO): void;
-  eliminarMovimiento(id: string): void;
+  addCategory(dto: CreateCategoryDTO): void;
+  updateCategory(id: string, dto: CreateCategoryDTO): void;
+  deleteCategory(id: string, destinationCategoryId?: string): void;
+  registerMovement(dto: CreateMovementDTO): void;
+  deleteMovement(id: string): void;
 }
 
-export const FINANCE_STORAGE = new InjectionToken<IFinanceStorage>('FINANCE_STORAGE', {
+export const FINANCE_STORAGE = new InjectionToken<FinanceStorage>('FINANCE_STORAGE', {
   providedIn: 'root',
   factory: () => inject(LocalFinanceService),
 });

@@ -1,43 +1,9 @@
-import { Component, effect, input, output, viewChild, ElementRef } from '@angular/core';
+import {Component, effect, input, output, viewChild, ElementRef} from '@angular/core';
 
 @Component({
   selector: 'app-modal',
   imports: [],
-  template: `
-    @if (isOpen()) {
-      <div
-        class="backdrop-anim fixed inset-0 z-50 flex items-end justify-center bg-slate-900/60 p-0 backdrop-blur-sm sm:items-center sm:p-4"
-        (click)="closed.emit()"
-      >
-        <div
-          #panel
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="modal-title"
-          tabindex="-1"
-          class="modal-panel max-h-[90dvh] w-full overflow-y-auto rounded-t-2xl bg-white p-6 shadow-xl dark:bg-slate-900 sm:max-w-lg sm:rounded-2xl"
-          (click)="$event.stopPropagation()"
-        >
-          <div class="flex items-center justify-between gap-4">
-            <h2 id="modal-title" class="text-lg font-semibold leading-none text-slate-900 dark:text-white">
-              {{ title() }}
-            </h2>
-            <button
-              type="button"
-              (click)="closed.emit()"
-              class="rounded-full p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-              aria-label="Cerrar"
-            >
-              <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-          <ng-content></ng-content>
-        </div>
-      </div>
-    }
-  `,
+  templateUrl: './modal.component.html',
   styles: `
     :host {
       display: contents;
@@ -72,7 +38,7 @@ import { Component, effect, input, output, viewChild, ElementRef } from '@angula
     }
   `,
   host: {
-    '(document:keydown.escape)': 'cerrarConEscape()',
+    '(document:keydown.escape)': 'closeWithEscape()',
   },
 })
 export class ModalComponent {
@@ -92,7 +58,7 @@ export class ModalComponent {
     });
   }
 
-  cerrarConEscape(): void {
+  closeWithEscape(): void {
     if (this.isOpen()) {
       this.closed.emit();
     }
