@@ -34,5 +34,10 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./features/preferences/preferences.component').then((m) => m.PreferencesComponent),
   },
+  {
+    path: 'logs',
+    title: 'Registro de cambios',
+    loadComponent: () => import('./features/logs/logs.component').then((m) => m.LogsComponent),
+  },
   {path: '**', redirectTo: 'dashboard'},
 ];

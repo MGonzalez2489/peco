@@ -19,6 +19,7 @@
       "@features/categories/*": ["./src/app/features/categories/*"],
       "@features/dashboard/*": ["./src/app/features/dashboard/*"],
       "@features/movements/*": ["./src/app/features/movements/*"],
+      "@features/logs/*": ["./src/app/features/logs/*"],
       "@features/preferences/*": ["./src/app/features/preferences/*"]
     }
   },
