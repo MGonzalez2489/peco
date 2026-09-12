@@ -11,7 +11,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
       class="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95 md:inset-x-0 md:bottom-auto md:top-0 md:border-b md:border-t-0"
     >
       <div class="mx-auto flex max-w-5xl items-center px-2 md:px-4">
-        <a routerLink="/dashboard" class="hidden items-center gap-2 py-4 pr-8 md:flex" aria-label="Peco — Inicio">
+        <a routerLink="/dashboard" class="hidden items-center gap-2 py-4 pr-10 md:flex" aria-label="Peco — Inicio">
           <span class="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm">
             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
               <path
@@ -24,13 +24,15 @@ import { toSignal } from '@angular/core/rxjs-interop';
           <span class="text-lg font-bold tracking-tight text-slate-900 dark:text-white">Peco</span>
         </a>
 
-        <div class="grid flex-1 grid-cols-4 items-center md:grid-cols-3">
+        <div
+          class="flex w-full items-center justify-around md:ml-auto md:w-auto md:justify-end md:gap-2"
+        >
           @for (enlace of enlaces; track enlace.ruta) {
             <a
               [routerLink]="enlace.ruta"
               routerLinkActive="text-indigo-600 dark:text-indigo-400"
               [attr.aria-current]="esActivo(enlace.ruta) ? 'page' : null"
-              class="flex flex-col items-center gap-1 px-2 py-2 text-[11px] font-medium text-slate-500 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-white md:flex-row md:gap-2 md:py-4 md:text-sm"
+              class="flex flex-col items-center gap-1 px-2 py-2 text-[11px] font-medium text-slate-500 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-white md:flex-row md:gap-2 md:px-3 md:py-4 md:text-sm"
             >
               @switch (enlace.icono) {
                 @case ('inicio') {
@@ -61,21 +63,20 @@ import { toSignal } from '@angular/core/rxjs-interop';
                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6Z" />
                   </svg>
                 }
+                @case ('preferencias') {
+                  <svg class="h-6 w-6 md:h-5 md:w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 0 1 1.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.893.15c.543.09.94.56.94 1.109v1.094c0 .55-.397 1.02-.94 1.11l-.893.149c-.425.07-.765.383-.93.78-.165.398-.143.854.107 1.204l.527.738c.32.447.269 1.06-.12 1.45l-.774.773a1.125 1.125 0 0 1-1.449.12l-.738-.527c-.35-.25-.806-.272-1.203-.107-.397.165-.71.505-.781.929l-.149.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527c-.447.32-1.06.269-1.45-.12l-.773-.774a1.125 1.125 0 0 1-.12-1.45l.527-.737c.25-.35.272-.806.108-1.204-.165-.397-.506-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.108-1.204l-.526-.738a1.125 1.125 0 0 1 .12-1.45l.773-.773a1.125 1.125 0 0 1 1.45-.12l.737.527c.35.25.807.272 1.204.107.397-.165.71-.505.78-.929l.15-.894Z"
+                    />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                  </svg>
+                }
               }
               <span>{{ enlace.etiqueta }}</span>
             </a>
           }
-
-          <button
-            type="button"
-            (click)="capturar.emit()"
-            class="-mt-6 flex h-14 w-14 items-center justify-center self-start rounded-full bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 transition hover:bg-indigo-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 md:hidden"
-            aria-label="Registrar movimiento rápido"
-          >
-            <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-            </svg>
-          </button>
         </div>
 
         <button
@@ -90,6 +91,17 @@ import { toSignal } from '@angular/core/rxjs-interop';
         </button>
       </div>
     </nav>
+
+    <button
+      type="button"
+      (click)="capturar.emit()"
+      class="fixed bottom-20 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 transition hover:bg-indigo-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 md:hidden"
+      aria-label="Registrar movimiento rápido"
+    >
+      <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+      </svg>
+    </button>
   `,
 })
 export class NavbarComponent {
@@ -101,6 +113,7 @@ export class NavbarComponent {
     { etiqueta: 'Inicio', ruta: '/dashboard', icono: 'inicio' },
     { etiqueta: 'Movimientos', ruta: '/movimientos', icono: 'movimientos' },
     { etiqueta: 'Categorías', ruta: '/categorias', icono: 'categorias' },
+    { etiqueta: 'Ajustes', ruta: '/preferencias', icono: 'preferencias' },
   ];
 
   private readonly rutaActual = toSignal(

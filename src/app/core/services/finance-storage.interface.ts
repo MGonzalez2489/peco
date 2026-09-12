@@ -13,6 +13,8 @@ export interface IFinanceStorage {
   readonly saldoTotal: Signal<number>;
 
   agregarCategoria(dto: CrearCategoriaDTO): void;
+  actualizarCategoria(id: string, dto: CrearCategoriaDTO): void;
+  eliminarCategoria(id: string, categoriaDestinoId?: string): void;
   registrarMovimiento(dto: CrearMovimientoDTO): void;
   eliminarMovimiento(id: string): void;
 }

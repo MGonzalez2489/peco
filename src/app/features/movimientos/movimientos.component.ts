@@ -1,26 +1,27 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { FINANCE_STORAGE } from '../../core/services/finance-storage.interface';
+import { ConfirmModalComponent } from '../../shared/components/confirm-modal/confirm-modal.component';
 import {
+  Movimiento,
   TipoMovimiento,
   TIPO_MOVIMIENTO_PALETA,
   TIPO_MOVIMIENTO_LABEL,
+  impactoEliminacion,
 } from '../../core/models/finance.model';
 
 type FiltroMovimientos = 'TODOS' | TipoMovimiento;
 
 @Component({
   selector: 'app-movimientos',
-  imports: [CurrencyPipe, DatePipe],
+  imports: [CurrencyPipe, DatePipe, ConfirmModalComponent],
   template: `
     <section class="space-y-5">
-      <div class="flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Movimientos</h1>
-          <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            {{ movimientosFiltrados().length }} movimiento{{ movimientosFiltrados().length === 1 ? '' : 's' }} registrado{{ movimientosFiltrados().length === 1 ? '' : 's' }}
-          </p>
-        </div>
+      <div>
+        <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Movimientos</h1>
+        <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          {{ movimientosFiltrados().length }} movimiento{{ movimientosFiltrados().length === 1 ? '' : 's' }} registrado{{ movimientosFiltrados().length === 1 ? '' : 's' }}
+        </p>
       </div>
 
       <div
@@ -31,17 +32,35 @@ type FiltroMovimientos = 'TODOS' | TipoMovimiento;
         @for (opcion of opcionesFiltro; track opcion.valor) {
           <button
             type="button"
-            (click)="filtro.set(opcion.valor)"
+            (click)="filtroTipo.set(opcion.valor)"
             [class]="
-              filtro() === opcion.valor
+              filtroTipo() === opcion.valor
                 ? 'flex-1 whitespace-nowrap rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-slate-900 shadow-sm dark:bg-slate-900 dark:text-white'
                 : 'flex-1 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
             "
-            [attr.aria-pressed]="filtro() === opcion.valor"
+            [attr.aria-pressed]="filtroTipo() === opcion.valor"
           >
             {{ opcion.etiqueta }}
           </button>
         }
+      </div>
+
+      <div>
+        <label for="filtro-categoria" class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+          Filtrar por meta / apartado
+        </label>
+        <select
+          id="filtro-categoria"
+          (change)="filtroCategoria.set($any($event.target).value)"
+          class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white sm:max-w-xs"
+        >
+          <option value="">Todas las metas</option>
+          @for (categoria of categorias(); track categoria.id) {
+            <option [value]="categoria.id" [selected]="categoria.id === filtroCategoria()">
+              {{ categoria.nombre }}
+            </option>
+          }
+        </select>
       </div>
 
       <ul
@@ -78,7 +97,7 @@ type FiltroMovimientos = 'TODOS' | TipoMovimiento;
               </span>
               <button
                 type="button"
-                (click)="storage.eliminarMovimiento(movimiento.id)"
+                (click)="movimientoAEliminar.set(movimiento)"
                 class="rounded-lg p-1.5 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
                 [attr.aria-label]="'Eliminar movimiento de ' + nombreCategoria(movimiento.categoriaId)"
               >
@@ -94,17 +113,34 @@ type FiltroMovimientos = 'TODOS' | TipoMovimiento;
           </li>
         } @empty {
           <li class="p-6 text-center text-sm text-slate-500 dark:text-slate-400">
-            No hay movimientos{{ filtro() !== 'TODOS' ? ' con este filtro' : '' }}.
+            No hay movimientos con los filtros seleccionados.
           </li>
         }
       </ul>
     </section>
+
+    <app-confirm-modal
+      [isOpen]="movimientoAEliminar() !== null"
+      title="Eliminar movimiento"
+      confirmLabel="Sí, eliminar"
+      cancelLabel="Cancelar"
+      (confirmed)="procederEliminar()"
+      (dismissed)="cancelarEliminar()"
+    >
+      <p><strong>Se revertirá este movimiento.</strong></p>
+      <p class="mt-2">{{ mensajeImpacto() }}</p>
+    </app-confirm-modal>
   `,
 })
 export class MovimientosComponent {
   readonly storage = inject(FINANCE_STORAGE);
 
-  readonly filtro = signal<FiltroMovimientos>('TODOS');
+  readonly categorias = this.storage.categorias;
+
+  readonly filtroTipo = signal<FiltroMovimientos>('TODOS');
+  readonly filtroCategoria = signal('');
+
+  readonly movimientoAEliminar = signal<Movimiento | null>(null);
 
   readonly opcionesFiltro: Array<{ valor: FiltroMovimientos; etiqueta: string }> = [
     { valor: 'TODOS', etiqueta: 'Todos' },
@@ -114,16 +150,36 @@ export class MovimientosComponent {
   ];
 
   readonly movimientosFiltrados = computed(() => {
-    const ordenados = [...this.storage.movimientos()].sort((a, b) =>
-      b.fecha.localeCompare(a.fecha),
+    const tipoFiltro = this.filtroTipo();
+    const categoriaFiltro = this.filtroCategoria();
+
+    return [...this.storage.movimientos()]
+      .sort((a, b) => b.fecha.localeCompare(a.fecha))
+      .filter((movimiento) => {
+        const coincideTipo =
+          tipoFiltro === 'TODOS' || movimiento.tipo === tipoFiltro;
+        const coincideCategoria =
+          !categoriaFiltro ||
+          movimiento.categoriaId === categoriaFiltro ||
+          movimiento.categoriaDestinoId === categoriaFiltro;
+        return coincideTipo && coincideCategoria;
+      });
+  });
+
+  readonly mensajeImpacto = computed(() => {
+    const movimiento = this.movimientoAEliminar();
+    if (!movimiento) return '';
+    return impactoEliminacion(
+      movimiento,
+      this.nombreCategoria(movimiento.categoriaId),
+      movimiento.categoriaDestinoId
+        ? this.nombreCategoria(movimiento.categoriaDestinoId)
+        : undefined,
     );
-    return this.filtro() === 'TODOS'
-      ? ordenados
-      : ordenados.filter((movimiento) => movimiento.tipo === this.filtro());
   });
 
   private readonly categoriasPorId = computed(
-    () => new Map(this.storage.categorias().map((categoria) => [categoria.id, categoria])),
+    () => new Map(this.categorias().map((categoria) => [categoria.id, categoria])),
   );
 
   readonly tipoLabel = (tipo: TipoMovimiento) => TIPO_MOVIMIENTO_LABEL[tipo];
@@ -135,4 +191,16 @@ export class MovimientosComponent {
 
   readonly inicialCategoria = (id: string): string =>
     this.categoriasPorId().get(id)?.nombre?.charAt(0).toUpperCase() ?? '?';
+
+  procederEliminar(): void {
+    const movimiento = this.movimientoAEliminar();
+    if (movimiento) {
+      this.storage.eliminarMovimiento(movimiento.id);
+    }
+    this.movimientoAEliminar.set(null);
+  }
+
+  cancelarEliminar(): void {
+    this.movimientoAEliminar.set(null);
+  }
 }

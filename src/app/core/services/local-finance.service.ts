@@ -4,6 +4,7 @@ import {
   CrearCategoriaDTO,
   CrearMovimientoDTO,
   Movimiento,
+  formatearMoneda,
 } from '../models/finance.model';
 import { IFinanceStorage } from './finance-storage.interface';
 
@@ -47,6 +48,40 @@ export class LocalFinanceService implements IFinanceStorage {
       icono: dto.icono,
     };
     this.categoriasSignal.update((actuales) => [...actuales, categoria]);
+  }
+
+  actualizarCategoria(id: string, dto: CrearCategoriaDTO): void {
+    this.categoriasSignal.update((actuales) =>
+      actuales.map((categoria) =>
+        categoria.id === id
+          ? {
+              ...categoria,
+              nombre: dto.nombre.trim(),
+              metaObjetivo: dto.metaObjetivo,
+              color: dto.color,
+              icono: dto.icono ?? categoria.icono,
+            }
+          : categoria,
+      ),
+    );
+  }
+
+  eliminarCategoria(id: string, categoriaDestinoId?: string): void {
+    const categoria = this.categorias().find((c) => c.id === id);
+    if (!categoria) return;
+
+    if (categoria.saldoActual !== 0 && categoriaDestinoId && categoriaDestinoId !== id) {
+      const monto = categoria.saldoActual;
+      this.registrarMovimiento({
+        categoriaId: id,
+        tipo: 'TRANSFERENCIA',
+        monto,
+        categoriaDestinoId,
+        nota: `Eliminación de cuenta ${categoria.nombre} traspaso ${formatearMoneda(monto)}`,
+      });
+    }
+
+    this.categoriasSignal.update((actuales) => actuales.filter((c) => c.id !== id));
   }
 
   registrarMovimiento(dto: CrearMovimientoDTO): void {

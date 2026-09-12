@@ -26,5 +26,21 @@ export const routes: Routes = [
         (m) => m.CategoriasComponent,
       ),
   },
+  {
+    path: 'categorias/:id',
+    title: 'Detalle de cuenta',
+    loadComponent: () =>
+      import('./features/categorias/detalle/categoria-detalle.component').then(
+        (m) => m.CategoriaDetalleComponent,
+      ),
+  },
+  {
+    path: 'preferencias',
+    title: 'Preferencias',
+    loadComponent: () =>
+      import('./features/preferencias/preferencias.component').then(
+        (m) => m.PreferenciasComponent,
+      ),
+  },
   { path: '**', redirectTo: 'dashboard' },
 ];

@@ -1,4 +1,5 @@
 import { Component, computed, inject } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { CurrencyPipe, DatePipe } from '@angular/common';
 import { FINANCE_STORAGE } from '../../core/services/finance-storage.interface';
 import { StatCardComponent } from '../../shared/components/stat-card/stat-card.component';
@@ -12,7 +13,7 @@ import {
 
 @Component({
   selector: 'app-dashboard',
-  imports: [StatCardComponent, CurrencyPipe, DatePipe],
+  imports: [RouterLink, StatCardComponent, CurrencyPipe, DatePipe],
   template: `
     <section class="space-y-6">
       <div>
@@ -27,19 +28,25 @@ import {
         subtexto="Suma de todos tus apartados"
       />
 
-      <div>
-        <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+      <div class="mt-8">
+        <h2 class="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
           Apartados
         </h2>
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           @for (categoria of categorias(); track categoria.id) {
-            <app-stat-card
-              [titulo]="categoria.nombre"
-              [monto]="categoria.saldoActual"
-              [color]="categoria.color ?? 'indigo'"
-              [meta]="categoria.metaObjetivo"
-              [subtexto]="subtextoCategoria(categoria)"
-            />
+            <a
+              [routerLink]="['/categorias', categoria.id]"
+              class="block rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950"
+              [attr.aria-label]="'Ver detalle de ' + categoria.nombre"
+            >
+              <app-stat-card
+                [titulo]="categoria.nombre"
+                [monto]="categoria.saldoActual"
+                [color]="categoria.color ?? 'indigo'"
+                [meta]="categoria.metaObjetivo"
+                [subtexto]="subtextoCategoria(categoria)"
+              />
+            </a>
           } @empty {
             <p class="col-span-full text-sm text-slate-500 dark:text-slate-400">
               Aún no hay apartados. Crea el primero desde la sección Categorías.
@@ -48,8 +55,8 @@ import {
         </div>
       </div>
 
-      <div>
-        <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+      <div class="mt-8">
+        <h2 class="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
           Actividad reciente
         </h2>
         <ul class="divide-y divide-slate-200 overflow-hidden rounded-2xl border border-slate-200 bg-white dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">

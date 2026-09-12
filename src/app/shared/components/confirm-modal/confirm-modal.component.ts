@@ -1,0 +1,68 @@
+import { Component, input, output } from '@angular/core';
+import { ModalComponent } from '../modal/modal.component';
+
+@Component({
+  selector: 'app-confirm-modal',
+  imports: [ModalComponent],
+  template: `
+    <app-modal [isOpen]="isOpen()" [title]="title()" (closed)="dismissed.emit()">
+      <div class="mt-4 flex items-start gap-3 rounded-xl bg-slate-50 p-4 dark:bg-slate-800/60">
+        <span
+          class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full {{ danger() ? 'bg-rose-100 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400' : 'bg-indigo-100 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-400' }}"
+          aria-hidden="true"
+        >
+          @if (danger()) {
+            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"
+              />
+            </svg>
+          } @else {
+            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="m4.5 12.75 6 6 9-13.5"
+              />
+            </svg>
+          }
+        </span>
+        <div class="min-w-0 flex-1 space-y-1 text-sm text-slate-600 dark:text-slate-300">
+          <ng-content></ng-content>
+        </div>
+      </div>
+
+      <div class="mt-6 flex flex-col-reverse justify-end gap-2 sm:flex-row">
+        <button
+          type="button"
+          (click)="dismissed.emit()"
+          class="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+        >
+          {{ cancelLabel() }}
+        </button>
+        <button
+          type="button"
+          (click)="confirmed.emit()"
+          class="rounded-xl px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
+          [class]="danger()
+            ? 'bg-rose-600 shadow-rose-600/30 hover:bg-rose-500 focus-visible:ring-rose-500'
+            : 'bg-indigo-600 shadow-indigo-600/30 hover:bg-indigo-500 focus-visible:ring-indigo-500'"
+        >
+          {{ confirmLabel() }}
+        </button>
+      </div>
+    </app-modal>
+  `,
+})
+export class ConfirmModalComponent {
+  readonly isOpen = input(false);
+  readonly title = input('Confirmar acción');
+  readonly confirmLabel = input('Confirmar');
+  readonly cancelLabel = input('Cancelar');
+  readonly danger = input(true);
+
+  readonly confirmed = output<void>();
+  readonly dismissed = output<void>();
+}

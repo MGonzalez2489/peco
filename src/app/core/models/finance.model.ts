@@ -80,3 +80,21 @@ export const TIPO_MOVIMIENTO_PALETA: Record<
 
 export const formatearMoneda = (valor: number): string =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(valor);
+
+export function impactoEliminacion(
+  movimiento: Pick<
+    Movimiento,
+    'tipo' | 'monto' | 'categoriaId' | 'categoriaDestinoId'
+  >,
+  nombreOrigen: string,
+  nombreDestino?: string,
+): string {
+  switch (movimiento.tipo) {
+    case 'EGRESO':
+      return `+${formatearMoneda(movimiento.monto)} se devolverá al saldo de la categoría ${nombreOrigen}.`;
+    case 'INGRESO':
+      return `-${formatearMoneda(movimiento.monto)} se descontará del saldo de la categoría ${nombreOrigen}.`;
+    case 'TRANSFERENCIA':
+      return `Se revertirán los saldos de ${nombreOrigen} y ${nombreDestino ?? 'la categoría destino'}.`;
+  }
+}
