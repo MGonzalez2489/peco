@@ -1,7 +1,7 @@
-import { Component, signal } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
-import { NavbarComponent } from './shared/components/navbar/navbar.component';
-import { MovimientoFormModalComponent } from './features/movimientos/componentes/movimiento-form-modal.component';
+import {Component, signal} from '@angular/core';
+import {RouterOutlet} from '@angular/router';
+import {MovimientoFormModalComponent} from '@features/movements/componentes';
+import {NavbarComponent} from '@shared/components';
 
 @Component({
   selector: 'app-root',
