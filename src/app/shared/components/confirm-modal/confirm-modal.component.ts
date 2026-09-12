@@ -1,10 +1,12 @@
-import {Component, input, output} from '@angular/core';
+import {ChangeDetectionStrategy, Component, input, output} from '@angular/core';
 import {ModalComponent} from '../modal/modal.component';
 
 @Component({
   selector: 'app-confirm-modal',
   imports: [ModalComponent],
   templateUrl: './confirm-modal.component.html',
+  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ConfirmModalComponent {
   readonly isOpen = input(false);

@@ -1,9 +1,19 @@
-import {Component, effect, input, output, viewChild, ElementRef} from '@angular/core';
+import {
+  Component,
+  effect,
+  input,
+  output,
+  viewChild,
+  ElementRef,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 
 @Component({
   selector: 'app-modal',
   imports: [],
   templateUrl: './modal.component.html',
+  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     :host {
       display: contents;

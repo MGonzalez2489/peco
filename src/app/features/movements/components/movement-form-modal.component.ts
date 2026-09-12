@@ -1,14 +1,27 @@
-import {Component, computed, effect, inject, input, output, signal} from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import {FormBuilder, FormControl, ReactiveFormsModule, Validators} from '@angular/forms';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
-import {ModalComponent} from '../../../shared/components/modal/modal.component';
-import {FINANCE_STORAGE} from '../../../core/services/finance-storage.interface';
-import {MovementType, MOVEMENT_TYPE_LABEL} from '../../../core/models/finance.model';
+import {MOVEMENT_TYPE_LABEL} from '@core/constants';
+import {FINANCE_STORAGE} from '@core/services/finance-storage.interface';
+import {MovementType} from '@core/types';
+import {ModalComponent} from '@shared/components';
+import {CurrencyInputDirective} from '@shared/directives';
 
 @Component({
   selector: 'app-movement-form-modal',
-  imports: [ReactiveFormsModule, ModalComponent],
+  imports: [ReactiveFormsModule, ModalComponent, CurrencyInputDirective],
   templateUrl: './movement-form-modal.component.html',
+  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MovementFormModalComponent {
   readonly isOpen = input(false);

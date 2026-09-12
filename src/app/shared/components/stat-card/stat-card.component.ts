@@ -1,11 +1,13 @@
-import {Component, computed, input} from '@angular/core';
+import {ChangeDetectionStrategy, Component, computed, input} from '@angular/core';
 import {CurrencyPipe} from '@angular/common';
-import {categoryColor} from '../../../core/models/finance.model';
+import {categoryColor} from '../../../core/utils/category-color.util';
 
 @Component({
   selector: 'app-stat-card',
   imports: [CurrencyPipe],
   templateUrl: './stat-card.component.html',
+  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class StatCardComponent {
   readonly title = input<string>('');

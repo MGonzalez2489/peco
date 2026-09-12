@@ -1,20 +1,19 @@
-import {Component, computed, inject} from '@angular/core';
+import {ChangeDetectionStrategy, Component, computed, inject} from '@angular/core';
 import {RouterLink} from '@angular/router';
 import {CurrencyPipe, DatePipe} from '@angular/common';
-import {FINANCE_STORAGE} from '../../core/services/finance-storage.interface';
-import {StatCardComponent} from '../../shared/components/stat-card/stat-card.component';
-import {
-  Category,
-  MovementType,
-  MOVEMENT_TYPE_PALETTE,
-  MOVEMENT_TYPE_LABEL,
-  formatCurrency,
-} from '../../core/models/finance.model';
+import {MOVEMENT_TYPE_LABEL, MOVEMENT_TYPE_PALETTE} from '@core/constants';
+import {Category} from '@core/models';
+import {FINANCE_STORAGE} from '@core/services/finance-storage.interface';
+import {MovementType} from '@core/types';
+import {formatCurrency} from '@core/utils';
+import {StatCardComponent} from '@shared/components';
 
 @Component({
   selector: 'app-dashboard',
   imports: [RouterLink, StatCardComponent, CurrencyPipe, DatePipe],
   templateUrl: './dashboard.component.html',
+  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DashboardComponent {
   readonly storage = inject(FINANCE_STORAGE);

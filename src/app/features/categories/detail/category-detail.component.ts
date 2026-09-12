@@ -1,21 +1,22 @@
-import {Component, computed, inject, linkedSignal, signal} from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  linkedSignal,
+  signal,
+} from '@angular/core';
 import {ActivatedRoute, RouterLink, Router} from '@angular/router';
 import {CurrencyPipe, DatePipe} from '@angular/common';
 import {toSignal} from '@angular/core/rxjs-interop';
 import {map} from 'rxjs';
-import {FINANCE_STORAGE} from '../../../core/services/finance-storage.interface';
-import {StatCardComponent} from '../../../shared/components/stat-card/stat-card.component';
-import {ConfirmModalComponent} from '../../../shared/components/confirm-modal/confirm-modal.component';
+import {MOVEMENT_TYPE_LABEL, MOVEMENT_TYPE_PALETTE} from '@core/constants';
+import {Movement, Category} from '@core/models';
+import {FINANCE_STORAGE} from '@core/services/finance-storage.interface';
+import {MovementType} from '@core/types';
+import {formatCurrency, reversalImpact} from '@core/utils';
+import {StatCardComponent, ConfirmModalComponent} from '@shared/components';
 import {CategoryFormModalComponent} from '../components/category-form-modal.component';
-import {
-  Category,
-  Movement,
-  MOVEMENT_TYPE_PALETTE,
-  MOVEMENT_TYPE_LABEL,
-  MovementType,
-  formatCurrency,
-  deletionImpact,
-} from '../../../core/models/finance.model';
 
 @Component({
   selector: 'app-category-detail',
@@ -28,6 +29,8 @@ import {
     CategoryFormModalComponent,
   ],
   templateUrl: './category-detail.component.html',
+  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CategoryDetailComponent {
   readonly storage = inject(FINANCE_STORAGE);
@@ -42,7 +45,7 @@ export class CategoryDetailComponent {
 
   readonly editOpen = signal(false);
 
-  readonly movementToDelete = signal<Movement | null>(null);
+  readonly movementToRevert = signal<Movement | null>(null);
   readonly categoryToDelete = signal<Category | null>(null);
 
   readonly transferDestination = linkedSignal<Category | null, string>({
@@ -67,9 +70,9 @@ export class CategoryDetailComponent {
   );
 
   readonly movementImpactMessage = computed(() => {
-    const movement = this.movementToDelete();
+    const movement = this.movementToRevert();
     if (!movement) return '';
-    return deletionImpact(
+    return reversalImpact(
       movement,
       this.categoryName(movement.categoryId),
       movement.destinationCategoryId
@@ -125,16 +128,16 @@ export class CategoryDetailComponent {
       ? MOVEMENT_TYPE_PALETTE.INCOME
       : MOVEMENT_TYPE_PALETTE[movement.type];
 
-  proceedToDeleteMovement(): void {
-    const movement = this.movementToDelete();
+  proceedToRevertMovement(): void {
+    const movement = this.movementToRevert();
     if (movement) {
-      this.storage.deleteMovement(movement.id);
+      this.storage.revertMovement(movement.id);
     }
-    this.movementToDelete.set(null);
+    this.movementToRevert.set(null);
   }
 
-  cancelDeleteMovement(): void {
-    this.movementToDelete.set(null);
+  cancelRevertMovement(): void {
+    this.movementToRevert.set(null);
   }
 
   proceedToDeleteCategory(): void {
