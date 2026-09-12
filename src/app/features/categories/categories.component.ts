@@ -1,14 +1,16 @@
-import {Component, inject, signal} from '@angular/core';
+import {formatCurrency} from '@core/utils';
+import {ChangeDetectionStrategy, Component, inject, signal} from '@angular/core';
 import {RouterLink} from '@angular/router';
-import {FINANCE_STORAGE} from '../../core/services/finance-storage.interface';
-import {StatCardComponent} from '../../shared/components/stat-card/stat-card.component';
+import {FINANCE_STORAGE} from '@core/services/finance-storage.interface';
+import {StatCardComponent} from '@shared/components';
 import {CategoryFormModalComponent} from './components/category-form-modal.component';
-import {formatCurrency} from '../../core/models/finance.model';
 
 @Component({
   selector: 'app-categories',
   imports: [RouterLink, StatCardComponent, CategoryFormModalComponent],
   templateUrl: './categories.component.html',
+  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CategoriesComponent {
   readonly storage = inject(FINANCE_STORAGE);

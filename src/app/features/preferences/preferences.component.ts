@@ -1,10 +1,12 @@
-import {Component, inject} from '@angular/core';
-import {ThemeMode, ThemeService} from '../../core/services/theme.service';
+import {ChangeDetectionStrategy, Component, inject} from '@angular/core';
+import {ThemeService, ThemeMode} from '@core/services/theme.service';
 
 @Component({
   selector: 'app-preferences',
   imports: [],
   templateUrl: './preferences.component.html',
+  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PreferencesComponent {
   readonly themeService = inject(ThemeService);

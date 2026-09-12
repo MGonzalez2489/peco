@@ -47,10 +47,10 @@
         <input
           id="cat-balance"
           formControlName="initialBalance"
-          type="number"
-          min="0"
-          step="0.01"
+          appCurrencyInput
+          type="text"
           inputmode="decimal"
+          autocomplete="off"
           placeholder="0.00"
           class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
           [attr.aria-invalid]="
@@ -68,15 +68,15 @@
         for="cat-goal"
         class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
       >
-        Goal <span class="font-normal text-slate-400 dark:text-slate-500">(opcional)</span>
+        Meta <span class="font-normal text-slate-400 dark:text-slate-500">(opcional)</span>
       </label>
       <input
         id="cat-goal"
         formControlName="targetGoal"
-        type="number"
-        min="0"
-        step="0.01"
+        appCurrencyInput
+        type="text"
         inputmode="decimal"
+        autocomplete="off"
         placeholder="0.00"
         class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
         [attr.aria-invalid]="form.controls.targetGoal.touched && form.controls.targetGoal.invalid"

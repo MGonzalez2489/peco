@@ -1,11 +1,12 @@
 import {Injectable, computed, effect, signal} from '@angular/core';
-import {
-  Category,
-  CreateCategoryDTO,
-  CreateMovementDTO,
-  Movement,
-  formatCurrency,
-} from '../models/finance.model';
+import {CreateCategoryDTO} from '../dtos/create-category.dto';
+import {CreateMovementDTO} from '../dtos/create-movement.dto';
+import {SEED_CATEGORIES} from '../constants/seed-categories.constant';
+import {SEED_MOVEMENTS} from '../constants/seed-movements.constant';
+import {Category} from '../models/category.model';
+import {Movement} from '../models/movement.model';
+import {MovementType} from '../types/movement-type.type';
+import {formatCurrency} from '../utils/format-currency.util';
 import {FinanceStorage} from './finance-storage.interface';
 
 const STORAGE_KEY_CATEGORIES = 'peco.categories';
@@ -24,9 +25,8 @@ export class LocalFinanceService implements FinanceStorage {
   );
 
   constructor() {
-    const seed = createSeedData();
-    this.categoriesSignal.set(this.readPersisted(STORAGE_KEY_CATEGORIES, seed.categories));
-    this.movementsSignal.set(this.readPersisted(STORAGE_KEY_MOVEMENTS, seed.movements));
+    this.categoriesSignal.set(this.readPersisted(STORAGE_KEY_CATEGORIES, SEED_CATEGORIES));
+    this.movementsSignal.set(this.readPersisted(STORAGE_KEY_MOVEMENTS, SEED_MOVEMENTS));
 
     effect(() => {
       localStorage.setItem(STORAGE_KEY_CATEGORIES, JSON.stringify(this.categories()));
@@ -92,25 +92,44 @@ export class LocalFinanceService implements FinanceStorage {
     };
 
     this.movementsSignal.update((current) => [movement, ...current]);
-    this.applyMovement(movement, 1);
+    this.applyMovement(movement);
   }
 
-  deleteMovement(id: string): void {
+  revertMovement(id: string): void {
     const movement = this.movements().find((m) => m.id === id);
-    if (!movement) return;
+    if (!movement || movement.isReversal) return;
 
-    this.movementsSignal.update((current) => current.filter((m) => m.id !== id));
-    this.applyMovement(movement, -1);
+    const reversal: Movement = {
+      id: crypto.randomUUID(),
+      date: new Date().toISOString(),
+      categoryId:
+        movement.type === 'TRANSFER'
+          ? (movement.destinationCategoryId ?? movement.categoryId)
+          : movement.categoryId,
+      type: this.reversalType(movement.type),
+      amount: movement.amount,
+      note: this.reversalNote(movement),
+      destinationCategoryId:
+        movement.type === 'TRANSFER' ? movement.categoryId : movement.destinationCategoryId,
+      reversalId: movement.id,
+      isReversal: true,
+    };
+
+    this.movementsSignal.update((current) =>
+      current.map((m) => (m.id === movement.id ? {...m, isReversal: true} : m)),
+    );
+    this.movementsSignal.update((current) => [reversal, ...current]);
+    this.applyMovement(reversal);
   }
 
-  private applyMovement(movement: Movement, direction: 1 | -1): void {
+  private applyMovement(movement: Movement): void {
     this.categoriesSignal.update((current) =>
       current.map((category) => {
         let balance = category.currentBalance;
 
         if (category.id === movement.categoryId) {
           const sourceDelta = movement.type === 'INCOME' ? movement.amount : -movement.amount;
-          balance += direction * sourceDelta;
+          balance += sourceDelta;
         }
 
         if (
@@ -118,7 +137,7 @@ export class LocalFinanceService implements FinanceStorage {
           movement.destinationCategoryId &&
           category.id === movement.destinationCategoryId
         ) {
-          balance += direction * movement.amount;
+          balance += movement.amount;
         }
 
         return balance === category.currentBalance
@@ -126,6 +145,28 @@ export class LocalFinanceService implements FinanceStorage {
           : {...category, currentBalance: balance};
       }),
     );
+  }
+
+  private reversalType(type: MovementType): MovementType {
+    switch (type) {
+      case 'INCOME':
+        return 'EXPENSE';
+      case 'EXPENSE':
+        return 'INCOME';
+      case 'TRANSFER':
+        return 'TRANSFER';
+    }
+  }
+
+  private reversalNote(movement: Movement): string {
+    switch (movement.type) {
+      case 'INCOME':
+        return `Reversión de ingreso ${movement.id}`;
+      case 'EXPENSE':
+        return `Reversión de egreso ${movement.id}`;
+      case 'TRANSFER':
+        return `Reversión de transferencia ${movement.id}`;
+    }
   }
 
   private readPersisted<T>(key: string, fallback: T[]): T[] {
@@ -138,88 +179,4 @@ export class LocalFinanceService implements FinanceStorage {
       return fallback;
     }
   }
-}
-
-function createSeedData(): {categories: Category[]; movements: Movement[]} {
-  const daysAgo = (days: number): string => new Date(Date.now() - days * 86_400_000).toISOString();
-
-  const categories: Category[] = [
-    {
-      id: 'c-cash',
-      name: 'Efectivo',
-      currentBalance: 430,
-      targetGoal: 1000,
-      color: 'emerald',
-      icon: 'wallet',
-    },
-    {
-      id: 'c-savings',
-      name: 'Ahorro',
-      currentBalance: 1700,
-      targetGoal: 5000,
-      color: 'violet',
-      icon: 'savings',
-    },
-    {
-      id: 'c-investment',
-      name: 'Inversión',
-      currentBalance: 800,
-      color: 'amber',
-      icon: 'investment',
-    },
-  ];
-
-  const movements: Movement[] = [
-    {
-      id: 'm-1',
-      categoryId: 'c-cash',
-      type: 'INCOME',
-      amount: 2000,
-      date: daysAgo(6),
-      note: 'Nómina',
-    },
-    {
-      id: 'm-2',
-      categoryId: 'c-cash',
-      type: 'EXPENSE',
-      amount: 550,
-      date: daysAgo(5),
-      note: 'Mercado',
-    },
-    {
-      id: 'm-3',
-      categoryId: 'c-cash',
-      type: 'EXPENSE',
-      amount: 320,
-      date: daysAgo(3),
-      note: 'Restaurante',
-    },
-    {
-      id: 'm-4',
-      categoryId: 'c-savings',
-      type: 'INCOME',
-      amount: 1000,
-      date: daysAgo(4),
-      note: 'Bonificación',
-    },
-    {
-      id: 'm-5',
-      categoryId: 'c-cash',
-      type: 'TRANSFER',
-      amount: 700,
-      date: daysAgo(2),
-      destinationCategoryId: 'c-savings',
-      note: 'Ahorro automático',
-    },
-    {
-      id: 'm-6',
-      categoryId: 'c-investment',
-      type: 'INCOME',
-      amount: 800,
-      date: daysAgo(1),
-      note: 'Dividendos',
-    },
-  ];
-
-  return {categories, movements};
 }

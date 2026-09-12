@@ -1,14 +1,11 @@
-import {Component, computed, inject, signal} from '@angular/core';
+import {ChangeDetectionStrategy, Component, computed, inject, signal} from '@angular/core';
 import {CurrencyPipe, DatePipe} from '@angular/common';
-import {FINANCE_STORAGE} from '../../core/services/finance-storage.interface';
-import {ConfirmModalComponent} from '../../shared/components/confirm-modal/confirm-modal.component';
-import {
-  Movement,
-  MovementType,
-  MOVEMENT_TYPE_PALETTE,
-  MOVEMENT_TYPE_LABEL,
-  deletionImpact,
-} from '../../core/models/finance.model';
+import {MOVEMENT_TYPE_LABEL, MOVEMENT_TYPE_PALETTE} from '@core/constants';
+import {Movement} from '@core/models';
+import {FINANCE_STORAGE} from '@core/services/finance-storage.interface';
+import {MovementType} from '@core/types';
+import {reversalImpact} from '@core/utils';
+import {ConfirmModalComponent} from '@shared/components';
 
 type MovementFilter = 'ALL' | MovementType;
 
@@ -16,6 +13,8 @@ type MovementFilter = 'ALL' | MovementType;
   selector: 'app-movements',
   imports: [CurrencyPipe, DatePipe, ConfirmModalComponent],
   templateUrl: './movements.component.html',
+  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MovementsComponent {
   readonly storage = inject(FINANCE_STORAGE);
@@ -25,7 +24,7 @@ export class MovementsComponent {
   readonly typeFilter = signal<MovementFilter>('ALL');
   readonly categoryFilter = signal('');
 
-  readonly movementToDelete = signal<Movement | null>(null);
+  readonly movementToRevert = signal<Movement | null>(null);
 
   readonly filterOptions: Array<{value: MovementFilter; label: string}> = [
     {value: 'ALL', label: 'Todos'},
@@ -51,9 +50,9 @@ export class MovementsComponent {
   });
 
   readonly impactMessage = computed(() => {
-    const movement = this.movementToDelete();
+    const movement = this.movementToRevert();
     if (!movement) return '';
-    return deletionImpact(
+    return reversalImpact(
       movement,
       this.categoryName(movement.categoryId),
       movement.destinationCategoryId
@@ -76,15 +75,15 @@ export class MovementsComponent {
   readonly categoryInitial = (id: string): string =>
     this.categoriesById().get(id)?.name?.charAt(0).toUpperCase() ?? '?';
 
-  proceedToDelete(): void {
-    const movement = this.movementToDelete();
+  proceedToRevert(): void {
+    const movement = this.movementToRevert();
     if (movement) {
-      this.storage.deleteMovement(movement.id);
+      this.storage.revertMovement(movement.id);
     }
-    this.movementToDelete.set(null);
+    this.movementToRevert.set(null);
   }
 
-  cancelDelete(): void {
-    this.movementToDelete.set(null);
+  cancelRevert(): void {
+    this.movementToRevert.set(null);
   }
 }

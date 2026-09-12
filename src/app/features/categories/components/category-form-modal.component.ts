@@ -1,18 +1,19 @@
-import {Component, effect, inject, input, output} from '@angular/core';
+import {ChangeDetectionStrategy, Component, effect, inject, input, output} from '@angular/core';
 import {FormBuilder, FormControl, ReactiveFormsModule, Validators} from '@angular/forms';
-import {ModalComponent} from '../../../shared/components/modal/modal.component';
-import {FINANCE_STORAGE} from '../../../core/services/finance-storage.interface';
-import {
-  Category,
-  CATEGORY_COLORS,
-  CategoryColor,
-  formatCurrency,
-} from '../../../core/models/finance.model';
+import {CATEGORY_COLORS} from '@core/constants';
+import {Category} from '@core/models';
+import {FINANCE_STORAGE} from '@core/services/finance-storage.interface';
+import {CategoryColor} from '@core/types';
+import {formatCurrency} from '@core/utils';
+import {ModalComponent} from '@shared/components';
+import {CurrencyInputDirective} from '@shared/directives';
 
 @Component({
   selector: 'app-category-form-modal',
-  imports: [ReactiveFormsModule, ModalComponent],
+  imports: [ReactiveFormsModule, ModalComponent, CurrencyInputDirective],
   templateUrl: './category-form-modal.component.html',
+  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CategoryFormModalComponent {
   readonly isOpen = input(false);
