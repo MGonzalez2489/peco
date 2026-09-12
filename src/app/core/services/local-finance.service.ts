@@ -1,231 +1,225 @@
-import { Injectable, computed, effect, signal } from '@angular/core';
+import {Injectable, computed, effect, signal} from '@angular/core';
 import {
-  Categoria,
-  CrearCategoriaDTO,
-  CrearMovimientoDTO,
-  Movimiento,
-  formatearMoneda,
+  Category,
+  CreateCategoryDTO,
+  CreateMovementDTO,
+  Movement,
+  formatCurrency,
 } from '../models/finance.model';
-import { IFinanceStorage } from './finance-storage.interface';
+import {FinanceStorage} from './finance-storage.interface';
 
-const STORAGE_KEY_CATEGORIAS = 'peco.categorias';
-const STORAGE_KEY_MOVIMIENTOS = 'peco.movimientos';
+const STORAGE_KEY_CATEGORIES = 'peco.categories';
+const STORAGE_KEY_MOVEMENTS = 'peco.movements';
 
-@Injectable({ providedIn: 'root' })
-export class LocalFinanceService implements IFinanceStorage {
-  private readonly categoriasSignal = signal<Categoria[]>([]);
-  private readonly movimientosSignal = signal<Movimiento[]>([]);
+@Injectable({providedIn: 'root'})
+export class LocalFinanceService implements FinanceStorage {
+  private readonly categoriesSignal = signal<Category[]>([]);
+  private readonly movementsSignal = signal<Movement[]>([]);
 
-  readonly categorias = this.categoriasSignal.asReadonly();
-  readonly movimientos = this.movimientosSignal.asReadonly();
+  readonly categories = this.categoriesSignal.asReadonly();
+  readonly movements = this.movementsSignal.asReadonly();
 
-  readonly saldoTotal = computed(() =>
-    this.categorias().reduce((total, categoria) => total + categoria.saldoActual, 0),
+  readonly totalBalance = computed(() =>
+    this.categories().reduce((total, category) => total + category.currentBalance, 0),
   );
 
   constructor() {
-    const semilla = crearDatosSemilla();
-    this.categoriasSignal.set(
-      this.leerPersistido(STORAGE_KEY_CATEGORIAS, semilla.categorias),
-    );
-    this.movimientosSignal.set(
-      this.leerPersistido(STORAGE_KEY_MOVIMIENTOS, semilla.movimientos),
-    );
+    const seed = createSeedData();
+    this.categoriesSignal.set(this.readPersisted(STORAGE_KEY_CATEGORIES, seed.categories));
+    this.movementsSignal.set(this.readPersisted(STORAGE_KEY_MOVEMENTS, seed.movements));
 
     effect(() => {
-      localStorage.setItem(STORAGE_KEY_CATEGORIAS, JSON.stringify(this.categorias()));
-      localStorage.setItem(STORAGE_KEY_MOVIMIENTOS, JSON.stringify(this.movimientos()));
+      localStorage.setItem(STORAGE_KEY_CATEGORIES, JSON.stringify(this.categories()));
+      localStorage.setItem(STORAGE_KEY_MOVEMENTS, JSON.stringify(this.movements()));
     });
   }
 
-  agregarCategoria(dto: CrearCategoriaDTO): void {
-    const categoria: Categoria = {
+  addCategory(dto: CreateCategoryDTO): void {
+    const category: Category = {
       id: crypto.randomUUID(),
-      nombre: dto.nombre.trim(),
-      saldoActual: dto.saldoInicial,
-      metaObjetivo: dto.metaObjetivo,
+      name: dto.name.trim(),
+      currentBalance: dto.initialBalance,
+      targetGoal: dto.targetGoal,
       color: dto.color,
-      icono: dto.icono,
+      icon: dto.icon,
     };
-    this.categoriasSignal.update((actuales) => [...actuales, categoria]);
+    this.categoriesSignal.update((current) => [...current, category]);
   }
 
-  actualizarCategoria(id: string, dto: CrearCategoriaDTO): void {
-    this.categoriasSignal.update((actuales) =>
-      actuales.map((categoria) =>
-        categoria.id === id
+  updateCategory(id: string, dto: CreateCategoryDTO): void {
+    this.categoriesSignal.update((current) =>
+      current.map((category) =>
+        category.id === id
           ? {
-              ...categoria,
-              nombre: dto.nombre.trim(),
-              metaObjetivo: dto.metaObjetivo,
+              ...category,
+              name: dto.name.trim(),
+              targetGoal: dto.targetGoal,
               color: dto.color,
-              icono: dto.icono ?? categoria.icono,
+              icon: dto.icon ?? category.icon,
             }
-          : categoria,
+          : category,
       ),
     );
   }
 
-  eliminarCategoria(id: string, categoriaDestinoId?: string): void {
-    const categoria = this.categorias().find((c) => c.id === id);
-    if (!categoria) return;
+  deleteCategory(id: string, destinationCategoryId?: string): void {
+    const category = this.categories().find((c) => c.id === id);
+    if (!category) return;
 
-    if (categoria.saldoActual !== 0 && categoriaDestinoId && categoriaDestinoId !== id) {
-      const monto = categoria.saldoActual;
-      this.registrarMovimiento({
-        categoriaId: id,
-        tipo: 'TRANSFERENCIA',
-        monto,
-        categoriaDestinoId,
-        nota: `Eliminación de cuenta ${categoria.nombre} traspaso ${formatearMoneda(monto)}`,
+    if (category.currentBalance !== 0 && destinationCategoryId && destinationCategoryId !== id) {
+      const amount = category.currentBalance;
+      this.registerMovement({
+        categoryId: id,
+        type: 'TRANSFER',
+        amount,
+        destinationCategoryId,
+        note: `Removal of category ${category.name} transfer ${formatCurrency(amount)}`,
       });
     }
 
-    this.categoriasSignal.update((actuales) => actuales.filter((c) => c.id !== id));
+    this.categoriesSignal.update((current) => current.filter((c) => c.id !== id));
   }
 
-  registrarMovimiento(dto: CrearMovimientoDTO): void {
-    const movimiento: Movimiento = {
+  registerMovement(dto: CreateMovementDTO): void {
+    const movement: Movement = {
       id: crypto.randomUUID(),
-      fecha: dto.fecha ?? new Date().toISOString(),
-      categoriaId: dto.categoriaId,
-      tipo: dto.tipo,
-      monto: dto.monto,
-      nota: dto.nota,
-      categoriaDestinoId: dto.categoriaDestinoId,
+      date: dto.date ?? new Date().toISOString(),
+      categoryId: dto.categoryId,
+      type: dto.type,
+      amount: dto.amount,
+      note: dto.note,
+      destinationCategoryId: dto.destinationCategoryId,
     };
 
-    this.movimientosSignal.update((actuales) => [movimiento, ...actuales]);
-    this.aplicarMovimiento(movimiento, 1);
+    this.movementsSignal.update((current) => [movement, ...current]);
+    this.applyMovement(movement, 1);
   }
 
-  eliminarMovimiento(id: string): void {
-    const movimiento = this.movimientos().find((m) => m.id === id);
-    if (!movimiento) return;
+  deleteMovement(id: string): void {
+    const movement = this.movements().find((m) => m.id === id);
+    if (!movement) return;
 
-    this.movimientosSignal.update((actuales) => actuales.filter((m) => m.id !== id));
-    this.aplicarMovimiento(movimiento, -1);
+    this.movementsSignal.update((current) => current.filter((m) => m.id !== id));
+    this.applyMovement(movement, -1);
   }
 
-  private aplicarMovimiento(movimiento: Movimiento, sentido: 1 | -1): void {
-    this.categoriasSignal.update((actuales) =>
-      actuales.map((categoria) => {
-        let saldo = categoria.saldoActual;
+  private applyMovement(movement: Movement, direction: 1 | -1): void {
+    this.categoriesSignal.update((current) =>
+      current.map((category) => {
+        let balance = category.currentBalance;
 
-        if (categoria.id === movimiento.categoriaId) {
-          const deltaOrigen =
-            movimiento.tipo === 'INGRESO' ? movimiento.monto : -movimiento.monto;
-          saldo += sentido * deltaOrigen;
+        if (category.id === movement.categoryId) {
+          const sourceDelta = movement.type === 'INCOME' ? movement.amount : -movement.amount;
+          balance += direction * sourceDelta;
         }
 
         if (
-          movimiento.tipo === 'TRANSFERENCIA' &&
-          movimiento.categoriaDestinoId &&
-          categoria.id === movimiento.categoriaDestinoId
+          movement.type === 'TRANSFER' &&
+          movement.destinationCategoryId &&
+          category.id === movement.destinationCategoryId
         ) {
-          saldo += sentido * movimiento.monto;
+          balance += direction * movement.amount;
         }
 
-        return saldo === categoria.saldoActual
-          ? categoria
-          : { ...categoria, saldoActual: saldo };
+        return balance === category.currentBalance
+          ? category
+          : {...category, currentBalance: balance};
       }),
     );
   }
 
-  private leerPersistido<T>(clave: string, respaldo: T[]): T[] {
+  private readPersisted<T>(key: string, fallback: T[]): T[] {
     try {
-      const crudo = localStorage.getItem(clave);
-      if (!crudo) return respaldo;
-      const datos = JSON.parse(crudo) as unknown;
-      return Array.isArray(datos) ? (datos as T[]) : respaldo;
+      const raw = localStorage.getItem(key);
+      if (!raw) return fallback;
+      const data = JSON.parse(raw) as unknown;
+      return Array.isArray(data) ? (data as T[]) : fallback;
     } catch {
-      return respaldo;
+      return fallback;
     }
   }
 }
 
-function crearDatosSemilla(): { categorias: Categoria[]; movimientos: Movimiento[] } {
-  const haceDias = (dias: number): string =>
-    new Date(Date.now() - dias * 86_400_000).toISOString();
+function createSeedData(): {categories: Category[]; movements: Movement[]} {
+  const daysAgo = (days: number): string => new Date(Date.now() - days * 86_400_000).toISOString();
 
-  const categorias: Categoria[] = [
+  const categories: Category[] = [
     {
-      id: 'c-efectivo',
-      nombre: 'Efectivo',
-      saldoActual: 430,
-      metaObjetivo: 1000,
+      id: 'c-cash',
+      name: 'Cash',
+      currentBalance: 430,
+      targetGoal: 1000,
       color: 'emerald',
-      icono: 'wallet',
+      icon: 'wallet',
     },
     {
-      id: 'c-ahorro',
-      nombre: 'Ahorro',
-      saldoActual: 1700,
-      metaObjetivo: 5000,
+      id: 'c-savings',
+      name: 'Savings',
+      currentBalance: 1700,
+      targetGoal: 5000,
       color: 'violet',
-      icono: 'ahorro',
+      icon: 'savings',
     },
     {
-      id: 'c-inversion',
-      nombre: 'Inversión',
-      saldoActual: 800,
+      id: 'c-investment',
+      name: 'Investment',
+      currentBalance: 800,
       color: 'amber',
-      icono: 'inversion',
+      icon: 'investment',
     },
   ];
 
-  const movimientos: Movimiento[] = [
+  const movements: Movement[] = [
     {
       id: 'm-1',
-      categoriaId: 'c-efectivo',
-      tipo: 'INGRESO',
-      monto: 2000,
-      fecha: haceDias(6),
-      nota: 'Nómina',
+      categoryId: 'c-cash',
+      type: 'INCOME',
+      amount: 2000,
+      date: daysAgo(6),
+      note: 'Payroll',
     },
     {
       id: 'm-2',
-      categoriaId: 'c-efectivo',
-      tipo: 'EGRESO',
-      monto: 550,
-      fecha: haceDias(5),
-      nota: 'Mercado',
+      categoryId: 'c-cash',
+      type: 'EXPENSE',
+      amount: 550,
+      date: daysAgo(5),
+      note: 'Market',
     },
     {
       id: 'm-3',
-      categoriaId: 'c-efectivo',
-      tipo: 'EGRESO',
-      monto: 320,
-      fecha: haceDias(3),
-      nota: 'Restaurante',
+      categoryId: 'c-cash',
+      type: 'EXPENSE',
+      amount: 320,
+      date: daysAgo(3),
+      note: 'Restaurant',
     },
     {
       id: 'm-4',
-      categoriaId: 'c-ahorro',
-      tipo: 'INGRESO',
-      monto: 1000,
-      fecha: haceDias(4),
-      nota: 'Bonificación',
+      categoryId: 'c-savings',
+      type: 'INCOME',
+      amount: 1000,
+      date: daysAgo(4),
+      note: 'Bonus',
     },
     {
       id: 'm-5',
-      categoriaId: 'c-efectivo',
-      tipo: 'TRANSFERENCIA',
-      monto: 700,
-      fecha: haceDias(2),
-      categoriaDestinoId: 'c-ahorro',
-      nota: 'Ahorro automático',
+      categoryId: 'c-cash',
+      type: 'TRANSFER',
+      amount: 700,
+      date: daysAgo(2),
+      destinationCategoryId: 'c-savings',
+      note: 'Automatic savings',
     },
     {
       id: 'm-6',
-      categoriaId: 'c-inversion',
-      tipo: 'INGRESO',
-      monto: 800,
-      fecha: haceDias(1),
-      nota: 'Dividendos',
+      categoryId: 'c-investment',
+      type: 'INCOME',
+      amount: 800,
+      date: daysAgo(1),
+      note: 'Dividends',
     },
   ];
 
-  return { categorias, movimientos };
+  return {categories, movements};
 }

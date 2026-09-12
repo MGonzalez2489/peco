@@ -1,0 +1,90 @@
+<section class="space-y-6">
+  <div>
+    <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Overview</h1>
+    <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+      This is how your finances are doing today.
+    </p>
+  </div>
+
+  <app-stat-card
+    title="Total balance"
+    [amount]="totalBalance()"
+    color="indigo"
+    subtext="Sum of all your categories"
+  />
+
+  <div class="mt-8">
+    <h2
+      class="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+    >
+      Categories
+    </h2>
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+      @for (category of categories(); track category.id) {
+        <a
+          [routerLink]="['/categories', category.id]"
+          class="block rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950"
+          [attr.aria-label]="'View details of ' + category.name"
+        >
+          <app-stat-card
+            [title]="category.name"
+            [amount]="category.currentBalance"
+            [color]="category.color ?? 'indigo'"
+            [goal]="category.targetGoal"
+            [subtext]="categorySubtext(category)"
+          />
+        </a>
+      } @empty {
+        <p class="col-span-full text-sm text-slate-500 dark:text-slate-400">
+          There are no categories yet. Create the first one from the Categories section.
+        </p>
+      }
+    </div>
+  </div>
+
+  <div class="mt-8">
+    <h2
+      class="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+    >
+      Recent activity
+    </h2>
+    <ul
+      class="divide-y divide-slate-200 overflow-hidden rounded-2xl border border-slate-200 bg-white dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900"
+    >
+      @for (movement of recentMovements(); track movement.id) {
+        <li class="flex items-center gap-3 p-4">
+          <span
+            aria-hidden="true"
+            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold {{
+              movementPalette(movement.type).chip
+            }}"
+          >
+            {{ categoryInitial(movement.categoryId) }}
+          </span>
+          <div class="min-w-0 flex-1">
+            <p class="truncate text-sm font-medium text-slate-900 dark:text-white">
+              {{ categoryName(movement.categoryId) }}
+            </p>
+            <p class="truncate text-xs text-slate-500 dark:text-slate-400">
+              {{ typeLabel(movement.type) }}
+              @if (movement.note) {
+                · {{ movement.note }}
+              }
+            </p>
+          </div>
+          <div class="shrink-0 text-right">
+            <p class="text-sm font-semibold {{ movementPalette(movement.type).text }}">
+              {{ movementSign(movement.type)
+              }}{{ movement.amount | currency: 'USD' : 'symbol' : '1.2-2' }}
+            </p>
+            <p class="text-xs text-slate-400 dark:text-slate-500">
+              {{ movement.date | date: 'dd/MM/yyyy' }}
+            </p>
+          </div>
+        </li>
+      } @empty {
+        <li class="p-4 text-sm text-slate-500 dark:text-slate-400">There are no movements yet.</li>
+      }
+    </ul>
+  </div>
+</section>

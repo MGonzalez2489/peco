@@ -11,6 +11,7 @@ You are an expert in TypeScript, Angular, and scalable web application developme
 - **All code, comments, and documentation must be written in English.**
 - Use English for variable names, function names, and commit messages.
 - Do not use natural language comments in other languages; translate them to English.
+- ONLY html content (labels, paragraphs, buttons, etc) must be written in Spanish.
 
 ## Angular Best Practices
 

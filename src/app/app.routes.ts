@@ -1,46 +1,38 @@
-import { Routes } from '@angular/router';
+import {Routes} from '@angular/router';
 
 export const routes: Routes = [
-  { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+  {path: '', redirectTo: 'dashboard', pathMatch: 'full'},
   {
     path: 'dashboard',
-    title: 'Resumen',
+    title: 'Overview',
     loadComponent: () =>
-      import('./features/dashboard/dashboard.component').then(
-        (m) => m.DashboardComponent,
+      import('./features/dashboard/dashboard.component').then((m) => m.DashboardComponent),
+  },
+  {
+    path: 'movements',
+    title: 'Movements',
+    loadComponent: () =>
+      import('./features/movements/movements.component').then((m) => m.MovementsComponent),
+  },
+  {
+    path: 'categories',
+    title: 'Categories',
+    loadComponent: () =>
+      import('./features/categories/categories.component').then((m) => m.CategoriesComponent),
+  },
+  {
+    path: 'categories/:id',
+    title: 'Category details',
+    loadComponent: () =>
+      import('./features/categories/detail/category-detail.component').then(
+        (m) => m.CategoryDetailComponent,
       ),
   },
   {
-    path: 'movimientos',
-    title: 'Movimientos',
+    path: 'preferences',
+    title: 'Preferences',
     loadComponent: () =>
-      import('./features/movimientos/movimientos.component').then(
-        (m) => m.MovimientosComponent,
-      ),
+      import('./features/preferences/preferences.component').then((m) => m.PreferencesComponent),
   },
-  {
-    path: 'categorias',
-    title: 'Categorías',
-    loadComponent: () =>
-      import('./features/categorias/categorias.component').then(
-        (m) => m.CategoriasComponent,
-      ),
-  },
-  {
-    path: 'categorias/:id',
-    title: 'Detalle de cuenta',
-    loadComponent: () =>
-      import('./features/categorias/detalle/categoria-detalle.component').then(
-        (m) => m.CategoriaDetalleComponent,
-      ),
-  },
-  {
-    path: 'preferencias',
-    title: 'Preferencias',
-    loadComponent: () =>
-      import('./features/preferencias/preferencias.component').then(
-        (m) => m.PreferenciasComponent,
-      ),
-  },
-  { path: '**', redirectTo: 'dashboard' },
+  {path: '**', redirectTo: 'dashboard'},
 ];

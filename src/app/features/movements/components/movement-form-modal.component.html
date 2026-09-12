@@ -1,0 +1,134 @@
+<app-modal [isOpen]="isOpen()" title="New movement" (closed)="closed.emit()">
+  @if (categories().length === 0) {
+    <p class="mt-4 text-sm text-slate-500 dark:text-slate-400">
+      First create a category from the Categories section.
+    </p>
+  } @else {
+    <form [formGroup]="form" (ngSubmit)="save()" class="mt-5 space-y-4" novalidate>
+      <div>
+        <label
+          for="mov-type"
+          class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
+        >
+          Type
+        </label>
+        <select
+          id="mov-type"
+          formControlName="type"
+          class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+        >
+          @for (option of typeOptions; track option.value) {
+            <option [value]="option.value">{{ option.label }}</option>
+          }
+        </select>
+      </div>
+
+      <div>
+        <label
+          for="mov-amount"
+          class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
+        >
+          Amount
+        </label>
+        <input
+          id="mov-amount"
+          formControlName="amount"
+          type="number"
+          min="0.01"
+          step="0.01"
+          inputmode="decimal"
+          placeholder="0.00"
+          class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+          [attr.aria-invalid]="form.controls.amount.touched && form.controls.amount.invalid"
+        />
+        @if (errorFor(form.controls.amount); as error) {
+          <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ error }}</p>
+        }
+      </div>
+
+      <div>
+        <label
+          for="mov-category"
+          class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
+        >
+          Category {{ selectedType() === 'TRANSFER' ? 'source' : '' }}
+        </label>
+        <select
+          id="mov-category"
+          formControlName="categoryId"
+          class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+          [attr.aria-invalid]="form.controls.categoryId.touched && form.controls.categoryId.invalid"
+        >
+          <option value="" disabled>Select a category</option>
+          @for (category of categories(); track category.id) {
+            <option [value]="category.id">{{ category.name }}</option>
+          }
+        </select>
+        @if (errorFor(form.controls.categoryId); as error) {
+          <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ error }}</p>
+        }
+      </div>
+
+      @if (selectedType() === 'TRANSFER') {
+        <div>
+          <label
+            for="mov-destination"
+            class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
+          >
+            Destination category
+          </label>
+          <select
+            id="mov-destination"
+            formControlName="destinationCategoryId"
+            class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+            [attr.aria-invalid]="
+              form.controls.destinationCategoryId.touched &&
+              form.controls.destinationCategoryId.invalid
+            "
+          >
+            <option value="" disabled>Select the destination category</option>
+            @for (category of destinationCategories(); track category.id) {
+              <option [value]="category.id">{{ category.name }}</option>
+            }
+          </select>
+          @if (errorFor(form.controls.destinationCategoryId); as error) {
+            <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ error }}</p>
+          }
+        </div>
+      }
+
+      <div>
+        <label
+          for="mov-note"
+          class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
+        >
+          Note <span class="font-normal text-slate-400 dark:text-slate-500">(optional)</span>
+        </label>
+        <input
+          id="mov-note"
+          formControlName="note"
+          type="text"
+          autocomplete="off"
+          placeholder="e.g. May payroll"
+          class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+        />
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2">
+        <button
+          type="button"
+          (click)="closed.emit()"
+          class="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          class="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm shadow-indigo-600/30 transition hover:bg-indigo-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
+        >
+          Save
+        </button>
+      </div>
+    </form>
+  }
+</app-modal>
