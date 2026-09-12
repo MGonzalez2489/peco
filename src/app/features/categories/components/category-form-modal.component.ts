@@ -102,8 +102,8 @@ export class CategoryFormModalComponent {
 
   errorFor<T>(field: FormControl<T>): string | null {
     if (!field.touched || !field.errors) return null;
-    if (field.hasError('required')) return 'This field is required.';
-    if (field.hasError('min')) return `The minimum value is ${field.getError('min').min}.`;
-    return 'Invalid value.';
+    if (field.hasError('required')) return 'Este campo es obligatorio.';
+    if (field.hasError('min')) return `El valor mínimo es ${field.getError('min').min}.`;
+    return 'Valor inválido.';
   }
 }

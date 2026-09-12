@@ -73,7 +73,7 @@ export class LocalFinanceService implements FinanceStorage {
         type: 'TRANSFER',
         amount,
         destinationCategoryId,
-        note: `Removal of category ${category.name} transfer ${formatCurrency(amount)}`,
+        note: `Eliminación de cuenta ${category.name} traspaso ${formatCurrency(amount)}`,
       });
     }
 
@@ -146,7 +146,7 @@ function createSeedData(): {categories: Category[]; movements: Movement[]} {
   const categories: Category[] = [
     {
       id: 'c-cash',
-      name: 'Cash',
+      name: 'Efectivo',
       currentBalance: 430,
       targetGoal: 1000,
       color: 'emerald',
@@ -154,7 +154,7 @@ function createSeedData(): {categories: Category[]; movements: Movement[]} {
     },
     {
       id: 'c-savings',
-      name: 'Savings',
+      name: 'Ahorro',
       currentBalance: 1700,
       targetGoal: 5000,
       color: 'violet',
@@ -162,7 +162,7 @@ function createSeedData(): {categories: Category[]; movements: Movement[]} {
     },
     {
       id: 'c-investment',
-      name: 'Investment',
+      name: 'Inversión',
       currentBalance: 800,
       color: 'amber',
       icon: 'investment',
@@ -176,7 +176,7 @@ function createSeedData(): {categories: Category[]; movements: Movement[]} {
       type: 'INCOME',
       amount: 2000,
       date: daysAgo(6),
-      note: 'Payroll',
+      note: 'Nómina',
     },
     {
       id: 'm-2',
@@ -184,7 +184,7 @@ function createSeedData(): {categories: Category[]; movements: Movement[]} {
       type: 'EXPENSE',
       amount: 550,
       date: daysAgo(5),
-      note: 'Market',
+      note: 'Mercado',
     },
     {
       id: 'm-3',
@@ -192,7 +192,7 @@ function createSeedData(): {categories: Category[]; movements: Movement[]} {
       type: 'EXPENSE',
       amount: 320,
       date: daysAgo(3),
-      note: 'Restaurant',
+      note: 'Restaurante',
     },
     {
       id: 'm-4',
@@ -200,7 +200,7 @@ function createSeedData(): {categories: Category[]; movements: Movement[]} {
       type: 'INCOME',
       amount: 1000,
       date: daysAgo(4),
-      note: 'Bonus',
+      note: 'Bonificación',
     },
     {
       id: 'm-5',
@@ -209,7 +209,7 @@ function createSeedData(): {categories: Category[]; movements: Movement[]} {
       amount: 700,
       date: daysAgo(2),
       destinationCategoryId: 'c-savings',
-      note: 'Automatic savings',
+      note: 'Ahorro automático',
     },
     {
       id: 'm-6',
@@ -217,7 +217,7 @@ function createSeedData(): {categories: Category[]; movements: Movement[]} {
       type: 'INCOME',
       amount: 800,
       date: daysAgo(1),
-      note: 'Dividends',
+      note: 'Dividendos',
     },
   ];
 

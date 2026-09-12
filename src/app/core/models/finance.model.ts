@@ -37,9 +37,9 @@ export interface CreateMovementDTO {
 }
 
 export const MOVEMENT_TYPE_LABEL: Record<MovementType, string> = {
-  INCOME: 'Income',
-  EXPENSE: 'Expense',
-  TRANSFER: 'Transfer',
+  INCOME: 'Ingreso',
+  EXPENSE: 'Egreso',
+  TRANSFER: 'Transferencia',
 };
 
 export const CATEGORY_COLORS = {
@@ -100,10 +100,10 @@ export function deletionImpact(
 ): string {
   switch (movement.type) {
     case 'EXPENSE':
-      return `+${formatCurrency(movement.amount)} will be returned to the balance of ${sourceCategoryName}.`;
+      return `+${formatCurrency(movement.amount)} se devolverá al saldo de la categoría ${sourceCategoryName}.`;
     case 'INCOME':
-      return `-${formatCurrency(movement.amount)} will be deducted from the balance of ${sourceCategoryName}.`;
+      return `-${formatCurrency(movement.amount)} se descontará del saldo de la categoría ${sourceCategoryName}.`;
     case 'TRANSFER':
-      return `The balances of ${sourceCategoryName} and ${destinationCategoryName ?? 'the destination category'} will be reverted.`;
+      return `Se revertirán los saldos de ${sourceCategoryName} y ${destinationCategoryName ?? 'la categoría destino'}.`;
   }
 }

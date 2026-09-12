@@ -8,9 +8,9 @@ import {ModalComponent} from '../modal/modal.component';
 })
 export class ConfirmModalComponent {
   readonly isOpen = input(false);
-  readonly title = input('Confirm action');
-  readonly confirmLabel = input('Confirm');
-  readonly cancelLabel = input('Cancel');
+  readonly title = input('Confirmar acción');
+  readonly confirmLabel = input('Confirmar');
+  readonly cancelLabel = input('Cancelar');
   readonly danger = input(true);
 
   readonly confirmed = output<void>();

@@ -18,5 +18,5 @@ export class CategoriesComponent {
   readonly modalOpen = signal(false);
 
   readonly categorySubtext = (targetGoal: number | undefined): string =>
-    targetGoal !== undefined ? `Goal ${formatCurrency(targetGoal)}` : 'No goal assigned';
+    targetGoal !== undefined ? `Meta ${formatCurrency(targetGoal)}` : 'Sin meta asignada';
 }
