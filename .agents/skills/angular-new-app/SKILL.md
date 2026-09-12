@@ -57,6 +57,14 @@ When creating a new Angular application for a user, always follow the following 
 
    Use the Angular CLI to generate the code, then augment the code to meet the needs of the application.
 
+   - ARCHITECTURE & NAMING CONVENTIONS:
+     1. Models MUST be located in `app/core/models/` using the format `name.model.ts`.
+     2. DTOs MUST be located in `app/core/dtos/` using the format `name.dto.ts`.
+     3. Custom Types MUST be located in `app/core/types/` using the format `name.type.ts`.
+     4. Utility functions MUST be located in `app/core/utils/` using the format `name.util.ts`.
+     5. Constants MUST be located in `app/core/constants/` using the format `name.constant.ts`.
+     6. Strict Single Export Rule: NEVER include more than one `export` statement per file across models, DTOs, types, constants, or utilities.
+
 5. To add tailwind, run `npx ng add tailwindcss`. After that, you do not have to do anything else, you can start using tailwind classes in your Angular application. Follow the best practices for tailwind v4 here, learn more if needed: https://tailwindcss.com/docs/upgrade-guide.
 
 _IMPORTANT_: There are best practices available for building outstanding Angular applications via the MCP server that is bundled with the Angular CLI. Available through `npx ng mcp` and the `get_best_practices`.
