@@ -82,20 +82,20 @@ export class CategoryDetailComponent {
     const category = this.categoryToDelete();
     if (!category) return '';
     if (category.currentBalance === 0) {
-      return `The category "${category.name}" will be deleted along with its history. Do you want to continue?`;
+      return `La cuenta "${category.name}" se eliminará junto con su historial. ¿Deseas continuar?`;
     }
-    return `The category "${category.name}" has a balance of ${formatCurrency(category.currentBalance)}. An automatic transfer will be created and then it will be deleted.`;
+    return `La cuenta "${category.name}" tiene un saldo de ${formatCurrency(category.currentBalance)}. Se creará una transferencia automática y luego se eliminará.`;
   });
 
   readonly categorySubtext = (targetGoal: number | undefined): string =>
-    targetGoal !== undefined ? `Goal ${formatCurrency(targetGoal)}` : 'No goal assigned';
+    targetGoal !== undefined ? `Meta ${formatCurrency(targetGoal)}` : 'Sin meta asignada';
 
   readonly formatCurrency = formatCurrency;
 
   readonly typeLabel = (type: MovementType) => MOVEMENT_TYPE_LABEL[type];
 
   readonly categoryName = (id: string): string =>
-    this.storage.categories().find((category) => category.id === id)?.name ?? 'Unknown category';
+    this.storage.categories().find((category) => category.id === id)?.name ?? 'Sin categoría';
 
   readonly isDestination = (movement: Movement): boolean =>
     movement.type === 'TRANSFER' &&

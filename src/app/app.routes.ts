@@ -4,25 +4,25 @@ export const routes: Routes = [
   {path: '', redirectTo: 'dashboard', pathMatch: 'full'},
   {
     path: 'dashboard',
-    title: 'Overview',
+    title: 'Resumen',
     loadComponent: () =>
       import('./features/dashboard/dashboard.component').then((m) => m.DashboardComponent),
   },
   {
     path: 'movements',
-    title: 'Movements',
+    title: 'Movimientos',
     loadComponent: () =>
       import('./features/movements/movements.component').then((m) => m.MovementsComponent),
   },
   {
     path: 'categories',
-    title: 'Categories',
+    title: 'Categorías',
     loadComponent: () =>
       import('./features/categories/categories.component').then((m) => m.CategoriesComponent),
   },
   {
     path: 'categories/:id',
-    title: 'Category details',
+    title: 'Detalle de cuenta',
     loadComponent: () =>
       import('./features/categories/detail/category-detail.component').then(
         (m) => m.CategoryDetailComponent,
@@ -30,7 +30,7 @@ export const routes: Routes = [
   },
   {
     path: 'preferences',
-    title: 'Preferences',
+    title: 'Preferencias',
     loadComponent: () =>
       import('./features/preferences/preferences.component').then((m) => m.PreferencesComponent),
   },

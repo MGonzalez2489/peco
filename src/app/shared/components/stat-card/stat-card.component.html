@@ -17,11 +17,11 @@
   }
 
   @if (goal(); as target) {
-    <div class="mt-4" [attr.aria-label]="'Progress toward the goal of ' + title()">
+    <div class="mt-4" [attr.aria-label]="'Progreso hacia la meta de ' + title()">
       <div
         class="flex items-center justify-between text-xs font-medium text-slate-500 dark:text-slate-400"
       >
-        <span>Goal</span>
+        <span>Meta</span>
         <span>{{ goalPercentage() }}%</span>
       </div>
       <div class="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">

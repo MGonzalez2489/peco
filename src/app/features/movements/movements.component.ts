@@ -28,7 +28,7 @@ export class MovementsComponent {
   readonly movementToDelete = signal<Movement | null>(null);
 
   readonly filterOptions: Array<{value: MovementFilter; label: string}> = [
-    {value: 'ALL', label: 'All'},
+    {value: 'ALL', label: 'Todos'},
     {value: 'INCOME', label: MOVEMENT_TYPE_LABEL.INCOME},
     {value: 'EXPENSE', label: MOVEMENT_TYPE_LABEL.EXPENSE},
     {value: 'TRANSFER', label: MOVEMENT_TYPE_LABEL.TRANSFER},

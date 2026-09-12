@@ -14,10 +14,10 @@ export class NavbarComponent {
   private readonly router = inject(Router);
 
   readonly links = [
-    {label: 'Home', route: '/dashboard', icon: 'home'},
-    {label: 'Movements', route: '/movements', icon: 'movements'},
-    {label: 'Categories', route: '/categories', icon: 'categories'},
-    {label: 'Settings', route: '/preferences', icon: 'settings'},
+    {label: 'Inicio', route: '/dashboard', icon: 'home'},
+    {label: 'Movimientos', route: '/movements', icon: 'movements'},
+    {label: 'Categorías', route: '/categories', icon: 'categories'},
+    {label: 'Ajustes', route: '/preferences', icon: 'settings'},
   ];
 
   private readonly currentRoute = toSignal(

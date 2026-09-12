@@ -17,20 +17,20 @@ export class PreferencesComponent {
   }> = [
     {
       mode: 'light',
-      label: 'Light',
-      description: 'Always a light background.',
+      label: 'Claro',
+      description: 'Siempre con fondo claro.',
       iconClasses: 'bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400',
     },
     {
       mode: 'dark',
-      label: 'Dark',
-      description: 'Always a dark background.',
+      label: 'Oscuro',
+      description: 'Siempre con fondo oscuro.',
       iconClasses: 'bg-indigo-100 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-400',
     },
     {
       mode: 'system',
-      label: 'System',
-      description: 'Follows the device preference.',
+      label: 'Sistema',
+      description: 'Sigue la preferencia del dispositivo.',
       iconClasses: 'bg-slate-100 text-slate-600 dark:bg-slate-700/60 dark:text-slate-300',
     },
   ];

@@ -35,13 +35,13 @@ export class DashboardComponent {
   readonly movementPalette = (type: MovementType) => MOVEMENT_TYPE_PALETTE[type];
 
   readonly categoryName = (id: string): string =>
-    this.categoriesById().get(id)?.name ?? 'Unknown category';
+    this.categoriesById().get(id)?.name ?? 'Sin categoría';
 
   readonly categoryInitial = (id: string): string =>
     this.categoriesById().get(id)?.name?.charAt(0).toUpperCase() ?? '?';
 
   readonly categorySubtext = (category: Category): string =>
     category.targetGoal !== undefined
-      ? `Goal ${formatCurrency(category.targetGoal)}`
-      : 'No goal assigned';
+      ? `Meta ${formatCurrency(category.targetGoal)}`
+      : 'Sin meta asignada';
 }
