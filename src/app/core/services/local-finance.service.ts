@@ -42,6 +42,7 @@ export class LocalFinanceService implements FinanceStorage {
       targetGoal: dto.targetGoal,
       color: dto.color,
       icon: dto.icon,
+      pinToHome: dto.pinToHome ?? false,
     };
     this.categoriesSignal.update((current) => [...current, category]);
   }
@@ -56,6 +57,7 @@ export class LocalFinanceService implements FinanceStorage {
               targetGoal: dto.targetGoal,
               color: dto.color,
               icon: dto.icon ?? category.icon,
+              pinToHome: dto.pinToHome ?? false,
             }
           : category,
       ),

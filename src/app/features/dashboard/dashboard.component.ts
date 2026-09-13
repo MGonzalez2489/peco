@@ -21,6 +21,8 @@ export class DashboardComponent {
   readonly categories = this.storage.categories;
   readonly totalBalance = this.storage.totalBalance;
 
+  readonly apartadosFijados = computed(() => this.categories().filter((c) => c.pinToHome));
+
   readonly recentMovements = computed(() =>
     [...this.storage.movements()].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5),
   );
