@@ -1,5 +1,13 @@
 [
   {
+    "version": "v0.2.0",
+    "fecha": "2026-09-13",
+    "highlights": [
+      "Corrección de Error: show current navbar page state",
+      "Nueva Funcionalidad: add changelog view with accordion and latest version badge"
+    ]
+  },
+  {
     "version": "v0.1.0",
     "fecha": "2026-09-12",
     "highlights": [
