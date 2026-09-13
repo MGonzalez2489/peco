@@ -1,0 +1,99 @@
+<div class="space-y-5">
+  @for (group of movimientosAgrupados(); track group.fecha) {
+    <div>
+      <h2
+        class="sticky top-[3.75rem] z-10 mb-2 flex items-center gap-2 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500 backdrop-blur-sm dark:text-slate-400"
+      >
+        <span aria-hidden="true" class="h-px w-3 bg-slate-300 dark:bg-slate-700"></span>
+        {{ group.fecha }}
+      </h2>
+
+      <ul
+        class="divide-y divide-slate-200 overflow-hidden rounded-2xl border border-slate-200 bg-white dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900"
+      >
+        @for (movement of group.movimientos; track movement.id) {
+          <li class="flex items-center gap-3 p-4">
+            <span
+              aria-hidden="true"
+              class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold {{
+                movementPalette(movement.type).chip
+              }}"
+            >
+              {{ categoryInitial(movement.categoryId) }}
+            </span>
+
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-sm font-medium text-slate-900 dark:text-white">
+                {{ categoryName(movement.categoryId) }}
+                @if (movement.type === 'TRANSFER' && movement.destinationCategoryId) {
+                  → {{ categoryName(movement.destinationCategoryId) }}
+                }
+              </p>
+              <p class="truncate text-xs text-slate-500 dark:text-slate-400">
+                {{ typeLabel(movement.type) }}
+                @if (movement.note) {
+                  · {{ movement.note }}
+                }
+              </p>
+            </div>
+
+            <div class="flex shrink-0 items-center gap-2">
+              <div class="text-right">
+                <span class="block text-sm font-semibold {{ movementPalette(movement.type).text }}">
+                  {{ movementSign(movement.type)
+                  }}{{ movement.amount | currency: 'USD' : 'symbol' : '1.2-2' }}
+                </span>
+                @if (movementTime(movement); as time) {
+                  <span class="block text-[11px] text-slate-400 dark:text-slate-500">
+                    {{ time }}
+                  </span>
+                }
+              </div>
+              @if (!movement.isReversal) {
+                <button
+                  type="button"
+                  (click)="movementToRevert.set(movement)"
+                  class="rounded-lg p-1.5 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
+                  [attr.aria-label]="'Reversar movimiento de ' + categoryName(movement.categoryId)"
+                >
+                  <svg
+                    class="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke-width="2"
+                    stroke="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3H5.25A2.25 2.25 0 0 0 3 5.25v13.5A2.25 2.25 0 0 0 5.25 21h8.25A2.25 2.25 0 0 0 15.75 18.75V15m.75 0v3.75m0 0 3.75-3.75M8.25 12h13.5"
+                    />
+                  </svg>
+                </button>
+              }
+            </div>
+          </li>
+        }
+      </ul>
+    </div>
+  } @empty {
+    <div
+      class="rounded-2xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400"
+    >
+      {{ emptyMessage() }}
+    </div>
+  }
+</div>
+
+<app-confirm-modal
+  [isOpen]="movementToRevert() !== null"
+  title="Reversar movimiento"
+  confirmLabel="Sí, reversar"
+  cancelLabel="Cancelar"
+  (confirmed)="proceedToRevert()"
+  (dismissed)="cancelRevert()"
+>
+  <p><strong>Se revertirá este movimiento. Se registrará un contra-movimiento.</strong></p>
+  <p class="mt-2">{{ impactMessage() }}</p>
+</app-confirm-modal>
