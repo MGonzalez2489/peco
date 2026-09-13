@@ -1,5 +1,14 @@
 [
   {
+    "version": "v0.5.0",
+    "fecha": "2026-09-13",
+    "highlights": [
+      "Nueva Funcionalidad: unificar la lista de movimientos en un componente compartido",
+      "Nueva Funcionalidad: fijar apartados en la pantalla de inicio con carrusel",
+      "Nueva Funcionalidad: agrupar movimientos por fecha y agregar modal de filtros"
+    ]
+  },
+  {
     "version": "v0.4.0",
     "fecha": "2026-09-13",
     "highlights": [
