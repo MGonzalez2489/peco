@@ -33,6 +33,7 @@ export class CategoryFormModalComponent {
     }),
     targetGoal: this.fb.control<number | null>(null, Validators.min(0)),
     color: this.fb.control<CategoryColor>('indigo'),
+    pinToHome: this.fb.control<boolean>(false),
   });
 
   readonly colorOptions: Array<{key: CategoryColor; classes: string}> = Object.entries(
@@ -61,6 +62,7 @@ export class CategoryFormModalComponent {
         initialBalance: null,
         targetGoal: editing.targetGoal ?? null,
         color: (editing.color as CategoryColor) ?? 'indigo',
+        pinToHome: editing.pinToHome ?? false,
       });
     } else {
       balance.setValidators([Validators.required, Validators.min(0)]);
@@ -70,6 +72,7 @@ export class CategoryFormModalComponent {
         initialBalance: null,
         targetGoal: null,
         color: 'indigo',
+        pinToHome: false,
       });
     }
   }
@@ -87,6 +90,7 @@ export class CategoryFormModalComponent {
         initialBalance: editing.currentBalance,
         targetGoal: raw.targetGoal ?? undefined,
         color: raw.color ?? 'indigo',
+        pinToHome: raw.pinToHome ?? false,
       });
     } else {
       this.storage.addCategory({
@@ -94,6 +98,7 @@ export class CategoryFormModalComponent {
         initialBalance: raw.initialBalance ?? 0,
         targetGoal: raw.targetGoal ?? undefined,
         color: raw.color ?? 'indigo',
+        pinToHome: raw.pinToHome ?? false,
       });
     }
 

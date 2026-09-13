@@ -5,4 +5,5 @@ export interface Category {
   targetGoal?: number;
   color?: string;
   icon?: string;
+  pinToHome?: boolean;
 }

@@ -4,4 +4,5 @@ export interface CreateCategoryDTO {
   targetGoal?: number;
   color?: string;
   icon?: string;
+  pinToHome?: boolean;
 }

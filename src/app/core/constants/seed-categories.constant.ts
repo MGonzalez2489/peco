@@ -8,6 +8,7 @@ export const SEED_CATEGORIES: Category[] = [
     targetGoal: 1000,
     color: 'emerald',
     icon: 'wallet',
+    pinToHome: true,
   },
   {
     id: 'c-savings',
@@ -16,6 +17,7 @@ export const SEED_CATEGORIES: Category[] = [
     targetGoal: 5000,
     color: 'violet',
     icon: 'savings',
+    pinToHome: true,
   },
   {
     id: 'c-investment',
