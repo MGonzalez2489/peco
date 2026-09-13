@@ -56,4 +56,9 @@ export class MovementsComponent {
     this.categoryFilter.set(filters.categoryId);
     this.hideReversals.set(filters.hideReversals);
   }
+
+  private parseLocalDate(iso: string): string {
+    const [year, month, day] = iso.split('T')[0].split('-').map(Number);
+    return `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
+  }
 }
