@@ -1,9 +1,7 @@
 [
   {
-    "version": "v0.1.0",
+    "version": "a0.1.0",
     "fecha": "2026-09-12",
-    "highlights": [
-      "Nueva Funcionalidad: add changelog view with accordion and latest version badge"
-    ]
+    "highlights": ["Nueva Funcionalidad: Nueva vista para ver el changelog."]
   }
 ]
