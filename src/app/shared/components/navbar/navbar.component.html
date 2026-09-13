@@ -31,12 +31,16 @@
     <div
       class="flex w-full items-center justify-around md:ml-auto md:w-auto md:justify-end md:gap-2"
     >
-      @for (link of links; track link.route) {
+      @for (link of items(); track link.route) {
         <a
           [routerLink]="link.route"
-          routerLinkActive="text-indigo-600 dark:text-indigo-400"
-          [attr.aria-current]="isActive(link.route) ? 'page' : null"
-          class="flex flex-col items-center gap-1 px-2 py-2 text-[11px] font-medium text-slate-500 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-white md:flex-row md:gap-2 md:px-3 md:py-4 md:text-sm"
+          [attr.aria-current]="link.isActive ? 'page' : null"
+          [class.text-indigo-600]="link.isActive"
+          [class.dark:text-indigo-400]="link.isActive"
+          [class.text-slate-500]="!link.isActive"
+          [class.dark:text-slate-400]="!link.isActive"
+          [attr.aria-current]="link.isActive ? 'page' : null"
+          class="flex flex-col items-center gap-1 px-2 py-2 text-[11px] font-medium transition hover:text-slate-900 dark:hover:text-white md:flex-row md:gap-2 md:px-3 md:py-4 md:text-sm"
         >
           @switch (link.icon) {
             @case ('home') {
