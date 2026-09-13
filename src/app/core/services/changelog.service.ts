@@ -14,7 +14,7 @@ export class ChangelogService {
   readonly isLoading = signal(false);
   readonly error = signal(false);
 
-  readonly ultimosCambios = computed(() => this.releases().slice(0, MAX_VISIBLE_RELEASES));
+  readonly lastChanges = computed(() => this.releases().slice(0, MAX_VISIBLE_RELEASES));
 
   load(): void {
     if (this.isLoading()) {
