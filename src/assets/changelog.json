@@ -1,5 +1,12 @@
 [
   {
+    "version": "v0.2.1",
+    "fecha": "2026-09-13",
+    "highlights": [
+      "Corrección de Error: reparada el indicador de version"
+    ]
+  },
+  {
     "version": "v0.2.0",
     "fecha": "2026-09-13",
     "highlights": [
@@ -10,6 +17,8 @@
   {
     "version": "v0.1.0",
     "fecha": "2026-09-12",
-    "highlights": ["Nueva Funcionalidad: Nueva vista para ver el changelog."]
+    "highlights": [
+      "Nueva Funcionalidad: Nueva vista para ver el changelog."
+    ]
   }
 ]
