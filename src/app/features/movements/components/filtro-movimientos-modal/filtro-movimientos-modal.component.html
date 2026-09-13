@@ -1,0 +1,103 @@
+<app-modal [isOpen]="isOpen()" title="Filtros" (closed)="closed.emit()">
+  <div class="slide-up mt-5 space-y-5">
+    <div>
+      <span
+        id="filtros-tipo"
+        class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
+      >
+        Tipo de movimiento
+      </span>
+      <div
+        role="group"
+        aria-labelledby="filtros-tipo"
+        class="no-scrollbar flex gap-1 overflow-x-auto rounded-xl bg-slate-100 p-1 dark:bg-slate-800"
+      >
+        @for (option of typeOptions; track option.value) {
+          <button
+            type="button"
+            (click)="type.set(option.value)"
+            [class]="
+              type() === option.value
+                ? 'flex-1 whitespace-nowrap rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-slate-900 shadow-sm dark:bg-slate-900 dark:text-white'
+                : 'flex-1 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+            "
+            [attr.aria-pressed]="type() === option.value"
+          >
+            {{ option.label }}
+          </button>
+        }
+      </div>
+    </div>
+
+    <div>
+      <label
+        for="filtros-categoria"
+        class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
+      >
+        Categoría / Meta
+      </label>
+      <select
+        id="filtros-categoria"
+        (change)="categoryId.set($any($event.target).value)"
+        class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+      >
+        <option value="">Todas las metas</option>
+        @for (category of categories(); track category.id) {
+          <option [value]="category.id" [selected]="category.id === categoryId()">
+            {{ category.name }}
+          </option>
+        }
+      </select>
+    </div>
+
+    <button
+      type="button"
+      role="switch"
+      (click)="hideReversals.update((value) => !value)"
+      [attr.aria-checked]="hideReversals()"
+      class="flex w-full items-center justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-left transition hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800/60 dark:hover:border-slate-600"
+    >
+      <span class="min-w-0">
+        <span class="block text-sm font-medium text-slate-900 dark:text-white">
+          Ocultar movimientos revertidos / cancelados
+        </span>
+        <span class="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">
+          No se mostrarán reversiones ni contramovimientos.
+        </span>
+      </span>
+      <span
+        [class]="
+          hideReversals()
+            ? 'relative h-6 w-11 shrink-0 rounded-full bg-indigo-600 transition'
+            : 'relative h-6 w-11 shrink-0 rounded-full bg-slate-300 transition dark:bg-slate-600'
+        "
+        aria-hidden="true"
+      >
+        <span
+          [class]="
+            hideReversals()
+              ? 'absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform translate-x-5'
+              : 'absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform'
+          "
+        ></span>
+      </span>
+    </button>
+
+    <div class="flex gap-2 pt-1">
+      <button
+        type="button"
+        (click)="clear()"
+        class="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+      >
+        Limpiar filtros
+      </button>
+      <button
+        type="button"
+        (click)="apply()"
+        class="flex-1 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-indigo-600/30 transition hover:bg-indigo-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
+      >
+        Aplicar filtros
+      </button>
+    </div>
+  </div>
+</app-modal>
