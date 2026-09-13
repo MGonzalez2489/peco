@@ -53,48 +53,17 @@
   </div>
 
   <div class="mt-8">
-    <h2
-      class="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-    >
-      Actividad reciente
-    </h2>
-    <ul
-      class="divide-y divide-slate-200 overflow-hidden rounded-2xl border border-slate-200 bg-white dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900"
-    >
-      @for (movement of recentMovements(); track movement.id) {
-        <li class="flex items-center gap-3 p-4">
-          <span
-            aria-hidden="true"
-            class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold {{
-              movementPalette(movement.type).chip
-            }}"
-          >
-            {{ categoryInitial(movement.categoryId) }}
-          </span>
-          <div class="min-w-0 flex-1">
-            <p class="truncate text-sm font-medium text-slate-900 dark:text-white">
-              {{ categoryName(movement.categoryId) }}
-            </p>
-            <p class="truncate text-xs text-slate-500 dark:text-slate-400">
-              {{ typeLabel(movement.type) }}
-              @if (movement.note) {
-                · {{ movement.note }}
-              }
-            </p>
-          </div>
-          <div class="shrink-0 text-right">
-            <p class="text-sm font-semibold {{ movementPalette(movement.type).text }}">
-              {{ movementSign(movement.type)
-              }}{{ movement.amount | currency: 'USD' : 'symbol' : '1.2-2' }}
-            </p>
-            <p class="text-xs text-slate-400 dark:text-slate-500">
-              {{ movement.date | date: 'dd/MM/yyyy' }}
-            </p>
-          </div>
-        </li>
-      } @empty {
-        <li class="p-4 text-sm text-slate-500 dark:text-slate-400">Todavía no hay movimientos.</li>
-      }
-    </ul>
+    <div class="mb-4 flex items-center justify-between gap-4">
+      <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+        Actividad reciente
+      </h2>
+      <a
+        [routerLink]="['/movements']"
+        class="shrink-0 text-sm font-semibold text-indigo-600 transition hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
+      >
+        Ver todas
+      </a>
+    </div>
+    <app-movement-list [movements]="recentMovements()" emptyMessage="Todavía no hay movimientos." />
   </div>
 </section>

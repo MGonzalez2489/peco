@@ -6,26 +6,22 @@ import {
   linkedSignal,
   signal,
 } from '@angular/core';
-import {ActivatedRoute, RouterLink, Router} from '@angular/router';
-import {CurrencyPipe, DatePipe} from '@angular/common';
+import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {toSignal} from '@angular/core/rxjs-interop';
 import {map} from 'rxjs';
-import {MOVEMENT_TYPE_LABEL, MOVEMENT_TYPE_PALETTE} from '@core/constants';
-import {Movement, Category} from '@core/models';
+import {Category} from '@core/models';
 import {FINANCE_STORAGE} from '@core/services/finance-storage.interface';
-import {MovementType} from '@core/types';
-import {formatCurrency, reversalImpact} from '@core/utils';
-import {StatCardComponent, ConfirmModalComponent} from '@shared/components';
+import {formatCurrency} from '@core/utils';
+import {ConfirmModalComponent, MovementListComponent, StatCardComponent} from '@shared/components';
 import {CategoryFormModalComponent} from '../components/category-form-modal.component';
 
 @Component({
   selector: 'app-category-detail',
   imports: [
     RouterLink,
-    CurrencyPipe,
-    DatePipe,
     StatCardComponent,
     ConfirmModalComponent,
+    MovementListComponent,
     CategoryFormModalComponent,
   ],
   templateUrl: './category-detail.component.html',
@@ -45,7 +41,6 @@ export class CategoryDetailComponent {
 
   readonly editOpen = signal(false);
 
-  readonly movementToRevert = signal<Movement | null>(null);
   readonly categoryToDelete = signal<Category | null>(null);
 
   readonly transferDestination = linkedSignal<Category | null, string>({
@@ -69,18 +64,6 @@ export class CategoryDetailComponent {
       .sort((a, b) => b.date.localeCompare(a.date)),
   );
 
-  readonly movementImpactMessage = computed(() => {
-    const movement = this.movementToRevert();
-    if (!movement) return '';
-    return reversalImpact(
-      movement,
-      this.categoryName(movement.categoryId),
-      movement.destinationCategoryId
-        ? this.categoryName(movement.destinationCategoryId)
-        : undefined,
-    );
-  });
-
   readonly categoryDeletionMessage = computed(() => {
     const category = this.categoryToDelete();
     if (!category) return '';
@@ -94,51 +77,6 @@ export class CategoryDetailComponent {
     targetGoal !== undefined ? `Meta ${formatCurrency(targetGoal)}` : 'Sin meta asignada';
 
   readonly formatCurrency = formatCurrency;
-
-  readonly typeLabel = (type: MovementType) => MOVEMENT_TYPE_LABEL[type];
-
-  readonly categoryName = (id: string): string =>
-    this.storage.categories().find((category) => category.id === id)?.name ?? 'Sin categoría';
-
-  readonly isDestination = (movement: Movement): boolean =>
-    movement.type === 'TRANSFER' &&
-    !!movement.destinationCategoryId &&
-    movement.destinationCategoryId === this.id() &&
-    movement.categoryId !== this.id();
-
-  readonly getLabel = (movement: Movement): string =>
-    movement.type === 'TRANSFER'
-      ? `${this.categoryName(movement.categoryId)} → ${this.categoryName(movement.destinationCategoryId ?? '')}`
-      : this.categoryName(movement.categoryId);
-
-  readonly getInitial = (movement: Movement): string =>
-    this.categoryName(
-      this.isDestination(movement) ? movement.destinationCategoryId! : movement.categoryId,
-    )
-      .charAt(0)
-      .toUpperCase();
-
-  readonly signOf = (movement: Movement): string => {
-    if (this.isDestination(movement) || movement.type === 'INCOME') return '+';
-    return movement.type === 'EXPENSE' ? '-' : '';
-  };
-
-  readonly paletteOf = (movement: Movement) =>
-    this.isDestination(movement)
-      ? MOVEMENT_TYPE_PALETTE.INCOME
-      : MOVEMENT_TYPE_PALETTE[movement.type];
-
-  proceedToRevertMovement(): void {
-    const movement = this.movementToRevert();
-    if (movement) {
-      this.storage.revertMovement(movement.id);
-    }
-    this.movementToRevert.set(null);
-  }
-
-  cancelRevertMovement(): void {
-    this.movementToRevert.set(null);
-  }
 
   proceedToDeleteCategory(): void {
     const category = this.categoryToDelete();
