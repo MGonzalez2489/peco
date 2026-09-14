@@ -1,5 +1,12 @@
 [
   {
+    "version": "v0.7.2",
+    "fecha": "2026-09-14",
+    "highlights": [
+      "Corrección de Error: corregir iconos del manifest para la instalación"
+    ]
+  },
+  {
     "version": "v0.7.1",
     "fecha": "2026-09-14",
     "highlights": [
