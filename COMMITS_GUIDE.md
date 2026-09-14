@@ -19,19 +19,19 @@ type(scope): description
 
 ## Types and their impact
 
-| Type        | Appears in the PWA (highlights) | Changelog label           |
-| ----------- | ------------------------------- | ------------------------- |
-| `feat`      | Yes                             | Nueva Funcionalidad       |
-| `fix`       | Yes                             | Corrección de Error       |
-| `chore`     | No                              | –                         |
-| `refactor`  | No                              | –                         |
-| `style`     | No                              | –                         |
-| `ci`        | No                              | –                         |
-| `docs`      | No                              | –                         |
-| `perf`      | No                              | –                         |
-| `build`     | No                              | –                         |
-| `test`      | No                              | –                         |
-| `revert`    | No                              | –                         |
+| Type       | Appears in the PWA (highlights) | Changelog label     |
+| ---------- | ------------------------------- | ------------------- |
+| `feat`     | Yes                             | Nueva Funcionalidad |
+| `fix`      | Yes                             | Corrección de Error |
+| `chore`    | No                              | –                   |
+| `refactor` | No                              | –                   |
+| `style`    | No                              | –                   |
+| `ci`       | No                              | –                   |
+| `docs`     | No                              | –                   |
+| `perf`     | No                              | –                   |
+| `build`    | No                              | –                   |
+| `test`     | No                              | –                   |
+| `revert`   | No                              | –                   |
 
 Only `feat` and `fix` commits are collected into `src/assets/changelog.json`. A release bumps:
 
@@ -52,7 +52,7 @@ The commit description is copied verbatim into the changelog highlights, so writ
 ## Valid examples
 
 ```
-feat(movements): add filter by category
+feat(movements): add filter by account
 ```
 
 ```
@@ -82,13 +82,13 @@ save my changes
 Rejected – missing the `type:` prefix entirely.
 
 ```
-Fix(movements): filter by category
+Fix(movements): filter by account
 ```
 
 Rejected – the type must be lowercase (`fix`).
 
 ```
-feat(movements): filter by category and date range plus recurring movements and budget reports
+feat(movements): filter by account and date range plus recurring movements and budget reports
 ```
 
 Rejected – the header exceeds the 100-character limit.
