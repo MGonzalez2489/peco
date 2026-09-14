@@ -25,7 +25,9 @@ export class LocalFinanceService implements FinanceStorage {
   );
 
   constructor() {
-    this.categoriesSignal.set(this.readPersisted(STORAGE_KEY_CATEGORIES, SEED_CATEGORIES));
+    this.categoriesSignal.set(
+      this.ensureRoot(this.readPersisted(STORAGE_KEY_CATEGORIES, SEED_CATEGORIES)),
+    );
     this.movementsSignal.set(this.readPersisted(STORAGE_KEY_MOVEMENTS, SEED_MOVEMENTS));
 
     effect(() => {
@@ -35,6 +37,7 @@ export class LocalFinanceService implements FinanceStorage {
   }
 
   addCategory(dto: CreateCategoryDTO): void {
+    const needsRoot = !this.categories().some((category) => category.isRoot);
     const category: Category = {
       id: crypto.randomUUID(),
       name: dto.name.trim(),
@@ -43,6 +46,7 @@ export class LocalFinanceService implements FinanceStorage {
       color: dto.color,
       icon: dto.icon,
       pinToHome: dto.pinToHome ?? false,
+      isRoot: needsRoot ? true : undefined,
     };
     this.categoriesSignal.update((current) => [...current, category]);
   }
@@ -58,6 +62,7 @@ export class LocalFinanceService implements FinanceStorage {
               color: dto.color,
               icon: dto.icon ?? category.icon,
               pinToHome: dto.pinToHome ?? false,
+              isRoot: category.isRoot,
             }
           : category,
       ),
@@ -66,7 +71,7 @@ export class LocalFinanceService implements FinanceStorage {
 
   deleteCategory(id: string, destinationCategoryId?: string): void {
     const category = this.categories().find((c) => c.id === id);
-    if (!category) return;
+    if (!category || category.isRoot) return;
 
     if (category.currentBalance !== 0 && destinationCategoryId && destinationCategoryId !== id) {
       const amount = category.currentBalance;
@@ -180,5 +185,12 @@ export class LocalFinanceService implements FinanceStorage {
     } catch {
       return fallback;
     }
+  }
+
+  private ensureRoot(categories: Category[]): Category[] {
+    if (categories.some((category) => category.isRoot)) return categories;
+    if (categories.length === 0) return categories;
+    const [first, ...rest] = categories;
+    return [{...first, isRoot: true}, ...rest];
   }
 }

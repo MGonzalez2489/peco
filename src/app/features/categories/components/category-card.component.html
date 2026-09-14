@@ -1,0 +1,46 @@
+<div class="relative">
+  <a
+    [routerLink]="['/categories', category().id]"
+    class="block rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950"
+    [attr.aria-label]="'Ver detalle de ' + category().name"
+  >
+    <app-stat-card
+      [title]="category().name"
+      [amount]="category().currentBalance"
+      [color]="category().color ?? 'indigo'"
+      [goal]="category().targetGoal"
+      [subtext]="subtext()"
+    />
+  </a>
+
+  @if (category().isRoot) {
+    <span
+      role="status"
+      class="absolute -top-3 left-5 z-20 rounded-full bg-slate-600 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white shadow-sm ring-1 ring-white/60 dark:bg-slate-400 dark:text-slate-950"
+    >
+      Cuenta base
+    </span>
+  }
+
+  @if (pinned()) {
+    <div
+      class="absolute right-4 top-12 p-0.5 transition dark:hover:bg-slate-800 dark:focus-visible:ring-offset-slate-900"
+      title="Fijado en inicio"
+    >
+      <svg
+        class="h-3.5 w-3.5 text-slate-300 dark:text-slate-600"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <path
+          d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"
+        />
+      </svg>
+    </div>
+  }
+</div>

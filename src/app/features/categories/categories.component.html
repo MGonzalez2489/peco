@@ -8,19 +8,7 @@
 
   <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
     @for (category of categories(); track category.id) {
-      <a
-        [routerLink]="['/categories', category.id]"
-        class="block rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950"
-        [attr.aria-label]="'Ver detalle de ' + category.name"
-      >
-        <app-stat-card
-          [title]="category.name"
-          [amount]="category.currentBalance"
-          [color]="category.color ?? 'indigo'"
-          [goal]="category.targetGoal"
-          [subtext]="categorySubtext(category.targetGoal)"
-        />
-      </a>
+      <app-category-card [category]="category" />
     }
 
     <button
