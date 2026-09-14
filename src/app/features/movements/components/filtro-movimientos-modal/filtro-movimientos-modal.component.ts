@@ -8,7 +8,7 @@ import {
   signal,
 } from '@angular/core';
 import {MOVEMENT_TYPE_LABEL} from '@core/constants';
-import {Account} from '@core/models';
+import {Account, Category} from '@core/models';
 import {MovementFilterType} from '../../models/movement-filters.model';
 import {ModalComponent} from '@shared/components';
 
@@ -42,15 +42,18 @@ import {ModalComponent} from '@shared/components';
 export class FiltroMovimientosModalComponent {
   readonly isOpen = input(false);
   readonly accounts = input<readonly Account[]>([]);
+  readonly categories = input<readonly Category[]>([]);
   readonly filters = input({
     type: 'ALL' as MovementFilterType,
     accountId: '',
+    categoryId: '',
     hideReversals: false,
   });
 
   readonly filtersChanged = output<{
     type: MovementFilterType;
     accountId: string;
+    categoryId: string;
     hideReversals: boolean;
   }>();
   readonly closed = output<void>();
@@ -64,6 +67,7 @@ export class FiltroMovimientosModalComponent {
 
   readonly type = signal<MovementFilterType>('ALL');
   readonly accountId = signal('');
+  readonly categoryId = signal('');
   readonly hideReversals = signal(false);
 
   constructor() {
@@ -71,6 +75,7 @@ export class FiltroMovimientosModalComponent {
       if (this.isOpen()) {
         this.type.set(this.filters().type);
         this.accountId.set(this.filters().accountId);
+        this.categoryId.set(this.filters().categoryId);
         this.hideReversals.set(this.filters().hideReversals);
       }
     });
@@ -80,13 +85,14 @@ export class FiltroMovimientosModalComponent {
     this.filtersChanged.emit({
       type: this.type(),
       accountId: this.accountId(),
+      categoryId: this.categoryId(),
       hideReversals: this.hideReversals(),
     });
     this.closed.emit();
   }
 
   clear(): void {
-    this.filtersChanged.emit({type: 'ALL', accountId: '', hideReversals: false});
+    this.filtersChanged.emit({type: 'ALL', accountId: '', categoryId: '', hideReversals: false});
     this.closed.emit();
   }
 }

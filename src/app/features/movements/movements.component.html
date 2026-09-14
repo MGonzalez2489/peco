@@ -51,6 +51,7 @@
 <app-filtro-movimientos-modal
   [isOpen]="filtersOpen()"
   [accounts]="accounts()"
+  [categories]="categories()"
   [filters]="currentFilters()"
   (filtersChanged)="applyFilters($event)"
   (closed)="filtersOpen.set(false)"

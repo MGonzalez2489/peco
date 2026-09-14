@@ -2,6 +2,7 @@ import {MovementType} from '../types/movement-type.type';
 
 export interface CreateMovementDTO {
   accountId: string;
+  categoryId: string;
   type: MovementType;
   amount: number;
   date?: string;

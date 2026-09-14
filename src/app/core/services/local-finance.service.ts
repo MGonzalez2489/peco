@@ -2,8 +2,10 @@ import {Injectable, computed, effect, signal} from '@angular/core';
 import {CreateAccountDto} from '../dtos/create-account.dto';
 import {CreateMovementDTO} from '../dtos/create-movement.dto';
 import {SEED_ACCOUNTS} from '../constants/seed-accounts.constant';
+import {SEED_CATEGORIES} from '../constants/seed-categories.constant';
 import {SEED_MOVEMENTS} from '../constants/seed-movements.constant';
 import {Account} from '../models/account.model';
+import {Category} from '../models/category.model';
 import {Movement} from '../models/movement.model';
 import {MovementType} from '../types/movement-type.type';
 import {formatCurrency} from '../utils/format-currency.util';
@@ -17,9 +19,11 @@ const STORAGE_KEY_MOVEMENTS = 'peco.movements';
 @Injectable({providedIn: 'root'})
 export class LocalFinanceService implements FinanceStorage {
   private readonly accountsSignal = signal<Account[]>([]);
+  private readonly categoriesSignal = signal<Category[]>(SEED_CATEGORIES);
   private readonly movementsSignal = signal<Movement[]>([]);
 
   readonly accounts = this.accountsSignal.asReadonly();
+  readonly categories = this.categoriesSignal.asReadonly();
   readonly movements = this.movementsSignal.asReadonly();
 
   readonly totalBalance = computed(() =>
@@ -28,7 +32,11 @@ export class LocalFinanceService implements FinanceStorage {
 
   constructor() {
     this.accountsSignal.set(this.ensureRoot(this.readAccounts()));
-    this.movementsSignal.set(this.readPersisted(STORAGE_KEY_MOVEMENTS, null) ?? SEED_MOVEMENTS);
+    this.movementsSignal.set(
+      this.withBackfilledCategories(
+        this.readPersisted(STORAGE_KEY_MOVEMENTS, null) ?? SEED_MOVEMENTS,
+      ),
+    );
 
     effect(() => {
       localStorage.setItem(STORAGE_KEY_ACCOUNTS, JSON.stringify(this.accounts()));
@@ -77,6 +85,7 @@ export class LocalFinanceService implements FinanceStorage {
       const amount = account.currentBalance;
       this.registerMovement({
         accountId: id,
+        categoryId: 'transfer',
         type: 'TRANSFER',
         amount,
         targetAccountId,
@@ -92,6 +101,7 @@ export class LocalFinanceService implements FinanceStorage {
       id: crypto.randomUUID(),
       date: dto.date ?? new Date().toISOString(),
       accountId: dto.accountId,
+      categoryId: dto.categoryId,
       type: dto.type,
       amount: dto.amount,
       note: dto.note,
@@ -113,6 +123,7 @@ export class LocalFinanceService implements FinanceStorage {
         movement.type === 'TRANSFER'
           ? (movement.targetAccountId ?? movement.accountId)
           : movement.accountId,
+      categoryId: movement.categoryId,
       type: this.reversalType(movement.type),
       amount: movement.amount,
       note: this.reversalNote(movement),
@@ -201,5 +212,24 @@ export class LocalFinanceService implements FinanceStorage {
     if (accounts.length === 0) return accounts;
     const [first, ...rest] = accounts;
     return [{...first, isRoot: true}, ...rest];
+  }
+
+  private withBackfilledCategories(movements: Movement[]): Movement[] {
+    return movements.map((movement) =>
+      movement.categoryId
+        ? movement
+        : {...movement, categoryId: this.defaultCategoryIdForType(movement.type)},
+    );
+  }
+
+  private defaultCategoryIdForType(type: MovementType): string {
+    switch (type) {
+      case 'INCOME':
+        return 'payroll';
+      case 'EXPENSE':
+        return 'services';
+      case 'TRANSFER':
+        return 'transfer';
+    }
   }
 }

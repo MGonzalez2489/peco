@@ -15,9 +15,11 @@ export class MovementsComponent {
   readonly storage = inject(FINANCE_STORAGE);
 
   readonly accounts = this.storage.accounts;
+  readonly categories = this.storage.categories;
 
   readonly typeFilter = signal<MovementFilterType>('ALL');
   readonly accountFilter = signal('');
+  readonly categoryFilter = signal('');
   readonly hideReversals = signal(false);
 
   readonly filtersOpen = signal(false);
@@ -25,6 +27,7 @@ export class MovementsComponent {
   readonly currentFilters = computed<MovementFilters>(() => ({
     type: this.typeFilter(),
     accountId: this.accountFilter(),
+    categoryId: this.categoryFilter(),
     hideReversals: this.hideReversals(),
   }));
 
@@ -32,6 +35,7 @@ export class MovementsComponent {
     let count = 0;
     if (this.typeFilter() !== 'ALL') count += 1;
     if (this.accountFilter()) count += 1;
+    if (this.categoryFilter()) count += 1;
     if (this.hideReversals()) count += 1;
     return count;
   });
@@ -45,15 +49,18 @@ export class MovementsComponent {
           !this.accountFilter() ||
           movement.accountId === this.accountFilter() ||
           movement.targetAccountId === this.accountFilter();
+        const matchesCategory =
+          !this.categoryFilter() || movement.categoryId === this.categoryFilter();
         const matchesReversal =
           !this.hideReversals() || (!movement.isReversal && !movement.reversalId);
-        return matchesType && matchesAccount && matchesReversal;
+        return matchesType && matchesAccount && matchesCategory && matchesReversal;
       }),
   );
 
   applyFilters(filters: MovementFilters): void {
     this.typeFilter.set(filters.type);
     this.accountFilter.set(filters.accountId);
+    this.categoryFilter.set(filters.categoryId);
     this.hideReversals.set(filters.hideReversals);
   }
 }
