@@ -2,12 +2,12 @@ import {MovementType} from '../types/movement-type.type';
 
 export interface Movement {
   id: string;
-  categoryId: string;
+  accountId: string;
   type: MovementType;
   amount: number;
   date: string;
   note?: string;
-  destinationCategoryId?: string;
+  targetAccountId?: string;
   reversalId?: string;
   isReversal?: boolean;
 }

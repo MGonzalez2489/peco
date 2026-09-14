@@ -1,2 +1,2 @@
-export * from './create-category.dto';
+export * from './create-account.dto';
 export * from './create-movement.dto';

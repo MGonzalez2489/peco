@@ -30,7 +30,7 @@ export class MovementFormModalComponent {
 
   readonly storage = inject(FINANCE_STORAGE);
 
-  readonly categories = this.storage.categories;
+  readonly accounts = this.storage.accounts;
 
   private readonly fb = inject(FormBuilder);
 
@@ -39,16 +39,16 @@ export class MovementFormModalComponent {
       validators: [Validators.required, Validators.min(0.01)],
     }),
     type: this.fb.control<MovementType>('EXPENSE', Validators.required),
-    categoryId: this.fb.control<string>('', Validators.required),
-    destinationCategoryId: this.fb.control<string | null>(null),
+    accountId: this.fb.control<string>('', Validators.required),
+    targetAccountId: this.fb.control<string | null>(null),
     note: this.fb.control<string>(''),
   });
 
   readonly selectedType = signal<MovementType>('EXPENSE');
-  readonly sourceCategoryId = signal('');
+  readonly sourceAccountId = signal('');
 
-  readonly destinationCategories = computed(() =>
-    this.categories().filter((category) => category.id !== this.sourceCategoryId()),
+  readonly destinationAccounts = computed(() =>
+    this.accounts().filter((account) => account.id !== this.sourceAccountId()),
   );
 
   readonly typeOptions: Array<{value: MovementType; label: string}> = [
@@ -59,8 +59,8 @@ export class MovementFormModalComponent {
 
   constructor() {
     const typeControl = this.form.controls.type;
-    const sourceControl = this.form.controls.categoryId;
-    const destinationControl = this.form.controls.destinationCategoryId;
+    const sourceControl = this.form.controls.accountId;
+    const destinationControl = this.form.controls.targetAccountId;
 
     typeControl.valueChanges.pipe(takeUntilDestroyed()).subscribe((type) => {
       const value = type ?? 'EXPENSE';
@@ -69,9 +69,9 @@ export class MovementFormModalComponent {
     });
 
     sourceControl.valueChanges.pipe(takeUntilDestroyed()).subscribe((source) => {
-      this.sourceCategoryId.set(source ?? '');
+      this.sourceAccountId.set(source ?? '');
       if (typeControl.value === 'TRANSFER' && source && destinationControl.value === source) {
-        destinationControl.setValue(this.categories().find((c) => c.id !== source)?.id ?? '');
+        destinationControl.setValue(this.accounts().find((a) => a.id !== source)?.id ?? '');
       }
     });
 
@@ -80,22 +80,22 @@ export class MovementFormModalComponent {
         this.form.reset({
           amount: 0,
           type: 'EXPENSE',
-          categoryId: '',
-          destinationCategoryId: null,
+          accountId: '',
+          targetAccountId: null,
           note: '',
         });
         this.selectedType.set('EXPENSE');
-        this.sourceCategoryId.set('');
-        const first = this.categories()[0];
+        this.sourceAccountId.set('');
+        const first = this.accounts()[0];
         if (first) sourceControl.setValue(first.id);
         this.syncDestination('EXPENSE');
       }
     });
 
     effect(() => {
-      const available = this.categories();
+      const available = this.accounts();
       const current = sourceControl.value;
-      if (current && available.some((c) => c.id === current)) return;
+      if (current && available.some((a) => a.id === current)) return;
       const first = available[0];
       if (first) sourceControl.setValue(first.id);
     });
@@ -106,15 +106,15 @@ export class MovementFormModalComponent {
     if (this.form.invalid) return;
 
     const raw = this.form.getRawValue();
-    const destinationId = raw.type === 'TRANSFER' ? (raw.destinationCategoryId ?? null) : undefined;
-    if (raw.type === 'TRANSFER' && (!destinationId || destinationId === raw.categoryId)) return;
+    const destinationId = raw.type === 'TRANSFER' ? (raw.targetAccountId ?? null) : undefined;
+    if (raw.type === 'TRANSFER' && (!destinationId || destinationId === raw.accountId)) return;
 
     this.storage.registerMovement({
-      categoryId: raw.categoryId ?? '',
+      accountId: raw.accountId ?? '',
       type: raw.type ?? 'EXPENSE',
       amount: raw.amount ?? 0,
       note: raw.note?.trim() || undefined,
-      destinationCategoryId: destinationId ?? undefined,
+      targetAccountId: destinationId ?? undefined,
     });
 
     this.closed.emit();
@@ -128,7 +128,7 @@ export class MovementFormModalComponent {
   }
 
   private syncDestination(type: MovementType): void {
-    const destination = this.form.controls.destinationCategoryId;
+    const destination = this.form.controls.targetAccountId;
     if (type === 'TRANSFER') {
       destination.enable();
       destination.setValidators(Validators.required);

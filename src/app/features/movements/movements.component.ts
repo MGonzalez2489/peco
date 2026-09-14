@@ -14,24 +14,24 @@ import {MovementFilterType, MovementFilters} from './models/movement-filters.mod
 export class MovementsComponent {
   readonly storage = inject(FINANCE_STORAGE);
 
-  readonly categories = this.storage.categories;
+  readonly accounts = this.storage.accounts;
 
   readonly typeFilter = signal<MovementFilterType>('ALL');
-  readonly categoryFilter = signal('');
+  readonly accountFilter = signal('');
   readonly hideReversals = signal(false);
 
   readonly filtersOpen = signal(false);
 
   readonly currentFilters = computed<MovementFilters>(() => ({
     type: this.typeFilter(),
-    categoryId: this.categoryFilter(),
+    accountId: this.accountFilter(),
     hideReversals: this.hideReversals(),
   }));
 
   readonly activeFilterCount = computed(() => {
     let count = 0;
     if (this.typeFilter() !== 'ALL') count += 1;
-    if (this.categoryFilter()) count += 1;
+    if (this.accountFilter()) count += 1;
     if (this.hideReversals()) count += 1;
     return count;
   });
@@ -41,24 +41,19 @@ export class MovementsComponent {
       .sort((a, b) => b.date.localeCompare(a.date))
       .filter((movement) => {
         const matchesType = this.typeFilter() === 'ALL' || movement.type === this.typeFilter();
-        const matchesCategory =
-          !this.categoryFilter() ||
-          movement.categoryId === this.categoryFilter() ||
-          movement.destinationCategoryId === this.categoryFilter();
+        const matchesAccount =
+          !this.accountFilter() ||
+          movement.accountId === this.accountFilter() ||
+          movement.targetAccountId === this.accountFilter();
         const matchesReversal =
           !this.hideReversals() || (!movement.isReversal && !movement.reversalId);
-        return matchesType && matchesCategory && matchesReversal;
+        return matchesType && matchesAccount && matchesReversal;
       }),
   );
 
   applyFilters(filters: MovementFilters): void {
     this.typeFilter.set(filters.type);
-    this.categoryFilter.set(filters.categoryId);
+    this.accountFilter.set(filters.accountId);
     this.hideReversals.set(filters.hideReversals);
-  }
-
-  private parseLocalDate(iso: string): string {
-    const [year, month, day] = iso.split('T')[0].split('-').map(Number);
-    return `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
   }
 }

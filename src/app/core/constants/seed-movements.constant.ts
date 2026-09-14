@@ -5,7 +5,7 @@ const daysAgo = (days: number): string => new Date(Date.now() - days * 86_400_00
 export const SEED_MOVEMENTS: Movement[] = [
   {
     id: 'm-1',
-    categoryId: 'c-cash',
+    accountId: 'c-cash',
     type: 'INCOME',
     amount: 2000,
     date: daysAgo(6),
@@ -13,7 +13,7 @@ export const SEED_MOVEMENTS: Movement[] = [
   },
   {
     id: 'm-2',
-    categoryId: 'c-cash',
+    accountId: 'c-cash',
     type: 'EXPENSE',
     amount: 550,
     date: daysAgo(5),
@@ -21,7 +21,7 @@ export const SEED_MOVEMENTS: Movement[] = [
   },
   {
     id: 'm-3',
-    categoryId: 'c-cash',
+    accountId: 'c-cash',
     type: 'EXPENSE',
     amount: 320,
     date: daysAgo(3),
@@ -29,7 +29,7 @@ export const SEED_MOVEMENTS: Movement[] = [
   },
   {
     id: 'm-4',
-    categoryId: 'c-savings',
+    accountId: 'c-savings',
     type: 'INCOME',
     amount: 1000,
     date: daysAgo(4),
@@ -37,16 +37,16 @@ export const SEED_MOVEMENTS: Movement[] = [
   },
   {
     id: 'm-5',
-    categoryId: 'c-cash',
+    accountId: 'c-cash',
     type: 'TRANSFER',
     amount: 700,
     date: daysAgo(2),
-    destinationCategoryId: 'c-savings',
+    targetAccountId: 'c-savings',
     note: 'Ahorro automático',
   },
   {
     id: 'm-6',
-    categoryId: 'c-investment',
+    accountId: 'c-investment',
     type: 'INCOME',
     amount: 800,
     date: daysAgo(1),

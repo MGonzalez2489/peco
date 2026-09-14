@@ -15,17 +15,17 @@ export const routes: Routes = [
       import('./features/movements/movements.component').then((m) => m.MovementsComponent),
   },
   {
-    path: 'categories',
-    title: 'Categorías',
+    path: 'accounts',
+    title: 'Cuentas',
     loadComponent: () =>
-      import('./features/categories/categories.component').then((m) => m.CategoriesComponent),
+      import('./features/accounts/accounts.component').then((m) => m.AccountsComponent),
   },
   {
-    path: 'categories/:id',
+    path: 'accounts/:id',
     title: 'Detalle de cuenta',
     loadComponent: () =>
-      import('./features/categories/detail/category-detail.component').then(
-        (m) => m.CategoryDetailComponent,
+      import('./features/accounts/detail/account-detail.component').then(
+        (m) => m.AccountDetailComponent,
       ),
   },
   {

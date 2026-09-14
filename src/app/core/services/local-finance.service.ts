@@ -1,44 +1,44 @@
 import {Injectable, computed, effect, signal} from '@angular/core';
-import {CreateCategoryDTO} from '../dtos/create-category.dto';
+import {CreateAccountDto} from '../dtos/create-account.dto';
 import {CreateMovementDTO} from '../dtos/create-movement.dto';
-import {SEED_CATEGORIES} from '../constants/seed-categories.constant';
+import {SEED_ACCOUNTS} from '../constants/seed-accounts.constant';
 import {SEED_MOVEMENTS} from '../constants/seed-movements.constant';
-import {Category} from '../models/category.model';
+import {Account} from '../models/account.model';
 import {Movement} from '../models/movement.model';
 import {MovementType} from '../types/movement-type.type';
 import {formatCurrency} from '../utils/format-currency.util';
 import {FinanceStorage} from './finance-storage.interface';
 
-const STORAGE_KEY_CATEGORIES = 'peco.categories';
+const STORAGE_KEY_ACCOUNTS = 'peco.accounts';
+const STORAGE_KEY_CUENTAS_DEPRECATED = 'peco.cuentas';
+const STORAGE_KEY_CATEGORIES_DEPRECATED = 'peco.categories';
 const STORAGE_KEY_MOVEMENTS = 'peco.movements';
 
 @Injectable({providedIn: 'root'})
 export class LocalFinanceService implements FinanceStorage {
-  private readonly categoriesSignal = signal<Category[]>([]);
+  private readonly accountsSignal = signal<Account[]>([]);
   private readonly movementsSignal = signal<Movement[]>([]);
 
-  readonly categories = this.categoriesSignal.asReadonly();
+  readonly accounts = this.accountsSignal.asReadonly();
   readonly movements = this.movementsSignal.asReadonly();
 
   readonly totalBalance = computed(() =>
-    this.categories().reduce((total, category) => total + category.currentBalance, 0),
+    this.accounts().reduce((total, account) => total + account.currentBalance, 0),
   );
 
   constructor() {
-    this.categoriesSignal.set(
-      this.ensureRoot(this.readPersisted(STORAGE_KEY_CATEGORIES, SEED_CATEGORIES)),
-    );
-    this.movementsSignal.set(this.readPersisted(STORAGE_KEY_MOVEMENTS, SEED_MOVEMENTS));
+    this.accountsSignal.set(this.ensureRoot(this.readAccounts()));
+    this.movementsSignal.set(this.readPersisted(STORAGE_KEY_MOVEMENTS, null) ?? SEED_MOVEMENTS);
 
     effect(() => {
-      localStorage.setItem(STORAGE_KEY_CATEGORIES, JSON.stringify(this.categories()));
+      localStorage.setItem(STORAGE_KEY_ACCOUNTS, JSON.stringify(this.accounts()));
       localStorage.setItem(STORAGE_KEY_MOVEMENTS, JSON.stringify(this.movements()));
     });
   }
 
-  addCategory(dto: CreateCategoryDTO): void {
-    const needsRoot = !this.categories().some((category) => category.isRoot);
-    const category: Category = {
+  addAccount(dto: CreateAccountDto): void {
+    const needsRoot = !this.accounts().some((account) => account.isRoot);
+    const account: Account = {
       id: crypto.randomUUID(),
       name: dto.name.trim(),
       currentBalance: dto.initialBalance,
@@ -48,54 +48,54 @@ export class LocalFinanceService implements FinanceStorage {
       pinToHome: dto.pinToHome ?? false,
       isRoot: needsRoot ? true : undefined,
     };
-    this.categoriesSignal.update((current) => [...current, category]);
+    this.accountsSignal.update((current) => [...current, account]);
   }
 
-  updateCategory(id: string, dto: CreateCategoryDTO): void {
-    this.categoriesSignal.update((current) =>
-      current.map((category) =>
-        category.id === id
+  updateAccount(id: string, dto: CreateAccountDto): void {
+    this.accountsSignal.update((current) =>
+      current.map((account) =>
+        account.id === id
           ? {
-              ...category,
+              ...account,
               name: dto.name.trim(),
               targetGoal: dto.targetGoal,
               color: dto.color,
-              icon: dto.icon ?? category.icon,
+              icon: dto.icon ?? account.icon,
               pinToHome: dto.pinToHome ?? false,
-              isRoot: category.isRoot,
+              isRoot: account.isRoot,
             }
-          : category,
+          : account,
       ),
     );
   }
 
-  deleteCategory(id: string, destinationCategoryId?: string): void {
-    const category = this.categories().find((c) => c.id === id);
-    if (!category || category.isRoot) return;
+  deleteAccount(id: string, targetAccountId?: string): void {
+    const account = this.accounts().find((a) => a.id === id);
+    if (!account || account.isRoot) return;
 
-    if (category.currentBalance !== 0 && destinationCategoryId && destinationCategoryId !== id) {
-      const amount = category.currentBalance;
+    if (account.currentBalance !== 0 && targetAccountId && targetAccountId !== id) {
+      const amount = account.currentBalance;
       this.registerMovement({
-        categoryId: id,
+        accountId: id,
         type: 'TRANSFER',
         amount,
-        destinationCategoryId,
-        note: `Eliminación de cuenta ${category.name} traspaso ${formatCurrency(amount)}`,
+        targetAccountId,
+        note: `Eliminación de cuenta ${account.name} traspaso ${formatCurrency(amount)}`,
       });
     }
 
-    this.categoriesSignal.update((current) => current.filter((c) => c.id !== id));
+    this.accountsSignal.update((current) => current.filter((a) => a.id !== id));
   }
 
   registerMovement(dto: CreateMovementDTO): void {
     const movement: Movement = {
       id: crypto.randomUUID(),
       date: dto.date ?? new Date().toISOString(),
-      categoryId: dto.categoryId,
+      accountId: dto.accountId,
       type: dto.type,
       amount: dto.amount,
       note: dto.note,
-      destinationCategoryId: dto.destinationCategoryId,
+      targetAccountId: dto.targetAccountId,
     };
 
     this.movementsSignal.update((current) => [movement, ...current]);
@@ -109,15 +109,14 @@ export class LocalFinanceService implements FinanceStorage {
     const reversal: Movement = {
       id: crypto.randomUUID(),
       date: new Date().toISOString(),
-      categoryId:
+      accountId:
         movement.type === 'TRANSFER'
-          ? (movement.destinationCategoryId ?? movement.categoryId)
-          : movement.categoryId,
+          ? (movement.targetAccountId ?? movement.accountId)
+          : movement.accountId,
       type: this.reversalType(movement.type),
       amount: movement.amount,
       note: this.reversalNote(movement),
-      destinationCategoryId:
-        movement.type === 'TRANSFER' ? movement.categoryId : movement.destinationCategoryId,
+      targetAccountId: movement.type === 'TRANSFER' ? movement.accountId : movement.targetAccountId,
       reversalId: movement.id,
       isReversal: true,
     };
@@ -130,26 +129,24 @@ export class LocalFinanceService implements FinanceStorage {
   }
 
   private applyMovement(movement: Movement): void {
-    this.categoriesSignal.update((current) =>
-      current.map((category) => {
-        let balance = category.currentBalance;
+    this.accountsSignal.update((current) =>
+      current.map((account) => {
+        let balance = account.currentBalance;
 
-        if (category.id === movement.categoryId) {
+        if (account.id === movement.accountId) {
           const sourceDelta = movement.type === 'INCOME' ? movement.amount : -movement.amount;
           balance += sourceDelta;
         }
 
         if (
           movement.type === 'TRANSFER' &&
-          movement.destinationCategoryId &&
-          category.id === movement.destinationCategoryId
+          movement.targetAccountId &&
+          account.id === movement.targetAccountId
         ) {
           balance += movement.amount;
         }
 
-        return balance === category.currentBalance
-          ? category
-          : {...category, currentBalance: balance};
+        return balance === account.currentBalance ? account : {...account, currentBalance: balance};
       }),
     );
   }
@@ -162,6 +159,8 @@ export class LocalFinanceService implements FinanceStorage {
         return 'INCOME';
       case 'TRANSFER':
         return 'TRANSFER';
+      default:
+        return 'EXPENSE';
     }
   }
 
@@ -173,10 +172,20 @@ export class LocalFinanceService implements FinanceStorage {
         return `Reversión de egreso ${movement.id}`;
       case 'TRANSFER':
         return `Reversión de transferencia ${movement.id}`;
+      default:
+        return '';
     }
   }
 
-  private readPersisted<T>(key: string, fallback: T[]): T[] {
+  private readAccounts(): Account[] {
+    const current = this.readPersisted<Account>(STORAGE_KEY_ACCOUNTS, null);
+    if (current) return current;
+    const legacyStore = this.readPersisted<Account>(STORAGE_KEY_CUENTAS_DEPRECATED, null);
+    if (legacyStore) return legacyStore;
+    return this.readPersisted<Account>(STORAGE_KEY_CATEGORIES_DEPRECATED, null) ?? SEED_ACCOUNTS;
+  }
+
+  private readPersisted<T>(key: string, fallback: T[] | null): T[] | null {
     try {
       const raw = localStorage.getItem(key);
       if (!raw) return fallback;
@@ -187,10 +196,10 @@ export class LocalFinanceService implements FinanceStorage {
     }
   }
 
-  private ensureRoot(categories: Category[]): Category[] {
-    if (categories.some((category) => category.isRoot)) return categories;
-    if (categories.length === 0) return categories;
-    const [first, ...rest] = categories;
+  private ensureRoot(accounts: Account[]): Account[] {
+    if (accounts.some((account) => account.isRoot)) return accounts;
+    if (accounts.length === 0) return accounts;
+    const [first, ...rest] = accounts;
     return [{...first, isRoot: true}, ...rest];
   }
 }

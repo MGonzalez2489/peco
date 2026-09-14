@@ -1,6 +1,6 @@
-import {Category} from '../models/category.model';
+import {Account} from '../models/account.model';
 
-export const SEED_CATEGORIES: Category[] = [
+export const SEED_ACCOUNTS: Account[] = [
   {
     id: 'c-cash',
     name: 'Efectivo',
