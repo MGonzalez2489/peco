@@ -1,0 +1,33 @@
+@if (updateAvailable()) {
+  <div
+    role="status"
+    aria-live="polite"
+    class="fixed inset-x-4 top-4 z-50 flex items-center justify-between gap-4 rounded-2xl bg-indigo-600 p-4 text-white shadow-2xl sm:mx-auto sm:max-w-md"
+  >
+    <div class="flex min-w-0 items-center gap-3">
+      <svg
+        class="h-5 w-5 shrink-0"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke-width="2"
+        stroke="currentColor"
+        aria-hidden="true"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
+        />
+      </svg>
+      <p class="truncate text-sm font-semibold">¡Nueva versión disponible!</p>
+    </div>
+
+    <button
+      type="button"
+      (click)="reloadToUpdate()"
+      class="shrink-0 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-indigo-700 shadow-sm transition hover:bg-indigo-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-indigo-600"
+    >
+      Actualizar ahora
+    </button>
+  </div>
+}
