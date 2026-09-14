@@ -9,6 +9,7 @@ export const SEED_CATEGORIES: Category[] = [
     color: 'emerald',
     icon: 'wallet',
     pinToHome: true,
+    isRoot: true,
   },
   {
     id: 'c-savings',
