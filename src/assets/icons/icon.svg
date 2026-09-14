@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Gradiente Principal -->
+    <linearGradient id="peco-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0F172A" />
+      <stop offset="100%" stop-color="#1E1B4B" />
+    </linearGradient>
+
+    <!-- Gradiente del Símbolo -->
+    <linearGradient id="peco-accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366F1" />
+      <stop offset="100%" stop-color="#8B5CF6" />
+    </linearGradient>
+
+    <linearGradient id="peco-light" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8" />
+      <stop offset="100%" stop-color="#818CF8" />
+    </linearGradient>
+  </defs>
+
+  <!-- Fondo de App Icon (Squircle) -->
+  <rect width="512" height="512" rx="112" fill="url(#peco-bg)" />
+
+  <!-- Estructura del Isotipo "P" -->
+  <g transform="translate(136, 112)">
+    <!-- Tallo Vertical (Representa estabilidad / Cuentas) -->
+    <rect x="0" y="0" width="64" height="288" rx="32" fill="url(#peco-accent)" />
+
+    <!-- Círculo Superior (Moneda / Ingreso) -->
+    <circle cx="160" cy="80" r="80" fill="url(#peco-accent)" />
+    
+    <!-- Centro del Círculo (Detalle Dinámico) -->
+    <circle cx="160" cy="80" r="36" fill="url(#peco-light)" />
+
+    <!-- Píldora Horizontal (Apartado / Conexión) -->
+    <rect x="32" y="128" width="128" height="64" rx="32" fill="url(#peco-accent)" />
+  </g>
+</svg>
