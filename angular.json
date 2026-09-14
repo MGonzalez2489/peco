@@ -19,6 +19,7 @@
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
             "assets": [
+              "src/manifest.webmanifest",
               {
                 "glob": "**/*",
                 "input": "public"
