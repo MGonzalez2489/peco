@@ -1,6 +1,6 @@
 import {ChangeDetectionStrategy, Component, computed, input} from '@angular/core';
 import {CurrencyPipe} from '@angular/common';
-import {categoryColor} from '../../../core/utils/category-color.util';
+import {accountColor} from '../../../core/utils/account-color.util';
 
 @Component({
   selector: 'app-stat-card',
@@ -16,7 +16,7 @@ export class StatCardComponent {
   readonly goal = input<number | undefined>();
   readonly subtext = input<string | undefined>();
 
-  readonly palette = computed(() => categoryColor(this.color()));
+  readonly palette = computed(() => accountColor(this.color()));
 
   readonly goalPercentage = computed(() => {
     const goal = this.goal();

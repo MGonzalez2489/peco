@@ -23,8 +23,8 @@ export class MovementListComponent {
 
   readonly movementToRevert = signal<Movement | null>(null);
 
-  private readonly categoriesById = computed(
-    () => new Map(this.storage.categories().map((category) => [category.id, category])),
+  private readonly accountsById = computed(
+    () => new Map(this.storage.accounts().map((account) => [account.id, account])),
   );
 
   readonly movimientosAgrupados = computed<GrupoMovimientos[]>(() => {
@@ -46,10 +46,8 @@ export class MovementListComponent {
     if (!movement) return '';
     return reversalImpact(
       movement,
-      this.categoryName(movement.categoryId),
-      movement.destinationCategoryId
-        ? this.categoryName(movement.destinationCategoryId)
-        : undefined,
+      this.accountName(movement.accountId),
+      movement.targetAccountId ? this.accountName(movement.targetAccountId) : undefined,
     );
   });
 
@@ -57,11 +55,10 @@ export class MovementListComponent {
   readonly movementSign = (type: MovementType) => MOVEMENT_TYPE_PALETTE[type].sign;
   readonly movementPalette = (type: MovementType) => MOVEMENT_TYPE_PALETTE[type];
 
-  readonly categoryName = (id: string): string =>
-    this.categoriesById().get(id)?.name ?? 'Sin categoría';
+  readonly accountName = (id: string): string => this.accountsById().get(id)?.name ?? 'Sin cuenta';
 
-  readonly categoryInitial = (id: string): string =>
-    this.categoriesById().get(id)?.name?.charAt(0).toUpperCase() ?? '?';
+  readonly accountInitial = (id: string): string =>
+    this.accountsById().get(id)?.name?.charAt(0).toUpperCase() ?? '?';
 
   readonly movementTime = (movement: Movement): string => {
     const [, time] = movement.date.split('T');

@@ -1,6 +1,6 @@
-import {CategoryColor} from '../types/category-color.type';
+import {AccountColor} from '../types/account-color.type';
 
-export const CATEGORY_COLORS: Record<CategoryColor, {text: string; chip: string; bar: string}> = {
+export const ACCOUNT_COLORS: Record<AccountColor, {text: string; chip: string; bar: string}> = {
   indigo: {
     text: 'text-indigo-600 dark:text-indigo-400',
     chip: 'bg-indigo-500',

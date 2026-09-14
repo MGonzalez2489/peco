@@ -4,7 +4,7 @@ export type MovementFilterType = 'ALL' | 'INCOME' | 'EXPENSE' | 'TRANSFER';
 
 export interface MovementFilters {
   type: MovementFilterType;
-  categoryId: string;
+  accountId: string;
   hideReversals: boolean;
 }
 

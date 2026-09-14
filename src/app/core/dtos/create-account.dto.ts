@@ -1,4 +1,4 @@
-export interface CreateCategoryDTO {
+export interface CreateAccountDto {
   name: string;
   initialBalance: number;
   targetGoal?: number;

@@ -1,23 +1,23 @@
 import {ChangeDetectionStrategy, Component, effect, inject, input, output} from '@angular/core';
 import {FormBuilder, FormControl, ReactiveFormsModule, Validators} from '@angular/forms';
-import {CATEGORY_COLORS} from '@core/constants';
-import {Category} from '@core/models';
+import {ACCOUNT_COLORS} from '@core/constants';
+import {Account} from '@core/models';
 import {FINANCE_STORAGE} from '@core/services/finance-storage.interface';
-import {CategoryColor} from '@core/types';
+import {AccountColor} from '@core/types';
 import {formatCurrency} from '@core/utils';
 import {ModalComponent} from '@shared/components';
 import {CurrencyInputDirective} from '@shared/directives';
 
 @Component({
-  selector: 'app-category-form-modal',
+  selector: 'app-account-form-modal',
   imports: [ReactiveFormsModule, ModalComponent, CurrencyInputDirective],
-  templateUrl: './category-form-modal.component.html',
+  templateUrl: './account-form-modal.component.html',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class CategoryFormModalComponent {
+export class AccountFormModalComponent {
   readonly isOpen = input(false);
-  readonly category = input<Category | null>(null);
+  readonly account = input<Account | null>(null);
 
   readonly closed = output<void>();
   readonly saved = output<void>();
@@ -32,13 +32,13 @@ export class CategoryFormModalComponent {
       validators: [Validators.required, Validators.min(0)],
     }),
     targetGoal: this.fb.control<number | null>(null, Validators.min(0)),
-    color: this.fb.control<CategoryColor>('indigo'),
+    color: this.fb.control<AccountColor>('indigo'),
     pinToHome: this.fb.control<boolean>(false),
   });
 
-  readonly colorOptions: Array<{key: CategoryColor; classes: string}> = Object.entries(
-    CATEGORY_COLORS,
-  ).map(([key, palette]) => ({key: key as CategoryColor, classes: palette.chip}));
+  readonly colorOptions: Array<{key: AccountColor; classes: string}> = Object.entries(
+    ACCOUNT_COLORS,
+  ).map(([key, palette]) => ({key: key as AccountColor, classes: palette.chip}));
 
   readonly formatCurrency = formatCurrency;
 
@@ -49,7 +49,7 @@ export class CategoryFormModalComponent {
   }
 
   private prepareForm(): void {
-    const editing = this.category();
+    const editing = this.account();
     if (!this.isOpen()) return;
 
     const balance = this.form.controls.initialBalance;
@@ -61,7 +61,7 @@ export class CategoryFormModalComponent {
         name: editing.name,
         initialBalance: null,
         targetGoal: editing.targetGoal ?? null,
-        color: (editing.color as CategoryColor) ?? 'indigo',
+        color: (editing.color as AccountColor) ?? 'indigo',
         pinToHome: editing.pinToHome ?? false,
       });
     } else {
@@ -82,10 +82,10 @@ export class CategoryFormModalComponent {
     if (this.form.invalid) return;
 
     const raw = this.form.getRawValue();
-    const editing = this.category();
+    const editing = this.account();
 
     if (editing) {
-      this.storage.updateCategory(editing.id, {
+      this.storage.updateAccount(editing.id, {
         name: raw.name?.trim() ?? '',
         initialBalance: editing.currentBalance,
         targetGoal: raw.targetGoal ?? undefined,
@@ -93,7 +93,7 @@ export class CategoryFormModalComponent {
         pinToHome: raw.pinToHome ?? false,
       });
     } else {
-      this.storage.addCategory({
+      this.storage.addAccount({
         name: raw.name?.trim() ?? '',
         initialBalance: raw.initialBalance ?? 0,
         targetGoal: raw.targetGoal ?? undefined,

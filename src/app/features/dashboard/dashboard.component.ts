@@ -1,6 +1,6 @@
 import {ChangeDetectionStrategy, Component, computed, inject} from '@angular/core';
 import {RouterLink} from '@angular/router';
-import {Category} from '@core/models';
+import {Account} from '@core/models';
 import {FINANCE_STORAGE} from '@core/services/finance-storage.interface';
 import {formatCurrency} from '@core/utils';
 import {MovementListComponent, StatCardComponent} from '@shared/components';
@@ -15,17 +15,17 @@ import {MovementListComponent, StatCardComponent} from '@shared/components';
 export class DashboardComponent {
   readonly storage = inject(FINANCE_STORAGE);
 
-  readonly categories = this.storage.categories;
+  readonly accounts = this.storage.accounts;
   readonly totalBalance = this.storage.totalBalance;
 
-  readonly apartadosFijados = computed(() => this.categories().filter((c) => c.pinToHome));
+  readonly pinnedAccounts = computed(() => this.accounts().filter((account) => account.pinToHome));
 
   readonly recentMovements = computed(() =>
     [...this.storage.movements()].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5),
   );
 
-  readonly categorySubtext = (category: Category): string =>
-    category.targetGoal !== undefined
-      ? `Meta ${formatCurrency(category.targetGoal)}`
+  readonly accountSubtext = (account: Account): string =>
+    account.targetGoal !== undefined
+      ? `Meta ${formatCurrency(account.targetGoal)}`
       : 'Sin meta asignada';
 }

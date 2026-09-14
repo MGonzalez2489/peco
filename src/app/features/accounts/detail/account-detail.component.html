@@ -1,12 +1,12 @@
-@if (category(); as category) {
+@if (account(); as account) {
   <section class="space-y-6">
     <div class="flex items-center justify-between gap-4">
       <div>
         <div class="flex flex-wrap items-center gap-2">
           <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-            {{ category.name }}
+            {{ account.name }}
           </h1>
-          @if (category.isRoot) {
+          @if (account.isRoot) {
             <span
               class="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400"
             >
@@ -16,7 +16,7 @@
         </div>
         <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
           <a
-            routerLink="/categories"
+            routerLink="/accounts"
             class="inline-flex items-center gap-1 hover:text-slate-700 dark:hover:text-slate-200"
           >
             <svg
@@ -33,7 +33,7 @@
                 d="M15.75 19.5 8.25 12l7.5-7.5"
               />
             </svg>
-            Categorías
+            Cuentas
           </a>
         </p>
       </div>
@@ -60,7 +60,7 @@
           </svg>
           <span class="hidden sm:inline">Editar cuenta</span>
         </button>
-        @if (category.isRoot) {
+        @if (account.isRoot) {
           <span class="group relative inline-flex">
             <button
               type="button"
@@ -95,7 +95,7 @@
         } @else {
           <button
             type="button"
-            (click)="categoryToDelete.set(category)"
+            (click)="accountToDelete.set(account)"
             class="inline-flex items-center gap-2 rounded-xl bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 dark:bg-rose-500/10 dark:text-rose-400 dark:hover:bg-rose-500/20"
           >
             <svg
@@ -119,42 +119,42 @@
     </div>
 
     <app-stat-card
-      [title]="category.name"
-      [amount]="category.currentBalance"
-      [color]="category.color ?? 'indigo'"
-      [goal]="category.targetGoal"
-      [subtext]="categorySubtext(category.targetGoal)"
+      [title]="account.name"
+      [amount]="account.currentBalance"
+      [color]="account.color ?? 'indigo'"
+      [goal]="account.targetGoal"
+      [subtext]="accountSubtext(account.targetGoal)"
     />
 
     <div>
       <h2
         class="my-4 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
       >
-        Historial ({{ categoryMovements().length }})
+        Historial ({{ accountMovements().length }})
       </h2>
       <app-movement-list
-        [movements]="categoryMovements()"
+        [movements]="accountMovements()"
         emptyMessage="No hay movimientos asociados a esta cuenta."
       />
     </div>
   </section>
 
-  <app-category-form-modal
+  <app-account-form-modal
     [isOpen]="editOpen()"
-    [category]="category"
+    [account]="account"
     (closed)="editOpen.set(false)"
   />
 
   <app-confirm-modal
-    [isOpen]="categoryToDelete() !== null"
+    [isOpen]="accountToDelete() !== null"
     title="Eliminar cuenta"
     confirmLabel="Eliminar cuenta"
     cancelLabel="Cancelar"
-    (confirmed)="proceedToDeleteCategory()"
-    (dismissed)="cancelDeleteCategory()"
+    (confirmed)="proceedToDeleteAccount()"
+    (dismissed)="cancelDeleteAccount()"
   >
-    <p>{{ categoryDeletionMessage() }}</p>
-    @if (categoryToDelete()?.currentBalance !== 0) {
+    <p>{{ accountDeletionMessage() }}</p>
+    @if (accountToDelete()?.currentBalance !== 0) {
       <div class="mt-4">
         <label
           for="cat-transfer-destination"
@@ -167,7 +167,7 @@
           (change)="transferDestination.set($any($event.target).value)"
           class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
         >
-          @for (other of otherCategories(); track other.id) {
+          @for (other of otherAccounts(); track other.id) {
             <option [value]="other.id" [selected]="other.id === transferDestination()">
               {{ other.name }} ({{ formatCurrency(other.currentBalance) }})
             </option>
@@ -183,10 +183,10 @@
     </h1>
     <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">
       <a
-        routerLink="/categories"
+        routerLink="/accounts"
         class="font-medium text-indigo-600 hover:underline dark:text-indigo-400"
       >
-        Volver a Categorías
+        Volver a Cuentas
       </a>
     </p>
   </section>

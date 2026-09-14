@@ -1,10 +1,10 @@
 <app-modal
   [isOpen]="isOpen()"
-  [title]="category() ? 'Editar cuenta' : 'Nueva categoría'"
+  [title]="account() ? 'Editar cuenta' : 'Nueva cuenta'"
   (closed)="closed.emit()"
 >
   <form [formGroup]="form" (ngSubmit)="save()" class="mt-5 space-y-4" novalidate>
-    @if (category(); as editing) {
+    @if (account(); as editing) {
       <div
         class="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3 text-sm dark:bg-slate-800/60"
       >
@@ -36,7 +36,7 @@
       }
     </div>
 
-    @if (!category()) {
+    @if (!account()) {
       <div>
         <label
           for="cat-balance"
@@ -167,7 +167,7 @@
         type="submit"
         class="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm shadow-indigo-600/30 transition hover:bg-indigo-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
       >
-        {{ category() ? 'Guardar cambios' : 'Crear apartado' }}
+        {{ account() ? 'Guardar cambios' : 'Crear apartado' }}
       </button>
     </div>
   </form>

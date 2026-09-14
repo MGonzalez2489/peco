@@ -1,14 +1,14 @@
 <section class="space-y-6">
   <div>
-    <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Categorías</h1>
+    <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Cuentas</h1>
     <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
       Apartados con saldo y meta para organizar tu dinero.
     </p>
   </div>
 
   <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-    @for (category of categories(); track category.id) {
-      <app-category-card [category]="category" />
+    @for (account of accounts(); track account.id) {
+      <app-account-card [account]="account" />
     }
 
     <button
@@ -35,4 +35,4 @@
   </div>
 </section>
 
-<app-category-form-modal [isOpen]="modalOpen()" [category]="null" (closed)="modalOpen.set(false)" />
+<app-account-form-modal [isOpen]="modalOpen()" [account]="null" (closed)="modalOpen.set(false)" />

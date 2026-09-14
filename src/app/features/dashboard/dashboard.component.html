@@ -17,7 +17,7 @@
     >
       Apartados
     </h2>
-    @if (apartadosFijados().length === 0) {
+    @if (pinnedAccounts().length === 0) {
       <div
         class="rounded-2xl border-2 border-dashed border-slate-300 p-4 text-center dark:border-slate-700"
       >
@@ -25,7 +25,7 @@
           No tienes apartados fijados en Inicio.
         </p>
         <a
-          [routerLink]="['/categories']"
+          [routerLink]="['/accounts']"
           class="mt-2 inline-flex text-sm font-semibold text-indigo-600 transition hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
         >
           Gestionar apartados
@@ -33,18 +33,18 @@
       </div>
     } @else {
       <div class="no-scrollbar flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2">
-        @for (category of apartadosFijados(); track category.id) {
+        @for (account of pinnedAccounts(); track account.id) {
           <a
-            [routerLink]="['/categories', category.id]"
+            [routerLink]="['/accounts', account.id]"
             class="w-[82%] shrink-0 snap-start rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950 sm:w-[280px]"
-            [attr.aria-label]="'Ver detalle de ' + category.name"
+            [attr.aria-label]="'Ver detalle de ' + account.name"
           >
             <app-stat-card
-              [title]="category.name"
-              [amount]="category.currentBalance"
-              [color]="category.color ?? 'indigo'"
-              [goal]="category.targetGoal"
-              [subtext]="categorySubtext(category)"
+              [title]="account.name"
+              [amount]="account.currentBalance"
+              [color]="account.color ?? 'indigo'"
+              [goal]="account.targetGoal"
+              [subtext]="accountSubtext(account)"
             />
           </a>
         }

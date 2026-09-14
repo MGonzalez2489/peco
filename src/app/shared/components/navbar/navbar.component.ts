@@ -25,7 +25,7 @@ export class NavbarComponent {
   protected readonly items = signal<MenuItem[]>([
     {label: 'Inicio', route: '/dashboard', icon: 'home', isActive: false},
     {label: 'Movimientos', route: '/movements', icon: 'movements', isActive: false},
-    {label: 'Categorías', route: '/categories', icon: 'categories', isActive: false},
+    {label: 'Cuentas', route: '/accounts', icon: 'accounts', isActive: false},
     {label: 'Ajustes', route: '/preferences', icon: 'settings', isActive: false},
     {label: 'Cambios', route: '/logs', icon: 'logs', isActive: false},
   ]);
