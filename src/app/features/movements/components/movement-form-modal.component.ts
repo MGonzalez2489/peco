@@ -35,7 +35,7 @@ export class MovementFormModalComponent {
   private readonly fb = inject(FormBuilder);
 
   protected readonly form = this.fb.group({
-    amount: this.fb.control<number | null>(null, {
+    amount: this.fb.control<number>(0, {
       validators: [Validators.required, Validators.min(0.01)],
     }),
     type: this.fb.control<MovementType>('EXPENSE', Validators.required),
@@ -78,7 +78,7 @@ export class MovementFormModalComponent {
     effect(() => {
       if (this.isOpen()) {
         this.form.reset({
-          amount: null,
+          amount: 0,
           type: 'EXPENSE',
           categoryId: '',
           destinationCategoryId: null,
