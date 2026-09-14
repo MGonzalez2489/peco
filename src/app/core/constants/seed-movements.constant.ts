@@ -6,6 +6,7 @@ export const SEED_MOVEMENTS: Movement[] = [
   {
     id: 'm-1',
     accountId: 'c-cash',
+    categoryId: 'payroll',
     type: 'INCOME',
     amount: 2000,
     date: daysAgo(6),
@@ -14,6 +15,7 @@ export const SEED_MOVEMENTS: Movement[] = [
   {
     id: 'm-2',
     accountId: 'c-cash',
+    categoryId: 'services',
     type: 'EXPENSE',
     amount: 550,
     date: daysAgo(5),
@@ -22,6 +24,7 @@ export const SEED_MOVEMENTS: Movement[] = [
   {
     id: 'm-3',
     accountId: 'c-cash',
+    categoryId: 'services',
     type: 'EXPENSE',
     amount: 320,
     date: daysAgo(3),
@@ -30,6 +33,7 @@ export const SEED_MOVEMENTS: Movement[] = [
   {
     id: 'm-4',
     accountId: 'c-savings',
+    categoryId: 'payroll',
     type: 'INCOME',
     amount: 1000,
     date: daysAgo(4),
@@ -38,6 +42,7 @@ export const SEED_MOVEMENTS: Movement[] = [
   {
     id: 'm-5',
     accountId: 'c-cash',
+    categoryId: 'transfer',
     type: 'TRANSFER',
     amount: 700,
     date: daysAgo(2),
@@ -47,6 +52,7 @@ export const SEED_MOVEMENTS: Movement[] = [
   {
     id: 'm-6',
     accountId: 'c-investment',
+    categoryId: 'payroll',
     type: 'INCOME',
     amount: 800,
     date: daysAgo(1),

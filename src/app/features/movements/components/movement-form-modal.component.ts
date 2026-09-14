@@ -31,6 +31,7 @@ export class MovementFormModalComponent {
   readonly storage = inject(FINANCE_STORAGE);
 
   readonly accounts = this.storage.accounts;
+  readonly categories = this.storage.categories;
 
   private readonly fb = inject(FormBuilder);
 
@@ -40,12 +41,28 @@ export class MovementFormModalComponent {
     }),
     type: this.fb.control<MovementType>('EXPENSE', Validators.required),
     accountId: this.fb.control<string>('', Validators.required),
+    categoryId: this.fb.control<string>('', Validators.required),
     targetAccountId: this.fb.control<string | null>(null),
     note: this.fb.control<string>(''),
   });
 
   readonly selectedType = signal<MovementType>('EXPENSE');
   readonly sourceAccountId = signal('');
+
+  readonly availableCategories = computed(() => {
+    const type = this.selectedType();
+    const all = this.categories();
+    switch (type) {
+      case 'INCOME':
+        return all.filter((c) => c.applyType === 'INCOME' || c.applyType === 'BOTH');
+      case 'EXPENSE':
+        return all.filter((c) => c.applyType === 'EXPENSE' || c.applyType === 'BOTH');
+      case 'TRANSFER':
+        return all.filter((c) => c.applyType === 'TRANSFER');
+      default:
+        return all.filter((c) => c.applyType === 'EXPENSE' || c.applyType === 'BOTH');
+    }
+  });
 
   readonly destinationAccounts = computed(() =>
     this.accounts().filter((account) => account.id !== this.sourceAccountId()),
@@ -61,6 +78,7 @@ export class MovementFormModalComponent {
     const typeControl = this.form.controls.type;
     const sourceControl = this.form.controls.accountId;
     const destinationControl = this.form.controls.targetAccountId;
+    const categoryControl = this.form.controls.categoryId;
 
     typeControl.valueChanges.pipe(takeUntilDestroyed()).subscribe((type) => {
       const value = type ?? 'EXPENSE';
@@ -81,6 +99,7 @@ export class MovementFormModalComponent {
           amount: 0,
           type: 'EXPENSE',
           accountId: '',
+          categoryId: '',
           targetAccountId: null,
           note: '',
         });
@@ -99,6 +118,24 @@ export class MovementFormModalComponent {
       const first = available[0];
       if (first) sourceControl.setValue(first.id);
     });
+
+    effect(() => {
+      if (!this.isOpen()) return;
+      const type = this.selectedType();
+      const list = this.availableCategories();
+      if (type === 'TRANSFER') {
+        const transferCat = list.find((c) => c.applyType === 'TRANSFER') ?? list[0];
+        if (transferCat) categoryControl.setValue(transferCat.id);
+        return;
+      }
+      if (list.length === 0) {
+        categoryControl.setValue('');
+        return;
+      }
+      const current = categoryControl.value;
+      if (current && list.some((c) => c.id === current)) return;
+      categoryControl.setValue(list[0].id);
+    });
   }
 
   save(): void {
@@ -109,8 +146,14 @@ export class MovementFormModalComponent {
     const destinationId = raw.type === 'TRANSFER' ? (raw.targetAccountId ?? null) : undefined;
     if (raw.type === 'TRANSFER' && (!destinationId || destinationId === raw.accountId)) return;
 
+    const categoryId =
+      raw.type === 'TRANSFER'
+        ? (this.availableCategories().find((c) => c.applyType === 'TRANSFER')?.id ?? 'transfer')
+        : (raw.categoryId ?? '');
+
     this.storage.registerMovement({
       accountId: raw.accountId ?? '',
+      categoryId,
       type: raw.type ?? 'EXPENSE',
       amount: raw.amount ?? 0,
       note: raw.note?.trim() || undefined,

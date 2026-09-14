@@ -27,6 +27,10 @@ export class MovementListComponent {
     () => new Map(this.storage.accounts().map((account) => [account.id, account])),
   );
 
+  private readonly categoriesById = computed(
+    () => new Map(this.storage.categories().map((category) => [category.id, category])),
+  );
+
   readonly movimientosAgrupados = computed<GrupoMovimientos[]>(() => {
     const groups: GrupoMovimientos[] = [];
     for (const movement of this.movements()) {
@@ -59,6 +63,13 @@ export class MovementListComponent {
 
   readonly accountInitial = (id: string): string =>
     this.accountsById().get(id)?.name?.charAt(0).toUpperCase() ?? '?';
+
+  readonly categoryDisplay = (movement: Movement): string => {
+    const category = this.categoriesById().get(movement.categoryId);
+    return category
+      ? `${category.icon} ${category.displayName}`
+      : MOVEMENT_TYPE_LABEL[movement.type];
+  };
 
   readonly movementTime = (movement: Movement): string => {
     const [, time] = movement.date.split('T');

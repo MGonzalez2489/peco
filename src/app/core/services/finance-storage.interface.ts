@@ -2,11 +2,13 @@ import {InjectionToken, Signal, inject} from '@angular/core';
 import {CreateAccountDto} from '../dtos/create-account.dto';
 import {CreateMovementDTO} from '../dtos/create-movement.dto';
 import {Account} from '../models/account.model';
+import {Category} from '../models/category.model';
 import {Movement} from '../models/movement.model';
 import {LocalFinanceService} from './local-finance.service';
 
 export interface FinanceStorage {
   readonly accounts: Signal<readonly Account[]>;
+  readonly categories: Signal<readonly Category[]>;
   readonly movements: Signal<readonly Movement[]>;
   readonly totalBalance: Signal<number>;
 

@@ -46,6 +46,33 @@
         }
       </div>
 
+      @if (selectedType() !== 'TRANSFER') {
+        <div>
+          <label
+            for="mov-category"
+            class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
+          >
+            Categoría
+          </label>
+          <select
+            id="mov-category"
+            formControlName="categoryId"
+            class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+            [attr.aria-invalid]="
+              form.controls.categoryId.touched && form.controls.categoryId.invalid
+            "
+          >
+            <option value="" disabled>Selecciona una categoría</option>
+            @for (category of availableCategories(); track category.id) {
+              <option [value]="category.id">{{ category.icon }} {{ category.displayName }}</option>
+            }
+          </select>
+          @if (errorFor(form.controls.categoryId); as error) {
+            <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ error }}</p>
+          }
+        </div>
+      }
+
       <div>
         <label
           for="mov-account"
