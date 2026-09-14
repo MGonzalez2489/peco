@@ -1,5 +1,12 @@
 [
   {
+    "version": "v0.7.3",
+    "fecha": "2026-09-14",
+    "highlights": [
+      "Corrección de Error: logo at install pwa modal"
+    ]
+  },
+  {
     "version": "v0.7.2",
     "fecha": "2026-09-14",
     "highlights": [
