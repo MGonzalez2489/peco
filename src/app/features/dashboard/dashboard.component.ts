@@ -1,7 +1,8 @@
 import {ChangeDetectionStrategy, Component, computed, inject} from '@angular/core';
 import {RouterLink} from '@angular/router';
 import {Account} from '@core/models';
-import {FINANCE_STORAGE} from '@core/services/finance-storage.interface';
+import {AccountsStore} from '@core/stores/accounts.store';
+import {MovementsStore} from '@core/stores/movements.store';
 import {formatCurrency} from '@core/utils';
 import {MovementListComponent, StatCardComponent} from '@shared/components';
 
@@ -9,20 +10,17 @@ import {MovementListComponent, StatCardComponent} from '@shared/components';
   selector: 'app-dashboard',
   imports: [RouterLink, MovementListComponent, StatCardComponent],
   templateUrl: './dashboard.component.html',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DashboardComponent {
-  readonly storage = inject(FINANCE_STORAGE);
+  readonly accountsStore = inject(AccountsStore);
+  readonly movementsStore = inject(MovementsStore);
 
-  readonly accounts = this.storage.accounts;
-  readonly totalBalance = this.storage.totalBalance;
+  readonly totalBalance = this.accountsStore.totalBalance;
 
-  readonly pinnedAccounts = computed(() => this.accounts().filter((account) => account.pinToHome));
+  readonly pinnedAccounts = this.accountsStore.pinnedAccounts;
 
-  readonly recentMovements = computed(() =>
-    [...this.storage.movements()].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5),
-  );
+  readonly recentMovements = computed(() => this.movementsStore.recentMovements(5));
 
   readonly accountSubtext = (account: Account): string =>
     account.targetGoal !== undefined

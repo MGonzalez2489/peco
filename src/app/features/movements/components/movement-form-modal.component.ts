@@ -11,7 +11,10 @@ import {
 import {FormBuilder, FormControl, ReactiveFormsModule, Validators} from '@angular/forms';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {MOVEMENT_TYPE_LABEL} from '@core/constants';
-import {FINANCE_STORAGE} from '@core/services/finance-storage.interface';
+import {Category} from '@core/models';
+import {AccountsStore} from '@core/stores/accounts.store';
+import {CatalogStore} from '@core/stores/catalog.store';
+import {MovementsStore} from '@core/stores/movements.store';
 import {MovementType} from '@core/types';
 import {ModalComponent} from '@shared/components';
 import {CurrencyInputDirective} from '@shared/directives';
@@ -20,7 +23,6 @@ import {CurrencyInputDirective} from '@shared/directives';
   selector: 'app-movement-form-modal',
   imports: [ReactiveFormsModule, ModalComponent, CurrencyInputDirective],
   templateUrl: './movement-form-modal.component.html',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MovementFormModalComponent {
@@ -28,10 +30,11 @@ export class MovementFormModalComponent {
 
   readonly closed = output<void>();
 
-  readonly storage = inject(FINANCE_STORAGE);
+  readonly accountsStore = inject(AccountsStore);
+  readonly catalogStore = inject(CatalogStore);
+  readonly movementsStore = inject(MovementsStore);
 
-  readonly accounts = this.storage.accounts;
-  readonly categories = this.storage.categories;
+  readonly accounts = this.accountsStore.accounts;
 
   private readonly fb = inject(FormBuilder);
 
@@ -49,20 +52,9 @@ export class MovementFormModalComponent {
   readonly selectedType = signal<MovementType>('EXPENSE');
   readonly sourceAccountId = signal('');
 
-  readonly availableCategories = computed(() => {
-    const type = this.selectedType();
-    const all = this.categories();
-    switch (type) {
-      case 'INCOME':
-        return all.filter((c) => c.applyType === 'INCOME' || c.applyType === 'BOTH');
-      case 'EXPENSE':
-        return all.filter((c) => c.applyType === 'EXPENSE' || c.applyType === 'BOTH');
-      case 'TRANSFER':
-        return all.filter((c) => c.applyType === 'TRANSFER');
-      default:
-        return all.filter((c) => c.applyType === 'EXPENSE' || c.applyType === 'BOTH');
-    }
-  });
+  readonly availableCategories = computed<Category[]>(() =>
+    this.catalogStore.categoriesForType(this.selectedType()),
+  );
 
   readonly destinationAccounts = computed(() =>
     this.accounts().filter((account) => account.id !== this.sourceAccountId()),
@@ -123,9 +115,10 @@ export class MovementFormModalComponent {
       if (!this.isOpen()) return;
       const type = this.selectedType();
       const list = this.availableCategories();
+
       if (type === 'TRANSFER') {
-        const transferCat = list.find((c) => c.applyType === 'TRANSFER') ?? list[0];
-        if (transferCat) categoryControl.setValue(transferCat.id);
+        const transferCategory = this.catalogStore.transferCategory() ?? list[0];
+        if (transferCategory) categoryControl.setValue(transferCategory.id);
         return;
       }
       if (list.length === 0) {
@@ -146,14 +139,9 @@ export class MovementFormModalComponent {
     const destinationId = raw.type === 'TRANSFER' ? (raw.targetAccountId ?? null) : undefined;
     if (raw.type === 'TRANSFER' && (!destinationId || destinationId === raw.accountId)) return;
 
-    const categoryId =
-      raw.type === 'TRANSFER'
-        ? (this.availableCategories().find((c) => c.applyType === 'TRANSFER')?.id ?? 'transfer')
-        : (raw.categoryId ?? '');
-
-    this.storage.registerMovement({
+    this.movementsStore.registerMovement({
       accountId: raw.accountId ?? '',
-      categoryId,
+      categoryId: raw.categoryId ?? '',
       type: raw.type ?? 'EXPENSE',
       amount: raw.amount ?? 0,
       note: raw.note?.trim() || undefined,

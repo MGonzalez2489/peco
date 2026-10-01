@@ -10,7 +10,8 @@ import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {toSignal} from '@angular/core/rxjs-interop';
 import {map} from 'rxjs';
 import {Account} from '@core/models';
-import {FINANCE_STORAGE} from '@core/services/finance-storage.interface';
+import {AccountsStore} from '@core/stores/accounts.store';
+import {MovementsStore} from '@core/stores/movements.store';
 import {formatCurrency} from '@core/utils';
 import {ConfirmModalComponent, MovementListComponent, StatCardComponent} from '@shared/components';
 import {AccountFormModalComponent} from '../components/account-form-modal.component';
@@ -25,18 +26,19 @@ import {AccountFormModalComponent} from '../components/account-form-modal.compon
     AccountFormModalComponent,
   ],
   templateUrl: './account-detail.component.html',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AccountDetailComponent {
-  readonly storage = inject(FINANCE_STORAGE);
+  readonly accountsStore = inject(AccountsStore);
+  readonly movementsStore = inject(MovementsStore);
+
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
   readonly id = toSignal(this.route.paramMap.pipe(map((params) => params.get('id') ?? '')));
 
   readonly account = computed(() =>
-    this.storage.accounts().find((account) => account.id === this.id()),
+    this.accountsStore.accounts().find((account) => account.id === this.id()),
   );
 
   readonly editOpen = signal(false);
@@ -52,15 +54,11 @@ export class AccountDetailComponent {
   });
 
   readonly otherAccounts = computed(() =>
-    this.storage.accounts().filter((account) => account.id !== this.id()),
+    this.accountsStore.accounts().filter((account) => account.id !== this.id()),
   );
 
   readonly accountMovements = computed(() =>
-    [...this.storage.movements()]
-      .filter(
-        (movement) => movement.accountId === this.id() || movement.targetAccountId === this.id(),
-      )
-      .sort((a, b) => b.date.localeCompare(a.date)),
+    this.movementsStore.movementsForAccount(this.id() ?? ''),
   );
 
   readonly accountDeletionMessage = computed(() => {
@@ -84,9 +82,9 @@ export class AccountDetailComponent {
     if (account.currentBalance !== 0) {
       const destination = this.transferDestination();
       if (!destination || destination === account.id) return;
-      this.storage.deleteAccount(account.id, destination);
+      this.movementsStore.deleteAccount(account.id, destination);
     } else {
-      this.storage.deleteAccount(account.id);
+      this.movementsStore.deleteAccount(account.id);
     }
 
     this.accountToDelete.set(null);

@@ -1,7 +1,7 @@
 import {ChangeDetectionStrategy, Component, computed, inject, input} from '@angular/core';
 import {RouterLink} from '@angular/router';
 import {Account} from '@core/models';
-import {FINANCE_STORAGE} from '@core/services/finance-storage.interface';
+import {AccountsStore} from '@core/stores/accounts.store';
 import {formatCurrency} from '@core/utils';
 import {StatCardComponent} from '@shared/components/stat-card/stat-card.component';
 
@@ -9,13 +9,12 @@ import {StatCardComponent} from '@shared/components/stat-card/stat-card.componen
   selector: 'app-account-card',
   imports: [RouterLink, StatCardComponent],
   templateUrl: './account-card.component.html',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AccountCardComponent {
   readonly account = input.required<Account>();
 
-  readonly storage = inject(FINANCE_STORAGE);
+  readonly accountsStore = inject(AccountsStore);
 
   readonly pinned = computed(() => this.account().pinToHome ?? false);
 
@@ -25,14 +24,6 @@ export class AccountCardComponent {
   });
 
   togglePin(): void {
-    const account = this.account();
-    this.storage.updateAccount(account.id, {
-      name: account.name,
-      initialBalance: account.currentBalance,
-      targetGoal: account.targetGoal,
-      color: account.color,
-      icon: account.icon,
-      pinToHome: !this.pinned(),
-    });
+    this.accountsStore.togglePin(this.account().id);
   }
 }

@@ -42,17 +42,33 @@
     </button>
   </div>
 
+  @if (filteredTotals().totalIncome > 0 || filteredTotals().totalExpenses > 0) {
+    <dl class="grid grid-cols-3 gap-3">
+      <div class="rounded-xl bg-emerald-50 px-3 py-2 dark:bg-emerald-950/40">
+        <dt class="text-xs font-medium text-emerald-700 dark:text-emerald-300">Ingresos</dt>
+        <dd class="text-sm font-bold text-emerald-900 dark:text-emerald-200">
+          {{ filteredTotals().totalIncome | currency: 'USD' : 'symbol' : '1.2-2' }}
+        </dd>
+      </div>
+      <div class="rounded-xl bg-rose-50 px-3 py-2 dark:bg-rose-950/40">
+        <dt class="text-xs font-medium text-rose-700 dark:text-rose-300">Egresos</dt>
+        <dd class="text-sm font-bold text-rose-900 dark:text-rose-200">
+          {{ filteredTotals().totalExpenses | currency: 'USD' : 'symbol' : '1.2-2' }}
+        </dd>
+      </div>
+      <div class="rounded-xl bg-slate-100 px-3 py-2 dark:bg-slate-800">
+        <dt class="text-xs font-medium text-slate-600 dark:text-slate-400">Balance</dt>
+        <dd class="text-sm font-bold text-slate-900 dark:text-white">
+          {{ filteredTotals().netBalance | currency: 'USD' : 'symbol' : '1.2-2' }}
+        </dd>
+      </div>
+    </dl>
+  }
+
   <app-movement-list
     [movements]="filteredMovements()"
     emptyMessage="No hay movimientos con los filtros seleccionados."
   />
 </section>
 
-<app-filtro-movimientos-modal
-  [isOpen]="filtersOpen()"
-  [accounts]="accounts()"
-  [categories]="categories()"
-  [filters]="currentFilters()"
-  (filtersChanged)="applyFilters($event)"
-  (closed)="filtersOpen.set(false)"
-/>
+<app-filtro-movimientos-modal [isOpen]="filtersOpen()" (closed)="filtersOpen.set(false)" />
