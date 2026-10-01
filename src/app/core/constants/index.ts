@@ -1,4 +1,5 @@
 export * from './account-colors.constant';
+export * from './app-version.constant';
 export * from './local-storage-keys.constant';
 export * from './max-visible-releases.constant';
 export * from './movement-type-label.constant';

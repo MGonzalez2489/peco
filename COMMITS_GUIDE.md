@@ -1,6 +1,6 @@
 # Commits Guide
 
-Every commit in this repository must follow the **Conventional Commits** standard. A CI pipeline reads the git history to compute the next semantic version and generate the changelog for the PWA, so a well-formed commit history is what drives the release.
+Every commit in this repository must follow the **Conventional Commits** standard. Commit messages are the historical record of the project; the version and the changelog are maintained by hand (see [Manual release](#manual-release)).
 
 Husky + commitlint are enforced locally:
 
@@ -19,25 +19,25 @@ type(scope): description
 
 ## Types and their impact
 
-| Type       | Appears in the PWA (highlights) | Changelog label     |
-| ---------- | ------------------------------- | ------------------- |
-| `feat`     | Yes                             | Nueva Funcionalidad |
-| `fix`      | Yes                             | Corrección de Error |
-| `chore`    | No                              | –                   |
-| `refactor` | No                              | –                   |
-| `style`    | No                              | –                   |
-| `ci`       | No                              | –                   |
-| `docs`     | No                              | –                   |
-| `perf`     | No                              | –                   |
-| `build`    | No                              | –                   |
-| `test`     | No                              | –                   |
-| `revert`   | No                              | –                   |
+| Type       | Changelog highlight | Changelog label     |
+| ---------- | ------------------- | ------------------- |
+| `feat`     | Yes                 | Nueva Funcionalidad |
+| `fix`      | Yes                 | Corrección de Error |
+| `chore`    | No                  | –                   |
+| `refactor` | No                  | –                   |
+| `style`    | No                  | –                   |
+| `ci`       | No                  | –                   |
+| `docs`     | No                  | –                   |
+| `perf`     | No                  | –                   |
+| `build`    | No                  | –                   |
+| `test`     | No                  | –                   |
+| `revert`   | No                  | –                   |
 
-Only `feat` and `fix` commits are collected into `src/assets/changelog.json`. A release bumps:
+Only `feat` and `fix` become changelog highlights. Pick the version bump accordingly:
 
-- **MAJOR** (`v0.1.0 -> v1.0.0`) – when a commit includes `BREAKING CHANGE` or uses a `!` (e.g. `feat!: remove old export format`).
-- **MINOR** (`v0.1.0 -> v0.2.0`) – when there is at least one `feat`.
-- **PATCH** (`v0.1.0 -> v0.1.1`) – when there are only `fix` commits.
+- **MAJOR** (`v0.1.0 -> v1.0.0`) – for a breaking change (`BREAKING CHANGE` or `!`, e.g. `feat!: remove old export format`).
+- **MINOR** (`v0.1.0 -> v0.2.0`) – when the release adds at least one `feat`.
+- **PATCH** (`v0.1.0 -> v0.1.1`) – when the release only contains `fix` commits.
 
 ## Rules (enforced by Husky)
 
@@ -47,7 +47,7 @@ Only `feat` and `fix` commits are collected into `src/assets/changelog.json`. A 
 - The description must be non-empty.
 - Breaking changes are declared with `!` after the type/scope or a `BREAKING CHANGE:` line in the body.
 
-The commit description is copied verbatim into the changelog highlights, so write it as a short, self-contained user-facing description.
+Write the description as a short, self-contained summary: it is the easiest source when writing the next changelog entry by hand.
 
 ## Valid examples
 
@@ -71,7 +71,7 @@ chore(deps): bump Angular to v22
 refactor(core): split finance model into domain folders
 ```
 
-The last two are valid and will be merged, but they never reach the end-user changelog.
+The last two are valid and will be merged, but they are not changelog material.
 
 ## Invalid examples (rejected by Husky)
 
@@ -93,6 +93,34 @@ feat(movements): filter by account and date range plus recurring movements and b
 
 Rejected – the header exceeds the 100-character limit.
 
-## What happens on merge
+## Manual release
 
-When a pull request from `dev` is merged into `main`, the workflow `.github/workflows/release-changelog.yml` runs automatically: it scans the commits since the last version tag, bumps `package.json`, updates `src/assets/changelog.json`, commits the release (message `chore(release): bump version to vX.Y.Z [skip ci]`) and creates the corresponding `vX.Y.Z` tag.
+There is no automation: no workflow, no generation script. A release is a normal commit performed by hand.
+
+1. Bump the version in `package.json` (`npm version --no-git-tag-version <major|minor|patch>`).
+2. Add the new entry at the top of `src/assets/changelog.json`, newest first:
+
+   ```json
+   {
+     "version": "v0.5.0",
+     "fecha": "2026-10-01",
+     "highlights": [
+       "Nueva Funcionalidad: agregar movimientos programados",
+       "Corrección de Error: alinear el logo en escritorio"
+     ]
+   }
+   ```
+
+   `highlights` follow the `feat` / `fix` convention above, and `fecha` is the release date in `YYYY-MM-DD`.
+3. Update `APP_VERSION` in `src/app/core/constants/app-version.constant.ts` – it is rendered in the sidebar footer and must match `package.json`.
+4. Build and test, then commit and tag:
+
+   ```bash
+   npm test
+   npx ng build --configuration production
+   git commit -am "chore(release): bump version to v0.5.0"
+   git tag v0.5.0
+   git push origin HEAD --follow-tags
+   ```
+
+Deploy the `dist/` build after tagging so the service worker ships the new version.
