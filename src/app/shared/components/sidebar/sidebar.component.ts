@@ -12,7 +12,7 @@ import {
 import {toSignal} from '@angular/core/rxjs-interop';
 import {NavigationEnd, Router, RouterLink} from '@angular/router';
 import {filter, map, startWith} from 'rxjs';
-import {NAVIGATION_ITEMS} from '@core/constants';
+import {APP_VERSION, NAVIGATION_ITEMS} from '@core/constants';
 import {NavIconComponent} from '../nav-icon/nav-icon.component';
 
 const DESKTOP_MEDIA_QUERY = '(min-width: 768px)';
@@ -28,6 +28,7 @@ const DESKTOP_MEDIA_QUERY = '(min-width: 768px)';
 })
 export class SidebarComponent {
   readonly isOpen = input(false);
+  readonly collapsed = input(false);
 
   readonly closed = output<void>();
 
@@ -35,17 +36,23 @@ export class SidebarComponent {
 
   protected readonly items = signal(NAVIGATION_ITEMS);
 
+  protected readonly version = APP_VERSION;
+
   private readonly desktopMedia = window.matchMedia?.(DESKTOP_MEDIA_QUERY) ?? null;
 
   protected readonly isDesktop = signal(this.desktopMedia?.matches ?? false);
 
   protected readonly drawerVisible = computed(() => !this.isDesktop() && this.isOpen());
 
-  protected readonly drawerHidden = computed(() => !this.isDesktop() && !this.isOpen());
-
-  protected readonly asideClasses = computed(() =>
-    this.drawerVisible() ? 'translate-x-0' : '-translate-x-full',
+  protected readonly asideHidden = computed(() =>
+    this.isDesktop() ? this.collapsed() : !this.isOpen(),
   );
+
+  protected readonly asideClasses = computed(() => {
+    const visible = this.isDesktop() ? !this.collapsed() : this.isOpen();
+
+    return visible ? 'translate-x-0' : '-translate-x-full';
+  });
 
   private readonly currentRoute = toSignal(
     this.router.events.pipe(

@@ -8,10 +8,10 @@
 }
 
 <aside
-  class="fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-slate-200 bg-white transition-transform duration-200 md:translate-x-0 dark:border-slate-800 dark:bg-slate-900"
+  class="fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-slate-200 bg-white transition-transform duration-200 dark:border-slate-800 dark:bg-slate-900"
   [class]="asideClasses()"
-  [attr.inert]="drawerHidden() ? '' : null"
-  [attr.aria-hidden]="drawerHidden() ? 'true' : null"
+  [attr.inert]="asideHidden() ? '' : null"
+  [attr.aria-hidden]="asideHidden() ? 'true' : null"
   aria-label="Navegación principal"
 >
   <div
@@ -56,9 +56,12 @@
     </ul>
   </nav>
 
-  <p
-    class="border-t border-slate-200 px-5 py-4 text-xs text-slate-400 dark:border-slate-800 dark:text-slate-500"
-  >
-    Tus datos se guardan solo en este dispositivo.
-  </p>
+  <div class="border-t border-slate-200 px-5 py-4 dark:border-slate-800">
+    <p class="text-xs font-medium tracking-wide text-slate-400 dark:text-slate-500">
+      v{{ version }}
+    </p>
+    <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">
+      Tus datos se guardan solo en este dispositivo.
+    </p>
+  </div>
 </aside>

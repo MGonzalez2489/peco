@@ -3,7 +3,7 @@ import {RouterOutlet} from '@angular/router';
 import {PwaInstallBannerComponent} from '@core/components/pwa-install-banner/pwa-install-banner.component';
 import {UpdateBannerComponent} from '@core/components/update-banner/update-banner.component';
 import {MovementFormModalComponent} from '@features/movements/components';
-import {NavbarComponent, SidebarComponent} from '@shared/components';
+import {NavIconComponent, NavbarComponent, SidebarComponent} from '@shared/components';
 
 @Component({
   selector: 'app-root',
@@ -11,6 +11,7 @@ import {NavbarComponent, SidebarComponent} from '@shared/components';
     RouterOutlet,
     NavbarComponent,
     SidebarComponent,
+    NavIconComponent,
     MovementFormModalComponent,
     PwaInstallBannerComponent,
     UpdateBannerComponent,
@@ -19,13 +20,22 @@ import {NavbarComponent, SidebarComponent} from '@shared/components';
     <div
       class="min-h-dvh bg-slate-50 text-slate-900 selection:bg-indigo-500/20 dark:bg-slate-950 dark:text-slate-100"
     >
-      <app-sidebar [isOpen]="menuOpen()" (closed)="menuOpen.set(false)" />
+      <app-sidebar
+        [isOpen]="mobileMenuOpen()"
+        [collapsed]="sidebarCollapsed()"
+        (closed)="mobileMenuOpen.set(false)"
+      />
 
-      <div class="md:pl-64">
+      <div
+        class="transition-[padding] duration-200"
+        [class]="sidebarCollapsed() ? 'md:pl-0' : 'md:pl-64'"
+      >
         <app-navbar
-          [menuOpen]="menuOpen()"
+          [menuOpen]="mobileMenuOpen()"
+          [sidebarCollapsed]="sidebarCollapsed()"
           (capture)="modalOpen.set(true)"
-          (toggleMenu)="menuOpen.update((open) => !open)"
+          (toggleMenu)="mobileMenuOpen.update((open) => !open)"
+          (toggleSidebar)="sidebarCollapsed.update((collapsed) => !collapsed)"
         />
 
         <main
@@ -36,6 +46,15 @@ import {NavbarComponent, SidebarComponent} from '@shared/components';
           <router-outlet />
         </main>
       </div>
+
+      <button
+        type="button"
+        (click)="modalOpen.set(true)"
+        class="fixed bottom-6 right-6 z-30 inline-flex h-14 w-14 items-center justify-center rounded-full bg-indigo-600 text-white shadow-lg shadow-indigo-600/40 transition hover:bg-indigo-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 md:hidden dark:focus-visible:ring-offset-slate-950"
+        aria-label="Registrar movimiento"
+      >
+        <app-nav-icon name="plus" sizeClass="h-6 w-6" />
+      </button>
     </div>
 
     <app-pwa-install-banner />
@@ -46,5 +65,6 @@ import {NavbarComponent, SidebarComponent} from '@shared/components';
 })
 export class AppComponent {
   readonly modalOpen = signal(false);
-  readonly menuOpen = signal(false);
+  readonly mobileMenuOpen = signal(false);
+  readonly sidebarCollapsed = signal(false);
 }

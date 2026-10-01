@@ -13,9 +13,11 @@ import {NavIconComponent} from '../nav-icon/nav-icon.component';
 })
 export class NavbarComponent {
   readonly menuOpen = input(false);
+  readonly sidebarCollapsed = input(false);
 
   readonly capture = output<void>();
   readonly toggleMenu = output<void>();
+  readonly toggleSidebar = output<void>();
 
   private readonly router = inject(Router);
 
