@@ -1,5 +1,56 @@
 [
   {
+    "version": "v0.7.3",
+    "fecha": "2026-09-14",
+    "highlights": [
+      "Corrección de Error: logo at install pwa modal"
+    ]
+  },
+  {
+    "version": "v0.7.2",
+    "fecha": "2026-09-14",
+    "highlights": [
+      "Corrección de Error: corregir iconos del manifest para la instalación"
+    ]
+  },
+  {
+    "version": "v0.7.1",
+    "fecha": "2026-09-14",
+    "highlights": [
+      "Corrección de Error: manifest and icons"
+    ]
+  },
+  {
+    "version": "v0.7.0",
+    "fecha": "2026-09-14",
+    "highlights": [
+      "Nueva Funcionalidad: cgregado icono de identidad - pwa",
+      "Nueva Funcionalidad: añadir banner de instalación y aviso de nuevas versiones",
+      "Nueva Funcionalidad: añadir categorías a los movimientos, formulario y filtros",
+      "Nueva Funcionalidad: proteger la cuenta raíz, añadir fijado a Inicio y uniformar tarjetas",
+      "Corrección de Error: prellenar el campo monto con 0.00 en el formulario de registro de movimientos"
+    ]
+  },
+  {
+    "version": "v0.6.0",
+    "fecha": "2026-09-14",
+    "highlights": [
+      "Nueva Funcionalidad: añadir banner de instalación y aviso de nuevas versiones",
+      "Nueva Funcionalidad: añadir categorías a los movimientos, formulario y filtros",
+      "Nueva Funcionalidad: proteger la cuenta raíz, añadir fijado a Inicio y uniformar tarjetas",
+      "Corrección de Error: prellenar el campo monto con 0.00 en el formulario de registro de movimientos"
+    ]
+  },
+  {
+    "version": "v0.5.0",
+    "fecha": "2026-09-13",
+    "highlights": [
+      "Nueva Funcionalidad: unificar la lista de movimientos en un componente compartido",
+      "Nueva Funcionalidad: fijar apartados en la pantalla de inicio con carrusel",
+      "Nueva Funcionalidad: agrupar movimientos por fecha y agregar modal de filtros"
+    ]
+  },
+  {
     "version": "v0.4.0",
     "fecha": "2026-09-13",
     "highlights": [
