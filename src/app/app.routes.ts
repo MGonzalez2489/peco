@@ -21,6 +21,14 @@ export const routes: Routes = [
       import('./features/accounts/accounts.component').then((m) => m.AccountsComponent),
   },
   {
+    path: 'scheduled',
+    title: 'Programados',
+    loadComponent: () =>
+      import('./features/scheduled/scheduled-transactions.component').then(
+        (m) => m.ScheduledTransactionsComponent,
+      ),
+  },
+  {
     path: 'accounts/:id',
     title: 'Detalle de cuenta',
     loadComponent: () =>

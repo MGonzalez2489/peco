@@ -11,4 +11,6 @@ export interface Movement {
   targetAccountId?: string;
   reversalId?: string;
   isReversal?: boolean;
+  isCanceled?: boolean;
+  scheduledTransactionId?: string;
 }

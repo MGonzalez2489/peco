@@ -135,6 +135,33 @@ export const MovementsStore = signalStore(
       }
     };
 
+    const registerCanceledMovement = (
+      dto: CreateMovementDTO & {scheduledTransactionId?: string},
+    ): Movement | null => {
+      try {
+        const movement: Movement = {
+          id: crypto.randomUUID(),
+          date: dto.date ?? new Date().toISOString(),
+          accountId: dto.accountId,
+          categoryId: dto.categoryId || catalogStore.defaultCategoryIdFor(dto.type),
+          type: dto.type,
+          amount: dto.amount,
+          note: dto.note,
+          targetAccountId: dto.targetAccountId,
+          isCanceled: true,
+          scheduledTransactionId: dto.scheduledTransactionId,
+        };
+
+        commit([movement, ...store.movements()]);
+        patchState(store, setLoaded());
+
+        return movement;
+      } catch (error) {
+        patchState(store, setError(error));
+        return null;
+      }
+    };
+
     return {
       loadMovements(): void {
         patchState(store, setLoading());
@@ -146,9 +173,10 @@ export const MovementsStore = signalStore(
         }
       },
       registerMovement,
+      registerCanceledMovement,
       revertMovement(id: string): boolean {
         const original = store.movements().find((movement) => movement.id === id);
-        if (!original || original.isReversal) return false;
+        if (!original || original.isReversal || original.isCanceled) return false;
 
         try {
           const reversal = buildReversalMovement(original);

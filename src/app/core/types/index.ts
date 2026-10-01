@@ -4,3 +4,6 @@ export * from './category-apply-type.type';
 export * from './movement-filter-type.type';
 export * from './movement-type.type';
 export * from './pwa-install-prompt.type';
+export * from './recurrence-frequency.type';
+export * from './scheduled-transaction-stop-condition.type';
+export * from './scheduled-transaction-type.type';

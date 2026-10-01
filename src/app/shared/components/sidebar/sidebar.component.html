@@ -1,0 +1,64 @@
+@if (drawerVisible()) {
+  <button
+    type="button"
+    class="fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-sm md:hidden"
+    (click)="close()"
+    aria-label="Cerrar menú de navegación"
+  ></button>
+}
+
+<aside
+  class="fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-slate-200 bg-white transition-transform duration-200 md:translate-x-0 dark:border-slate-800 dark:bg-slate-900"
+  [class]="asideClasses()"
+  [attr.inert]="drawerHidden() ? '' : null"
+  [attr.aria-hidden]="drawerHidden() ? 'true' : null"
+  aria-label="Navegación principal"
+>
+  <div
+    class="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4 dark:border-slate-800"
+  >
+    <a
+      routerLink="/dashboard"
+      class="flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
+      aria-label="Peco — Inicio"
+      (click)="close()"
+    >
+      <img src="assets/icons/icon.svg" class="size-8" alt="" />
+      <span class="text-lg font-bold tracking-tight text-slate-900 dark:text-white">Peco</span>
+    </a>
+
+    <button
+      type="button"
+      (click)="close()"
+      class="rounded-full p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200 md:hidden"
+      aria-label="Cerrar menú"
+    >
+      <app-nav-icon name="close" sizeClass="h-5 w-5" />
+    </button>
+  </div>
+
+  <nav class="flex-1 overflow-y-auto px-3 py-4">
+    <ul class="space-y-1">
+      @for (item of items(); track item.route) {
+        <li>
+          <a
+            [routerLink]="item.route"
+            (click)="close()"
+            [attr.aria-current]="isItemActive(item.route) ? 'page' : null"
+            class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
+            [class]="linkClasses(item.route)"
+          >
+            <app-nav-icon [name]="item.icon" sizeClass="h-5 w-5 shrink-0" />
+            <span>{{ item.label }}</span>
+          </a>
+        </li>
+      }
+    </ul>
+  </nav>
+
+  <p
+    class="border-t border-slate-200 px-5 py-4 text-xs text-slate-400 dark:border-slate-800 dark:text-slate-500"
+  >
+    Tus datos se guardan solo en este dispositivo.
+  </p>
+</aside>
