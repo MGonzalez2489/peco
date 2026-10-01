@@ -2,7 +2,7 @@ import {ChangeDetectionStrategy, Component, effect, inject, input, output} from 
 import {FormBuilder, FormControl, ReactiveFormsModule, Validators} from '@angular/forms';
 import {ACCOUNT_COLORS} from '@core/constants';
 import {Account} from '@core/models';
-import {FINANCE_STORAGE} from '@core/services/finance-storage.interface';
+import {AccountsStore} from '@core/stores/accounts.store';
 import {AccountColor} from '@core/types';
 import {formatCurrency} from '@core/utils';
 import {ModalComponent} from '@shared/components';
@@ -12,7 +12,6 @@ import {CurrencyInputDirective} from '@shared/directives';
   selector: 'app-account-form-modal',
   imports: [ReactiveFormsModule, ModalComponent, CurrencyInputDirective],
   templateUrl: './account-form-modal.component.html',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AccountFormModalComponent {
@@ -22,7 +21,7 @@ export class AccountFormModalComponent {
   readonly closed = output<void>();
   readonly saved = output<void>();
 
-  readonly storage = inject(FINANCE_STORAGE);
+  readonly accountsStore = inject(AccountsStore);
 
   private readonly fb = inject(FormBuilder);
 
@@ -85,15 +84,14 @@ export class AccountFormModalComponent {
     const editing = this.account();
 
     if (editing) {
-      this.storage.updateAccount(editing.id, {
+      this.accountsStore.updateAccount(editing.id, {
         name: raw.name?.trim() ?? '',
-        initialBalance: editing.currentBalance,
         targetGoal: raw.targetGoal ?? undefined,
         color: raw.color ?? 'indigo',
         pinToHome: raw.pinToHome ?? false,
       });
     } else {
-      this.storage.addAccount({
+      this.accountsStore.createAccount({
         name: raw.name?.trim() ?? '',
         initialBalance: raw.initialBalance ?? 0,
         targetGoal: raw.targetGoal ?? undefined,

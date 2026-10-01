@@ -1,17 +1,17 @@
 <div class="space-y-5">
-  @for (group of movimientosAgrupados(); track group.fecha) {
+  @for (group of movimientosAgrupados(); track group.date) {
     <div>
       <h2
         class="sticky top-[3.75rem] z-10 mb-2 flex items-center gap-2 py-1 text-xs font-semibold uppercase tracking-wide text-slate-500 backdrop-blur-sm dark:text-slate-400"
       >
         <span aria-hidden="true" class="h-px w-3 bg-slate-300 dark:bg-slate-700"></span>
-        {{ group.fecha }}
+        {{ group.date }}
       </h2>
 
       <ul
         class="divide-y divide-slate-200 overflow-hidden rounded-2xl border border-slate-200 bg-white dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900"
       >
-        @for (movement of group.movimientos; track movement.id) {
+        @for (movement of group.movements; track movement.id) {
           <li class="flex items-center gap-3 p-4">
             <span
               aria-hidden="true"

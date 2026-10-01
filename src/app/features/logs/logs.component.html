@@ -8,7 +8,7 @@
     </p>
   </div>
 
-  @if (changelogService.isLoading()) {
+  @if (loading()) {
     <div
       role="status"
       class="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900"
@@ -19,7 +19,7 @@
       ></span>
       <span class="text-sm text-slate-500 dark:text-slate-400">Cargando cambios…</span>
     </div>
-  } @else if (changelogService.error()) {
+  } @else if (error()) {
     <div
       role="alert"
       class="rounded-2xl border border-rose-200 bg-rose-50 p-6 dark:border-rose-500/30 dark:bg-rose-500/10"
@@ -29,13 +29,13 @@
       </p>
       <button
         type="button"
-        (click)="changelogService.load()"
+        (click)="changelogStore.load()"
         class="mt-4 rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950"
       >
         Reintentar
       </button>
     </div>
-  } @else if (changelogService.lastChanges().length === 0) {
+  } @else if (lastChanges().length === 0) {
     <div
       class="rounded-2xl border border-slate-200 bg-white p-6 text-center dark:border-slate-800 dark:bg-slate-900"
     >
@@ -43,7 +43,7 @@
     </div>
   } @else {
     <div class="space-y-3">
-      @for (release of changelogService.lastChanges(); track release.version; let index = $index) {
+      @for (release of lastChanges(); track release.version; let index = $index) {
         <article
           class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"
         >

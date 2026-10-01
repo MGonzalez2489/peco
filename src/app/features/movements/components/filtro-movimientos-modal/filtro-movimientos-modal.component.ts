@@ -8,15 +8,16 @@ import {
   signal,
 } from '@angular/core';
 import {MOVEMENT_TYPE_LABEL} from '@core/constants';
-import {Account, Category} from '@core/models';
-import {MovementFilterType} from '../../models/movement-filters.model';
+import {AccountsStore} from '@core/stores/accounts.store';
+import {CatalogStore} from '@core/stores/catalog.store';
+import {MovementsStore} from '@core/stores/movements.store';
+import {MovementFilterType} from '@core/types';
 import {ModalComponent} from '@shared/components';
 
 @Component({
   selector: 'app-filtro-movimientos-modal',
   imports: [ModalComponent],
   templateUrl: './filtro-movimientos-modal.component.html',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     :host {
@@ -41,22 +42,15 @@ import {ModalComponent} from '@shared/components';
 })
 export class FiltroMovimientosModalComponent {
   readonly isOpen = input(false);
-  readonly accounts = input<readonly Account[]>([]);
-  readonly categories = input<readonly Category[]>([]);
-  readonly filters = input({
-    type: 'ALL' as MovementFilterType,
-    accountId: '',
-    categoryId: '',
-    hideReversals: false,
-  });
 
-  readonly filtersChanged = output<{
-    type: MovementFilterType;
-    accountId: string;
-    categoryId: string;
-    hideReversals: boolean;
-  }>();
   readonly closed = output<void>();
+
+  readonly accountsStore = inject(AccountsStore);
+  readonly catalogStore = inject(CatalogStore);
+  readonly movementsStore = inject(MovementsStore);
+
+  readonly accounts = this.accountsStore.accounts;
+  readonly categories = this.catalogStore.categories;
 
   readonly typeOptions: Array<{value: MovementFilterType; label: string}> = [
     {value: 'ALL', label: 'Todos'},
@@ -72,17 +66,18 @@ export class FiltroMovimientosModalComponent {
 
   constructor() {
     effect(() => {
-      if (this.isOpen()) {
-        this.type.set(this.filters().type);
-        this.accountId.set(this.filters().accountId);
-        this.categoryId.set(this.filters().categoryId);
-        this.hideReversals.set(this.filters().hideReversals);
-      }
+      if (!this.isOpen()) return;
+
+      const filters = this.movementsStore.filters();
+      this.type.set(filters.type);
+      this.accountId.set(filters.accountId);
+      this.categoryId.set(filters.categoryId);
+      this.hideReversals.set(filters.hideReversals);
     });
   }
 
   apply(): void {
-    this.filtersChanged.emit({
+    this.movementsStore.setFilters({
       type: this.type(),
       accountId: this.accountId(),
       categoryId: this.categoryId(),
@@ -92,7 +87,7 @@ export class FiltroMovimientosModalComponent {
   }
 
   clear(): void {
-    this.filtersChanged.emit({type: 'ALL', accountId: '', categoryId: '', hideReversals: false});
+    this.movementsStore.clearFilters();
     this.closed.emit();
   }
 }

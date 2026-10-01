@@ -1,20 +1,23 @@
 import {ChangeDetectionStrategy, Component, inject, signal} from '@angular/core';
-import {ChangelogService} from '@core/services/changelog.service';
+import {ChangelogStore} from '@core/stores/changelog.store';
 
 @Component({
   selector: 'app-logs',
   imports: [],
   templateUrl: './logs.component.html',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LogsComponent {
-  readonly changelogService = inject(ChangelogService);
+  readonly changelogStore = inject(ChangelogStore);
+
+  readonly loading = this.changelogStore.loading;
+  readonly error = this.changelogStore.error;
+  readonly lastChanges = this.changelogStore.lastChanges;
 
   readonly openIndex = signal(0);
 
   constructor() {
-    this.changelogService.load();
+    this.changelogStore.load();
   }
 
   toggle(index: number): void {
