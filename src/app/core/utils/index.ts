@@ -8,6 +8,7 @@ export * from './format-currency.util';
 export * from './format-local-date.util';
 export * from './group-movements-by-date.util';
 export * from './is-income-schedule.util';
+export * from './is-schedule-due.util';
 export * from './monthly-equivalent.util';
 export * from './next-execution-date.util';
 export * from './read-storage-array.util';

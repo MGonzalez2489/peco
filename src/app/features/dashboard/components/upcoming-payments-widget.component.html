@@ -36,6 +36,11 @@
                 <span class="ml-1 font-semibold text-rose-600 dark:text-rose-400">(Vencido)</span>
               }
             </p>
+            @if (!canExecute(schedule)) {
+              <p class="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                {{ availabilityMessage(schedule) }}
+              </p>
+            }
           </div>
 
           <div class="flex shrink-0 items-center gap-2">
@@ -52,7 +57,9 @@
             <button
               type="button"
               (click)="openExecute(schedule)"
-              class="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-indigo-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
+              [disabled]="!canExecute(schedule)"
+              [title]="canExecute(schedule) ? null : availabilityMessage(schedule)"
+              class="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-indigo-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40 dark:focus-visible:ring-offset-slate-900"
             >
               Aplicar
             </button>

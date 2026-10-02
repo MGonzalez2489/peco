@@ -8,7 +8,7 @@ import {
   signal,
 } from '@angular/core';
 import {CurrencyPipe} from '@angular/common';
-import {formatLocalDate} from '@core/utils';
+import {formatLocalDate, isScheduleDue} from '@core/utils';
 import {RECURRENCE_FREQUENCY_LABEL} from '@core/constants';
 import {ScheduledTransaction} from '@core/models';
 import {CatalogStore} from '@core/stores/catalog.store';
@@ -81,6 +81,21 @@ export class ScheduledTransactionCardComponent {
 
   protected readonly isOverdue = computed(
     () => this.schedule().active && this.schedule().nextExecutionDate < this.scheduledStore.today(),
+  );
+
+  protected readonly canExecute = computed(
+    () =>
+      this.schedule().active &&
+      isScheduleDue(this.schedule().nextExecutionDate, this.scheduledStore.today()),
+  );
+
+  protected readonly isFutureSchedule = computed(
+    () => !isScheduleDue(this.schedule().nextExecutionDate, this.scheduledStore.today()),
+  );
+
+  protected readonly availabilityMessage = computed(
+    () =>
+      `Esta transacción estará disponible para aplicarse el ${formatLocalDate(this.schedule().nextExecutionDate)}`,
   );
 
   protected readonly nextExecutionLabel = computed(() =>
