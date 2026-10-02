@@ -1,4 +1,5 @@
 export * from './account.model';
+export * from './backup-data.model';
 export * from './category.model';
 export * from './changelog.model';
 export * from './monthly-commitments.model';

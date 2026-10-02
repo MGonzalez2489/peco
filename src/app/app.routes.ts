@@ -37,15 +37,11 @@ export const routes: Routes = [
       ),
   },
   {
-    path: 'preferences',
-    title: 'Preferencias',
-    loadComponent: () =>
-      import('./features/preferences/preferences.component').then((m) => m.PreferencesComponent),
+    path: 'settings',
+    title: 'Ajustes',
+    loadChildren: () => import('./features/settings/settings.routes').then((m) => m.settingsRoutes),
   },
-  {
-    path: 'logs',
-    title: 'Registro de cambios',
-    loadComponent: () => import('./features/logs/logs.component').then((m) => m.LogsComponent),
-  },
+  {path: 'preferences', redirectTo: 'settings/theme'},
+  {path: 'logs', redirectTo: 'settings/changelog'},
   {path: '**', redirectTo: 'dashboard'},
 ];
