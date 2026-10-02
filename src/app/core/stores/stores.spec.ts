@@ -15,9 +15,16 @@ describe('Finance stores', () => {
     movementsStore = TestBed.inject(MovementsStore);
   });
 
-  it('loads accounts eagerly and guarantees a root account', () => {
-    expect(accountsStore.accounts().length).toBeGreaterThan(0);
+  it('initializes with only the root account at zero balance', () => {
+    const accounts = accountsStore.accounts();
+    expect(accounts.length).toBe(1);
+    expect(accounts[0].isRoot).toBe(true);
+    expect(accounts[0].currentBalance).toBe(0);
     expect(accountsStore.rootAccount()).toBeDefined();
+  });
+
+  it('initializes movements empty', () => {
+    expect(movementsStore.movements()).toEqual([]);
   });
 
   it('marks the first created account as root and rejects its deletion', () => {
@@ -27,10 +34,8 @@ describe('Finance stores', () => {
   });
 
   it('adds income to the source balance', () => {
-    const target = accountsStore
-      .accounts()
-      .find((account) => account.id !== accountsStore.rootAccount()?.id);
-    if (!target) return;
+    const target = accountsStore.createAccount({name: 'Ahorro', initialBalance: 0});
+    if (!target) throw new Error('account must be created');
 
     const before = target.currentBalance;
 
@@ -46,8 +51,9 @@ describe('Finance stores', () => {
   });
 
   it('moves balance on transfers in both directions', () => {
-    const [source, destination] = accountsStore.accounts();
-    if (!source || !destination) return;
+    const source = accountsStore.rootAccount();
+    const destination = accountsStore.createAccount({name: 'Ahorro', initialBalance: 200});
+    if (!source || !destination) throw new Error('accounts must exist');
 
     movementsStore.registerMovement({
       accountId: source.id,
@@ -67,10 +73,8 @@ describe('Finance stores', () => {
   });
 
   it('reverses a movement back into the original balance', () => {
-    const target = accountsStore
-      .accounts()
-      .find((account) => account.id !== accountsStore.rootAccount()?.id);
-    if (!target) return;
+    const target = accountsStore.createAccount({name: 'Ahorro', initialBalance: 0});
+    if (!target) throw new Error('account must be created');
 
     const baseline = target.currentBalance;
 
@@ -120,9 +124,15 @@ describe('Finance stores', () => {
   });
 
   it('filters movements and derives totals', () => {
-    const account = accountsStore.accounts().find((item) => !item.isRoot);
-    if (!account) return;
+    const account = accountsStore.createAccount({name: 'Ahorro', initialBalance: 0});
+    if (!account) throw new Error('account must be created');
 
+    movementsStore.registerMovement({
+      accountId: account.id,
+      categoryId: 'payroll',
+      type: 'INCOME',
+      amount: 100,
+    });
     movementsStore.setFilters({type: 'INCOME'});
 
     expect(movementsStore.filteredMovements().every((m) => m.type === 'INCOME')).toBe(true);
@@ -133,6 +143,16 @@ describe('Finance stores', () => {
   });
 
   it('groups filtered movements by formatted date', () => {
+    const root = accountsStore.rootAccount();
+    if (!root) throw new Error('root account must exist');
+
+    movementsStore.registerMovement({
+      accountId: root.id,
+      categoryId: 'payroll',
+      type: 'INCOME',
+      amount: 50,
+    });
+
     const groups = movementsStore.groupedMovementsByDate();
     expect(groups.length).toBeGreaterThan(0);
     expect(groups[0].date).toMatch(/^\d{2}\/\d{2}\/\d{4}$/);
@@ -153,8 +173,8 @@ describe('Finance stores', () => {
   });
 
   it('toggles pin without touching the balance', () => {
-    const account = accountsStore.accounts()[1];
-    if (!account) return;
+    const account = accountsStore.createAccount({name: 'Ahorro', initialBalance: 0});
+    if (!account) throw new Error('account must be created');
 
     const before = account.currentBalance;
     accountsStore.togglePin(account.id);

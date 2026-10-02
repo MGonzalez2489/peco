@@ -19,6 +19,7 @@ import {MonthlyCommitmentsSummary} from '../models/monthly-commitments.model';
 import {ScheduledTransaction} from '../models/scheduled-transaction.model';
 import {ScheduledTransactionsStorageService} from '../services/scheduled-transactions-storage.service';
 import {isIncomeSchedule} from '../utils/is-income-schedule.util';
+import {isScheduleDue} from '../utils/is-schedule-due.util';
 import {monthlyEquivalent} from '../utils/monthly-equivalent.util';
 import {nextExecutionDate} from '../utils/next-execution-date.util';
 import {todayIsoDate} from '../utils/today-iso-date.util';
@@ -224,6 +225,7 @@ export const ScheduledTransactionsStore = signalStore(
       executeScheduledTransaction(id: string, actualAmount?: number): boolean {
         const item = store.scheduledTransactions().find((entry) => entry.id === id);
         if (!item) return false;
+        if (!isScheduleDue(item.nextExecutionDate, todayIsoDate())) return false;
 
         const movement = movementsStore.registerMovement({
           accountId: item.sourceAccountId,

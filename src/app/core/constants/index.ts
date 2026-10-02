@@ -10,4 +10,3 @@ export * from './recurrence-frequency-label.constant';
 export * from './scheduled-transaction-stop-condition-label.constant';
 export * from './seed-accounts.constant';
 export * from './seed-categories.constant';
-export * from './seed-movements.constant';

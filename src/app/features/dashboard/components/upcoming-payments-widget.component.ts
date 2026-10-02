@@ -5,7 +5,7 @@ import {RECURRENCE_FREQUENCY_LABEL} from '@core/constants';
 import {ScheduledTransaction} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {ScheduledTransactionsStore} from '@core/stores/scheduled-transactions.store';
-import {formatLocalDate} from '@core/utils';
+import {formatLocalDate, isScheduleDue} from '@core/utils';
 import {
   ExecuteScheduleModalComponent,
   ScheduledTransactionFormModalComponent,
@@ -44,6 +44,12 @@ export class UpcomingPaymentsWidgetComponent {
 
   protected readonly isOverdue = (schedule: ScheduledTransaction): boolean =>
     schedule.nextExecutionDate < this.scheduledStore.today();
+
+  protected readonly canExecute = (schedule: ScheduledTransaction): boolean =>
+    schedule.active && isScheduleDue(schedule.nextExecutionDate, this.scheduledStore.today());
+
+  protected readonly availabilityMessage = (schedule: ScheduledTransaction): string =>
+    `Esta transacción estará disponible para aplicarse el ${formatLocalDate(schedule.nextExecutionDate)}`;
 
   protected readonly accountName = (schedule: ScheduledTransaction): string =>
     this.accountsStore.accounts().find((account) => account.id === schedule.sourceAccountId)

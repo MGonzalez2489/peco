@@ -54,7 +54,7 @@ describe('ScheduledTransactionsStore', () => {
   });
 
   it('executes a schedule, creates a movement and advances the date', () => {
-    const created = store.createScheduledTransaction(create());
+    const created = store.createScheduledTransaction(create({nextExecutionDate: '2020-01-01'}));
     if (!created) throw new Error('schedule must be created');
 
     const before = accountsStore.accounts()[0].currentBalance;
@@ -63,14 +63,32 @@ describe('ScheduledTransactionsStore', () => {
 
     const updated = store.scheduleById(created.id);
     expect(updated?.completedOccurrences).toBe(1);
-    expect(updated?.nextExecutionDate).toBe('2030-02-01');
+    expect(updated?.nextExecutionDate).toBe('2020-02-01');
     expect(movementsStore.movements()[0]?.amount).toBe(450);
 
     expect(accountsStore.accounts()[0].currentBalance).toBe(before - 450);
   });
 
+  it('blocks execution of future schedules without touching balances', () => {
+    const created = store.createScheduledTransaction(create({nextExecutionDate: '2030-01-01'}));
+    if (!created) throw new Error('schedule must be created');
+
+    const before = accountsStore.accounts()[0].currentBalance;
+
+    expect(store.executeScheduledTransaction(created.id)).toBe(false);
+
+    expect(movementsStore.movements()).toEqual([]);
+    expect(accountsStore.accounts()[0].currentBalance).toBe(before);
+
+    const untouched = store.scheduleById(created.id);
+    expect(untouched?.completedOccurrences).toBe(0);
+    expect(untouched?.nextExecutionDate).toBe('2030-01-01');
+  });
+
   it('deactivates the schedule once the occurrence limit is reached', () => {
-    const created = store.createScheduledTransaction(create({totalOccurrences: 1}));
+    const created = store.createScheduledTransaction(
+      create({totalOccurrences: 1, nextExecutionDate: '2020-01-01'}),
+    );
     if (!created) throw new Error('schedule must be created');
 
     store.executeScheduledTransaction(created.id);
