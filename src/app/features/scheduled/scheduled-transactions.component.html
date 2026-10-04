@@ -194,6 +194,7 @@
       <div class="max-h-[600px] space-y-3 overflow-y-auto pr-2">
         @for (schedule of filteredSchedules(); track schedule.id) {
           <app-scheduled-transaction-card
+            class="block"
             [schedule]="schedule"
             (edited)="openEdit($event)"
             (executed)="openExecute($event)"
