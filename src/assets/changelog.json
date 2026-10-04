@@ -1,5 +1,17 @@
 [
   {
+    "version": "v0.0.4-a",
+    "fecha": "2026-10-04",
+    "highlights": [
+      "Nueva Funcionalidad: búsqueda y filtros para movimientos programados (nombre, tipo y categoría)",
+      "Nueva Funcionalidad: resumen mensual unificado con distribución por categoría y gráfico donut interactivo",
+      "Mejora de UX: tarjetas de movimientos programados colapsables y lista filtrada con estado vacío",
+      "Mejora de UX: autofoco optimizado en formulario de cuenta y selector de frecuencia con indicador visual",
+      "Mejora de UX: reordenamiento de paneles en inicio y límite de elementos en próximos pagos",
+      "Corrección: proyección mensual aislada para movimientos programados y restricción de acciones en widget de próximos pagos"
+    ]
+  },
+  {
     "version": "v0.0.3-a",
     "fecha": "2026-10-04",
     "highlights": [

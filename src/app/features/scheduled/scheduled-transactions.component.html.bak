@@ -107,7 +107,7 @@
                   [attr.stroke]="segment.categoryColor"
                   stroke-width="10"
                   stroke-linecap="round"
-                  [attr.stroke-dasharray]="segment.dash + ' ' + (2 * 3.14159 * 45 - segment.dash)"
+                  [attr.stroke-dasharray]="segment.dash + ' ' + (2 * Math.PI * 45 - segment.dash)"
                   [attr.stroke-dashoffset]="segment.offset"
                   transform="rotate(-90 50 50)"
                   class="cursor-pointer transition hover:opacity-90"
@@ -150,7 +150,7 @@
                   {{ item.percentage }}%
                 </span>
               </button>
-            }
+            }}
             @if (scheduledStore.selectedCategoryId()) {
               <button
                 type="button"
@@ -194,7 +194,6 @@
       <div class="max-h-[600px] space-y-3 overflow-y-auto pr-2">
         @for (schedule of filteredSchedules(); track schedule.id) {
           <app-scheduled-transaction-card
-            class="block"
             [schedule]="schedule"
             (edited)="openEdit($event)"
             (executed)="openExecute($event)"
