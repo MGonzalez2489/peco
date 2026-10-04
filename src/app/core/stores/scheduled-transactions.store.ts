@@ -25,12 +25,24 @@ import {nextExecutionDate} from '../utils/next-execution-date.util';
 import {todayIsoDate} from '../utils/today-iso-date.util';
 import {toIsoDate} from '../utils/to-iso-date.util';
 import {AccountsStore} from './accounts.store';
+import {CatalogStore} from './catalog.store';
 import {MovementsStore} from './movements.store';
+
+export interface CategoryDistributionItem {
+  categoryId: string;
+  categoryName: string;
+  categoryColor: string;
+  totalAmount: number;
+  percentage: number;
+}
 
 interface ScheduledTransactionsState {
   scheduledTransactions: ScheduledTransaction[];
   isLoading: boolean;
   timeframeFilterDays: number;
+  searchQuery: string;
+  typeFilter: 'ALL' | 'INCOME' | 'EXPENSE';
+  selectedCategoryId: string | null;
 }
 
 const DEFAULT_TIMEFRAME_DAYS = 30;
@@ -39,6 +51,9 @@ const initialState = (): ScheduledTransactionsState => ({
   scheduledTransactions: inject(ScheduledTransactionsStorageService).getAll(),
   isLoading: false,
   timeframeFilterDays: DEFAULT_TIMEFRAME_DAYS,
+  searchQuery: '',
+  typeFilter: 'ALL',
+  selectedCategoryId: null,
 });
 
 const byNextExecutionAscending = (a: ScheduledTransaction, b: ScheduledTransaction): number =>
@@ -48,10 +63,12 @@ export const ScheduledTransactionsStore = signalStore(
   {providedIn: 'root'},
   withState(initialState),
   withCallState(),
-  withComputed(({scheduledTransactions, timeframeFilterDays}) => {
-    const accountsStore = inject(AccountsStore);
+  withComputed(
+    ({scheduledTransactions, timeframeFilterDays, searchQuery, typeFilter, selectedCategoryId}) => {
+      const accountsStore = inject(AccountsStore);
+      const catalogStore = inject(CatalogStore);
 
-    const activeSchedules = computed(() => scheduledTransactions().filter((item) => item.active));
+      const activeSchedules = computed(() => scheduledTransactions().filter((item) => item.active));
 
     const today = computed(() => todayIsoDate());
 
@@ -106,6 +123,7 @@ export const ScheduledTransactionsStore = signalStore(
       ),
       monthlyCommitmentsSummary,
       projectedMonthlyNet: computed(() => monthlyCommitmentsSummary().netProjectedImpact),
+      netImpact: computed(() => monthlyCommitmentsSummary().netProjectedImpact),
       projectedAvailableBalance: computed(
         () => accountsStore.totalBalance() + monthlyCommitmentsSummary().netProjectedImpact,
       ),
@@ -117,6 +135,67 @@ export const ScheduledTransactionsStore = signalStore(
       hasOverdueSchedules: computed(() =>
         activeSchedules().some((item) => item.nextExecutionDate < today()),
       ),
+      filteredSchedules: computed(() => {
+        const query = searchQuery().trim().toLowerCase();
+        const type = typeFilter();
+        const selectedCategory = selectedCategoryId();
+
+        return [...activeSchedules()].filter((item) => {
+          if (type !== 'ALL') {
+            if (type === 'INCOME' && item.type !== 'INCOME') return false;
+            if (type === 'EXPENSE' && item.type !== 'EXPENSE') return false;
+          }
+
+          if (selectedCategory !== null && item.categoryId !== selectedCategory) {
+            return false;
+          }
+
+          if (query) {
+            const name = item.name.toLowerCase();
+            if (!name.includes(query)) return false;
+          }
+
+          return true;
+        }).sort(byNextExecutionAscending);
+      }),
+      categoryDistributionSummary: computed(() => {
+        const summary = monthlyCommitmentsSummary();
+        const totalExpenses = summary.totalExpenses;
+        if (totalExpenses <= 0) return [];
+
+        const map = new Map<
+          string,
+          {categoryId: string; categoryName: string; categoryColor: string; totalAmount: number}
+        >();
+
+        for (const item of activeSchedules()) {
+          if (item.type === 'TRANSFER' || item.type === 'INCOME') continue;
+
+          const amount = monthlyEquivalent(item.estimatedAmount, item.frequency);
+          if (amount <= 0) continue;
+
+          const existing = map.get(item.categoryId);
+          if (existing) {
+            existing.totalAmount += amount;
+          } else {
+            const category = catalogStore.categories().find((c) => c.id === item.categoryId);
+            map.set(item.categoryId, {
+              categoryId: item.categoryId,
+              categoryName: category?.displayName ?? 'Sin categoría',
+              categoryColor: '#94a3b8',
+              totalAmount: amount,
+            });
+          }
+        }
+
+        const items: CategoryDistributionItem[] = [];
+        for (const entry of map.values()) {
+          const percentage = Math.round((entry.totalAmount / totalExpenses) * 100);
+          items.push({...entry, percentage});
+        }
+
+        return items.sort((a, b) => b.totalAmount - a.totalAmount);
+      }),
     };
   }),
   withMethods((store) => {
@@ -263,6 +342,22 @@ export const ScheduledTransactionsStore = signalStore(
       },
       resetError(): void {
         patchState(store, setLoaded());
+      },
+      setSearchQuery(query: string): void {
+        patchState(store, {searchQuery: query});
+      },
+      setTypeFilter(type: 'ALL' | 'INCOME' | 'EXPENSE'): void {
+        patchState(store, {typeFilter: type});
+      },
+      setCategoryFilter(categoryId: string | null): void {
+        patchState(store, {selectedCategoryId: categoryId});
+      },
+      resetFilters(): void {
+        patchState(store, {
+          searchQuery: '',
+          typeFilter: 'ALL',
+          selectedCategoryId: null,
+        });
       },
     };
   }),
