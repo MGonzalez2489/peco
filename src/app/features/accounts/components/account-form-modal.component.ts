@@ -1,4 +1,13 @@
-import {ChangeDetectionStrategy, Component, effect, inject, input, output} from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  effect,
+  ElementRef,
+  inject,
+  input,
+  output,
+  viewChild,
+} from '@angular/core';
 import {FormBuilder, FormControl, ReactiveFormsModule, Validators} from '@angular/forms';
 import {ACCOUNT_COLORS} from '@core/constants';
 import {Account} from '@core/models';
@@ -25,9 +34,11 @@ export class AccountFormModalComponent {
 
   private readonly fb = inject(FormBuilder);
 
+  private readonly nameInput = viewChild<ElementRef<HTMLInputElement>>('nameInput');
+
   protected readonly form = this.fb.group({
     name: this.fb.control<string>('', Validators.required),
-    initialBalance: this.fb.control<number | null>(null, {
+    initialBalance: this.fb.control<number | null>(0, {
       validators: [Validators.required, Validators.min(0)],
     }),
     targetGoal: this.fb.control<number | null>(null, Validators.min(0)),
@@ -45,6 +56,21 @@ export class AccountFormModalComponent {
     effect(() => {
       this.prepareForm();
     });
+    effect(() => {
+      if (!this.isOpen()) return;
+      this.focusNameField();
+    });
+  }
+
+  private focusNameField(): void {
+    // The shared modal focuses its panel via requestAnimationFrame on open,
+    // and the input only exists once the modal @if block renders. A short
+    // delay ensures the input is in the DOM and receives focus last, so it
+    // never blurs immediately (which would mark the control touched and show
+    // a premature required-field error).
+    window.setTimeout(() => {
+      this.nameInput()?.nativeElement.focus({preventScroll: true});
+    }, 100);
   }
 
   private prepareForm(): void {
@@ -68,7 +94,7 @@ export class AccountFormModalComponent {
       balance.updateValueAndValidity();
       this.form.reset({
         name: '',
-        initialBalance: null,
+        initialBalance: 0,
         targetGoal: null,
         color: 'indigo',
         pinToHome: false,

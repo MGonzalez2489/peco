@@ -36,7 +36,7 @@
         {{ projectedBalance() | currency: 'USD' : 'symbol' : '1.2-2' }}
       </dd>
       <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">
-        Saldo actual más compromisos mensuales netos.
+        Ingresos programados menos egresos programados del mes.
       </p>
     </div>
 
@@ -110,9 +110,10 @@
         </button>
       </div>
     } @else {
-      <div class="space-y-3">
+      <div class="max-h-150 space-y-3 overflow-y-auto pr-2">
         @for (schedule of activeSchedules(); track schedule.id) {
           <app-scheduled-transaction-card
+            class="block"
             [schedule]="schedule"
             (edited)="openEdit($event)"
             (executed)="openExecute($event)"
@@ -130,7 +131,7 @@
       >
         Pausados
       </h2>
-      <div class="space-y-3">
+      <div class="max-h-[600px] space-y-3 overflow-y-auto pr-2">
         @for (schedule of pausedSchedules(); track schedule.id) {
           <app-scheduled-transaction-card
             [schedule]="schedule"

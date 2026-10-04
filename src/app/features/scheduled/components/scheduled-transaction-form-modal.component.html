@@ -33,15 +33,27 @@
         >
           Tipo
         </label>
-        <select
-          id="sch-type"
-          formControlName="type"
-          class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-        >
-          @for (option of typeOptions; track option.value) {
-            <option [value]="option.value">{{ option.label }}</option>
-          }
-        </select>
+        <div class="relative">
+          <select
+            id="sch-type"
+            formControlName="type"
+            class="w-full appearance-none rounded-xl border border-slate-300 bg-white px-3 py-2.5 pr-10 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+          >
+            @for (option of typeOptions; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+          <svg
+            class="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="2"
+            stroke="currentColor"
+            aria-hidden="true"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+          </svg>
+        </div>
       </div>
 
       <div>
@@ -77,19 +89,31 @@
           >
             Categoría
           </label>
-          <select
-            id="sch-category"
-            formControlName="categoryId"
-            class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-            [attr.aria-invalid]="
-              form.controls.categoryId.touched && form.controls.categoryId.invalid
-            "
-          >
-            <option value="" disabled>Selecciona una categoría</option>
-            @for (category of availableCategories(); track category.id) {
-              <option [value]="category.id">{{ category.icon }} {{ category.displayName }}</option>
-            }
-          </select>
+          <div class="relative">
+            <select
+              id="sch-category"
+              formControlName="categoryId"
+              class="w-full appearance-none rounded-xl border border-slate-300 bg-white px-3 py-2.5 pr-10 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+              [attr.aria-invalid]="
+                form.controls.categoryId.touched && form.controls.categoryId.invalid
+              "
+            >
+              <option value="" disabled>Selecciona una categoría</option>
+              @for (category of availableCategories(); track category.id) {
+                <option [value]="category.id">{{ category.icon }} {{ category.displayName }}</option>
+              }
+            </select>
+            <svg
+              class="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke-width="2"
+              stroke="currentColor"
+              aria-hidden="true"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+            </svg>
+          </div>
           @if (errorFor('categoryId'); as error) {
             <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ error }}</p>
           }
@@ -103,19 +127,31 @@
         >
           Cuenta {{ selectedType() === 'TRANSFER' ? 'origen' : '' }}
         </label>
-        <select
-          id="sch-account"
-          formControlName="sourceAccountId"
-          class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-          [attr.aria-invalid]="
-            form.controls.sourceAccountId.touched && form.controls.sourceAccountId.invalid
-          "
-        >
-          <option value="" disabled>Selecciona una cuenta</option>
-          @for (account of accounts(); track account.id) {
-            <option [value]="account.id">{{ account.name }}</option>
-          }
-        </select>
+        <div class="relative">
+          <select
+            id="sch-account"
+            formControlName="sourceAccountId"
+            class="w-full appearance-none rounded-xl border border-slate-300 bg-white px-3 py-2.5 pr-10 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+            [attr.aria-invalid]="
+              form.controls.sourceAccountId.touched && form.controls.sourceAccountId.invalid
+            "
+          >
+            <option value="" disabled>Selecciona una cuenta</option>
+            @for (account of accounts(); track account.id) {
+              <option [value]="account.id">{{ account.name }}</option>
+            }
+          </select>
+          <svg
+            class="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="2"
+            stroke="currentColor"
+            aria-hidden="true"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+          </svg>
+        </div>
         @if (errorFor('sourceAccountId'); as error) {
           <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ error }}</p>
         }
@@ -129,20 +165,32 @@
           >
             Cuenta destino
           </label>
-          <select
-            id="sch-destination"
-            formControlName="destinationAccountId"
-            class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-            [attr.aria-invalid]="
-              form.controls.destinationAccountId.touched &&
-              form.controls.destinationAccountId.invalid
-            "
-          >
-            <option value="" disabled>Selecciona la cuenta destino</option>
-            @for (account of destinationAccounts(); track account.id) {
-              <option [value]="account.id">{{ account.name }}</option>
-            }
-          </select>
+          <div class="relative">
+            <select
+              id="sch-destination"
+              formControlName="destinationAccountId"
+              class="w-full appearance-none rounded-xl border border-slate-300 bg-white px-3 py-2.5 pr-10 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+              [attr.aria-invalid]="
+                form.controls.destinationAccountId.touched &&
+                form.controls.destinationAccountId.invalid
+              "
+            >
+              <option value="" disabled>Selecciona la cuenta destino</option>
+              @for (account of destinationAccounts(); track account.id) {
+                <option [value]="account.id">{{ account.name }}</option>
+              }
+            </select>
+            <svg
+              class="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke-width="2"
+              stroke="currentColor"
+              aria-hidden="true"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+            </svg>
+          </div>
           @if (errorFor('destinationAccountId'); as error) {
             <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ error }}</p>
           }
@@ -157,15 +205,27 @@
           >
             Frecuencia
           </label>
-          <select
-            id="sch-frequency"
-            formControlName="frequency"
-            class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-          >
-            @for (option of frequencyOptions; track option.value) {
-              <option [value]="option.value">{{ option.label }}</option>
-            }
-          </select>
+          <div class="relative">
+            <select
+              id="sch-frequency"
+              formControlName="frequency"
+              class="w-full appearance-none rounded-xl border border-slate-300 bg-white px-3 py-2.5 pr-10 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+            >
+              @for (option of frequencyOptions; track option.value) {
+                <option [value]="option.value">{{ option.label }}</option>
+              }
+            </select>
+            <svg
+              class="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke-width="2"
+              stroke="currentColor"
+              aria-hidden="true"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+            </svg>
+          </div>
         </div>
 
         <div>
@@ -208,15 +268,27 @@
         >
           Condición de fin
         </label>
-        <select
-          id="sch-stop"
-          formControlName="stopCondition"
-          class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-        >
-          @for (option of stopConditionOptions; track option.value) {
-            <option [value]="option.value">{{ option.label }}</option>
-          }
-        </select>
+        <div class="relative">
+          <select
+            id="sch-stop"
+            formControlName="stopCondition"
+            class="w-full appearance-none rounded-xl border border-slate-300 bg-white px-3 py-2.5 pr-10 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+          >
+            @for (option of stopConditionOptions; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+          <svg
+            class="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="2"
+            stroke="currentColor"
+            aria-hidden="true"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+          </svg>
+        </div>
       </div>
 
       @if (stopCondition() === 'OCCURRENCES') {

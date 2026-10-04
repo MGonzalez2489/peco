@@ -1,5 +1,7 @@
 import {Injectable} from '@angular/core';
 import {APP_VERSION} from '../constants/app-version.constant';
+import {LOCAL_STORAGE_KEYS} from '../constants/local-storage-keys.constant';
+import {SEED_ACCOUNTS} from '../constants/seed-accounts.constant';
 import {BackupData} from '../models/backup-data.model';
 import {buildBackupFilename} from '../utils/build-backup-filename.util';
 import {isAppStorageKey} from '../utils/is-app-storage-key.util';
@@ -56,6 +58,16 @@ export class DataBackupService {
 
     window.location.reload();
     return true;
+  }
+
+  resetAllData(): void {
+    this.clearAppEntries();
+
+    localStorage.setItem(LOCAL_STORAGE_KEYS.accounts, JSON.stringify(SEED_ACCOUNTS));
+    localStorage.setItem(LOCAL_STORAGE_KEYS.movements, JSON.stringify([]));
+    localStorage.setItem(LOCAL_STORAGE_KEYS.scheduledTransactions, JSON.stringify([]));
+
+    window.location.reload();
   }
 
   private readValue(key: string): unknown {

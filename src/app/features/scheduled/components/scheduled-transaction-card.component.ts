@@ -36,6 +36,7 @@ export class ScheduledTransactionCardComponent {
   readonly scheduledStore = inject(ScheduledTransactionsStore);
 
   protected readonly confirmDeleteVisible = signal(false);
+  protected readonly isExpanded = signal(false);
 
   protected readonly frequencyLabel = computed(
     () => RECURRENCE_FREQUENCY_LABEL[this.schedule().frequency],
@@ -111,6 +112,10 @@ export class ScheduledTransactionCardComponent {
 
   toggleActive(): void {
     this.scheduledStore.toggleScheduleActiveStatus(this.schedule().id);
+  }
+
+  toggleExpanded(): void {
+    this.isExpanded.update((expanded) => !expanded);
   }
 
   requestDelete(): void {
