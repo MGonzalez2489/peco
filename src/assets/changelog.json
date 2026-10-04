@@ -1,89 +1,35 @@
 [
   {
-    "version": "v0.7.3",
+    "version": "v0.0.3-a",
+    "fecha": "2026-10-04",
+    "highlights": [
+      "Nueva Funcionalidad: gestión de movimientos programados y recurrentes (suscripciones, nómina y servicios)",
+      "Nueva Funcionalidad: proyección de salud financiera e ingresos comprometidos del mes",
+      "Nueva Funcionalidad: rediseño de ajustes con menú lateral, subpáginas y selector de temas",
+      "Nueva Funcionalidad: exportación e importación de respaldos en formato JSON y opción de restablecimiento de datos",
+      "Mejora de UX: diseño responsive con barra lateral navegable y tarjetas colapsables para mejor lectura",
+      "Mejora de UX: inicio rápido en formularios con autofoco y prellenado automático de valores base"
+    ]
+  },
+  {
+    "version": "v0.0.2-a",
     "fecha": "2026-09-14",
     "highlights": [
-      "Corrección de Error: logo at install pwa modal"
+      "Nueva Funcionalidad: soporte mejorado para PWA, icono de identidad y banner de instalación",
+      "Nueva Funcionalidad: categorización completa de movimientos con opciones de filtrado",
+      "Nueva Funcionalidad: protección de la cuenta base y opción para fijar apartados en el inicio",
+      "Corrección de Error: corrección de rutas de manifiesto e iconos para la instalación",
+      "Corrección de Error: prellenado automático de montos en formularios"
     ]
   },
   {
-    "version": "v0.7.2",
-    "fecha": "2026-09-14",
-    "highlights": [
-      "Corrección de Error: corregir iconos del manifest para la instalación"
-    ]
-  },
-  {
-    "version": "v0.7.1",
-    "fecha": "2026-09-14",
-    "highlights": [
-      "Corrección de Error: manifest and icons"
-    ]
-  },
-  {
-    "version": "v0.7.0",
-    "fecha": "2026-09-14",
-    "highlights": [
-      "Nueva Funcionalidad: cgregado icono de identidad - pwa",
-      "Nueva Funcionalidad: añadir banner de instalación y aviso de nuevas versiones",
-      "Nueva Funcionalidad: añadir categorías a los movimientos, formulario y filtros",
-      "Nueva Funcionalidad: proteger la cuenta raíz, añadir fijado a Inicio y uniformar tarjetas",
-      "Corrección de Error: prellenar el campo monto con 0.00 en el formulario de registro de movimientos"
-    ]
-  },
-  {
-    "version": "v0.6.0",
-    "fecha": "2026-09-14",
-    "highlights": [
-      "Nueva Funcionalidad: añadir banner de instalación y aviso de nuevas versiones",
-      "Nueva Funcionalidad: añadir categorías a los movimientos, formulario y filtros",
-      "Nueva Funcionalidad: proteger la cuenta raíz, añadir fijado a Inicio y uniformar tarjetas",
-      "Corrección de Error: prellenar el campo monto con 0.00 en el formulario de registro de movimientos"
-    ]
-  },
-  {
-    "version": "v0.5.0",
+    "version": "v0.0.1-a",
     "fecha": "2026-09-13",
     "highlights": [
-      "Nueva Funcionalidad: unificar la lista de movimientos en un componente compartido",
-      "Nueva Funcionalidad: fijar apartados en la pantalla de inicio con carrusel",
-      "Nueva Funcionalidad: agrupar movimientos por fecha y agregar modal de filtros"
-    ]
-  },
-  {
-    "version": "v0.4.0",
-    "fecha": "2026-09-13",
-    "highlights": [
-      "Nueva Funcionalidad: fijar apartados en la pantalla de inicio con carrusel"
-    ]
-  },
-  {
-    "version": "v0.3.0",
-    "fecha": "2026-09-13",
-    "highlights": [
-      "Nueva Funcionalidad: agrupar movimientos por fecha y agregar modal de filtros"
-    ]
-  },
-  {
-    "version": "v0.2.1",
-    "fecha": "2026-09-13",
-    "highlights": [
-      "Corrección de Error: reparada el indicador de version"
-    ]
-  },
-  {
-    "version": "v0.2.0",
-    "fecha": "2026-09-13",
-    "highlights": [
-      "Corrección de Error: show current navbar page state",
-      "Nueva Funcionalidad: add changelog view with accordion and latest version badge"
-    ]
-  },
-  {
-    "version": "v0.1.0",
-    "fecha": "2026-09-12",
-    "highlights": [
-      "Nueva Funcionalidad: Nueva vista para ver el changelog."
+      "Nueva Funcionalidad: agrupación de movimientos por fecha y modal de filtros avanzados",
+      "Nueva Funcionalidad: carrusel para explorar apartados fijados en la pantalla principal",
+      "Nueva Funcionalidad: unificación visual de listas de movimientos y pantalla de historial de cambios",
+      "Corrección de Error: ajustes de navegación y corrección del indicador de versión"
     ]
   }
 ]

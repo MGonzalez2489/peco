@@ -25,7 +25,7 @@ export class ScheduledTransactionsComponent {
   readonly activeSchedules = this.scheduledStore.activeSchedules;
   readonly pausedSchedules = this.scheduledStore.pausedSchedules;
   readonly summary = this.scheduledStore.monthlyCommitmentsSummary;
-  readonly projectedBalance = this.scheduledStore.projectedAvailableBalance;
+  readonly projectedBalance = this.scheduledStore.projectedMonthlyNet;
   readonly commitmentPercentage = this.scheduledStore.incomeCommitmentPercentage;
 
   readonly formOpen = signal(false);

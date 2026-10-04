@@ -6,19 +6,13 @@ import {ScheduledTransaction} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {ScheduledTransactionsStore} from '@core/stores/scheduled-transactions.store';
 import {formatLocalDate, isScheduleDue} from '@core/utils';
-import {
-  ExecuteScheduleModalComponent,
-  ScheduledTransactionFormModalComponent,
-} from '@features/scheduled/components';
+import {ExecuteScheduleModalComponent} from '@features/scheduled/components';
+
+const MAX_UPCOMING_ITEMS = 5;
 
 @Component({
   selector: 'app-upcoming-payments-widget',
-  imports: [
-    CurrencyPipe,
-    RouterLink,
-    ExecuteScheduleModalComponent,
-    ScheduledTransactionFormModalComponent,
-  ],
+  imports: [CurrencyPipe, RouterLink, ExecuteScheduleModalComponent],
   templateUrl: './upcoming-payments-widget.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -26,13 +20,23 @@ export class UpcomingPaymentsWidgetComponent {
   readonly scheduledStore = inject(ScheduledTransactionsStore);
   readonly accountsStore = inject(AccountsStore);
 
-  readonly upcoming = this.scheduledStore.upcomingInTimeframe;
+  readonly upcoming = computed<ScheduledTransaction[]>(() => {
+    const due = this.scheduledStore.dueTodayOrOverdue();
+    const future = this.scheduledStore.upcomingInTimeframe();
+    const merged = [...due, ...future].sort((first, second) =>
+      first.nextExecutionDate.localeCompare(second.nextExecutionDate),
+    );
+    const seen = new Set<string>();
+    const unique = merged.filter((item) => {
+      if (seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    });
+    return unique.slice(0, MAX_UPCOMING_ITEMS);
+  });
 
   readonly executeOpen = signal(false);
   readonly scheduleToExecute = signal<ScheduledTransaction | null>(null);
-
-  readonly formOpen = signal(false);
-  readonly scheduleToEdit = signal<ScheduledTransaction | null>(null);
 
   readonly timeframeDays = this.scheduledStore.timeframeFilterDays;
 
@@ -50,6 +54,9 @@ export class UpcomingPaymentsWidgetComponent {
 
   protected readonly availabilityMessage = (schedule: ScheduledTransaction): string =>
     `Esta transacción estará disponible para aplicarse el ${formatLocalDate(schedule.nextExecutionDate)}`;
+
+  protected readonly omitAvailabilityMessage = (schedule: ScheduledTransaction): string =>
+    `Esta opción estará disponible el ${formatLocalDate(schedule.nextExecutionDate)}`;
 
   protected readonly accountName = (schedule: ScheduledTransaction): string =>
     this.accountsStore.accounts().find((account) => account.id === schedule.sourceAccountId)
@@ -78,16 +85,6 @@ export class UpcomingPaymentsWidgetComponent {
 
     this.scheduledStore.executeScheduledTransaction(schedule.id, amount);
     this.closeExecute();
-  }
-
-  openEdit(schedule: ScheduledTransaction): void {
-    this.scheduleToEdit.set(schedule);
-    this.formOpen.set(true);
-  }
-
-  closeForm(): void {
-    this.formOpen.set(false);
-    this.scheduleToEdit.set(null);
   }
 
   cancelOccurrence(schedule: ScheduledTransaction): void {

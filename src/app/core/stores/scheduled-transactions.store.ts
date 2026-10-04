@@ -105,6 +105,7 @@ export const ScheduledTransactionsStore = signalStore(
           .sort(byNextExecutionAscending),
       ),
       monthlyCommitmentsSummary,
+      projectedMonthlyNet: computed(() => monthlyCommitmentsSummary().netProjectedImpact),
       projectedAvailableBalance: computed(
         () => accountsStore.totalBalance() + monthlyCommitmentsSummary().netProjectedImpact,
       ),

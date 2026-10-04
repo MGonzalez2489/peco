@@ -80,6 +80,26 @@ import {ConfirmModalComponent} from '@shared/components/confirm-modal/confirm-mo
           {{ isRestoring() ? 'Restaurando…' : 'Restaurar datos' }}
         </button>
       </div>
+
+      <div
+        class="space-y-2 rounded-2xl border border-rose-200 bg-rose-50 p-4 dark:border-rose-500/30 dark:bg-rose-500/10"
+      >
+        <h3 class="text-sm font-semibold text-rose-900 dark:text-rose-200">
+          Restablecer Aplicación
+        </h3>
+        <p class="text-sm text-rose-700 dark:text-rose-300">
+          Elimina todas las cuentas, movimientos y configuraciones. Tu aplicación regresará a su
+          estado inicial limpio con únicamente la cuenta base en $0.00.
+        </p>
+        <button
+          type="button"
+          (click)="requestReset()"
+          class="mt-1 inline-flex items-center gap-2 rounded-xl bg-rose-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-rose-700/30 transition hover:bg-rose-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
+        >
+          <span aria-hidden="true">🗑️</span>
+          Restablecer todos los datos
+        </button>
+      </div>
     </section>
 
     <app-confirm-modal
@@ -97,6 +117,18 @@ import {ConfirmModalComponent} from '@shared/components/confirm-modal/confirm-mo
         >. Esta operación no se puede deshacer.
       </p>
     </app-confirm-modal>
+
+    <app-confirm-modal
+      [isOpen]="showResetConfirm()"
+      title="Restablecer aplicación"
+      confirmLabel="Sí, eliminar todo"
+      cancelLabel="Cancelar"
+      [danger]="true"
+      (confirmed)="confirmReset()"
+      (dismissed)="cancelReset()"
+    >
+      <p>¿Estás seguro de que deseas eliminar toda la información? Esta acción no se puede deshacer.</p>
+    </app-confirm-modal>
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -108,6 +140,7 @@ export class DataSettingsComponent {
   protected readonly errorMessage = signal('');
   protected readonly showConfirm = signal(false);
   protected readonly isRestoring = signal(false);
+  protected readonly showResetConfirm = signal(false);
 
   protected exportBackup(): void {
     this.errorMessage.set('');
@@ -130,6 +163,20 @@ export class DataSettingsComponent {
 
   protected cancelRestore(): void {
     this.showConfirm.set(false);
+  }
+
+  protected requestReset(): void {
+    this.errorMessage.set('');
+    this.showResetConfirm.set(true);
+  }
+
+  protected cancelReset(): void {
+    this.showResetConfirm.set(false);
+  }
+
+  protected confirmReset(): void {
+    this.showResetConfirm.set(false);
+    this.backupService.resetAllData();
   }
 
   protected async confirmRestore(): Promise<void> {
