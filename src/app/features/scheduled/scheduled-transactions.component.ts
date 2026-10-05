@@ -1,14 +1,13 @@
-import {ChangeDetectionStrategy, Component, computed, inject, signal} from '@angular/core';
 import {CurrencyPipe} from '@angular/common';
+import {ChangeDetectionStrategy, Component, computed, inject, signal} from '@angular/core';
 import {ScheduledTransaction} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {ScheduledTransactionsStore} from '@core/stores/scheduled-transactions.store';
 import {toSoftCategoryColor} from '@core/utils';
 import {ExecuteScheduleModalComponent} from './components/execute-schedule-modal.component';
+import {ScheduledFilterBarComponent} from './components/scheduled-filter-bar/scheduled-filter-bar.component';
 import {ScheduledTransactionCardComponent} from './components/scheduled-transaction-card.component';
 import {ScheduledTransactionFormModalComponent} from './components/scheduled-transaction-form-modal.component';
-import {ScheduledFilterBarComponent} from './components/scheduled-filter-bar/scheduled-filter-bar.component';
-import {AppIconComponent} from '@shared/components';
 
 @Component({
   selector: 'app-scheduled-transactions',
@@ -18,7 +17,6 @@ import {AppIconComponent} from '@shared/components';
     ScheduledTransactionFormModalComponent,
     ExecuteScheduleModalComponent,
     ScheduledFilterBarComponent,
-    AppIconComponent,
   ],
   templateUrl: './scheduled-transactions.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
