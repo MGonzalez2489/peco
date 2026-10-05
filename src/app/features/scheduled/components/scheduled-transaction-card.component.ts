@@ -15,11 +15,11 @@ import {CatalogStore} from '@core/stores/catalog.store';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {ScheduledTransactionsStore} from '@core/stores/scheduled-transactions.store';
 import {ScheduledTransactionType} from '@core/types';
-import {ConfirmModalComponent} from '@shared/components';
+import {AppIconComponent, ConfirmModalComponent} from '@shared/components';
 
 @Component({
   selector: 'app-scheduled-transaction-card',
-  imports: [CurrencyPipe, ConfirmModalComponent],
+  imports: [CurrencyPipe, ConfirmModalComponent, AppIconComponent],
   templateUrl: './scheduled-transaction-card.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

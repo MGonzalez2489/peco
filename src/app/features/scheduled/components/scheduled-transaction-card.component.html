@@ -42,17 +42,13 @@
           }
         </span>
       </span>
-      <svg
-        class="h-4 w-4 shrink-0 text-slate-400 transition-transform dark:text-slate-500"
-        [class.rotate-180]="isExpanded()"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke-width="2"
-        stroke="currentColor"
-        aria-hidden="true"
-      >
-        <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-      </svg>
+      <app-icon
+        name="chevron-down"
+        size="16"
+        class="h-4 w-4 shrink-0 text-slate-400 transition-transform dark:text-slate-500 {{
+          isExpanded() ? 'rotate-180' : ''
+        }}"
+      />
     </span>
   </button>
 

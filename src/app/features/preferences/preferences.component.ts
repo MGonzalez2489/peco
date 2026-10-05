@@ -1,9 +1,10 @@
 import {ChangeDetectionStrategy, Component, inject} from '@angular/core';
 import {ThemeService, ThemeMode} from '@core/services/theme.service';
+import {AppIconComponent} from '@shared/components/app-icon/app-icon.component';
 
 @Component({
   selector: 'app-preferences',
-  imports: [],
+  imports: [AppIconComponent],
   templateUrl: './preferences.component.html',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,

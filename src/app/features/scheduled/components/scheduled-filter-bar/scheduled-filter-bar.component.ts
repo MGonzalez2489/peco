@@ -2,10 +2,11 @@ import {ChangeDetectionStrategy, Component, effect, inject, output, signal} from
 import {FormsModule} from '@angular/forms';
 import {ScheduledTransactionsStore} from '@core/stores/scheduled-transactions.store';
 import {CatalogStore} from '@core/stores/catalog.store';
+import {AppIconComponent} from '@shared/components';
 
 @Component({
   selector: 'app-scheduled-filter-bar',
-  imports: [FormsModule],
+  imports: [FormsModule, AppIconComponent],
   templateUrl: './scheduled-filter-bar.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

@@ -27,10 +27,11 @@ import {
 import {todayIsoDate} from '@core/utils';
 import {ModalComponent} from '@shared/components';
 import {CurrencyInputDirective} from '@shared/directives';
+import {AppIconComponent} from '@shared/components/app-icon/app-icon.component';
 
 @Component({
   selector: 'app-scheduled-transaction-form-modal',
-  imports: [ReactiveFormsModule, ModalComponent, CurrencyInputDirective],
+  imports: [ReactiveFormsModule, ModalComponent, CurrencyInputDirective, AppIconComponent],
   templateUrl: './scheduled-transaction-form-modal.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

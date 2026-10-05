@@ -7,6 +7,7 @@ import {ExecuteScheduleModalComponent} from './components/execute-schedule-modal
 import {ScheduledTransactionCardComponent} from './components/scheduled-transaction-card.component';
 import {ScheduledTransactionFormModalComponent} from './components/scheduled-transaction-form-modal.component';
 import {ScheduledFilterBarComponent} from './components/scheduled-filter-bar/scheduled-filter-bar.component';
+import {AppIconComponent} from '@shared/components';
 
 @Component({
   selector: 'app-scheduled-transactions',
@@ -16,6 +17,7 @@ import {ScheduledFilterBarComponent} from './components/scheduled-filter-bar/sch
     ScheduledTransactionFormModalComponent,
     ExecuteScheduleModalComponent,
     ScheduledFilterBarComponent,
+    AppIconComponent,
   ],
   templateUrl: './scheduled-transactions.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,

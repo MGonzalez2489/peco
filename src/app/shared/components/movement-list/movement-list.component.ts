@@ -9,9 +9,11 @@ import {MovementType} from '@core/types';
 import {groupMovementsByDate, reversalImpact} from '@core/utils';
 import {ConfirmModalComponent} from '../confirm-modal/confirm-modal.component';
 
+import {AppIconComponent} from '../app-icon/app-icon.component';
+
 @Component({
   selector: 'app-movement-list',
-  imports: [CurrencyPipe, ConfirmModalComponent],
+  imports: [CurrencyPipe, ConfirmModalComponent, AppIconComponent],
   templateUrl: './movement-list.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

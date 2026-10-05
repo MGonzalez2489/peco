@@ -4,6 +4,7 @@ import {provideRouter} from '@angular/router';
 
 import {routes} from './app.routes';
 import {provideServiceWorker} from '@angular/service-worker';
+import {provideAppIcons} from './core/icons/app-icons.provider';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -14,5 +15,6 @@ export const appConfig: ApplicationConfig = {
       enabled: !isDevMode(),
       registrationStrategy: 'registerWhenStable:30000',
     }),
+    provideAppIcons(),
   ],
 };

@@ -13,7 +13,12 @@ import {Account} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {MovementsStore} from '@core/stores/movements.store';
 import {formatCurrency} from '@core/utils';
-import {ConfirmModalComponent, MovementListComponent, StatCardComponent} from '@shared/components';
+import {
+  AppIconComponent,
+  ConfirmModalComponent,
+  MovementListComponent,
+  StatCardComponent,
+} from '@shared/components';
 import {AccountFormModalComponent} from '../components/account-form-modal.component';
 
 @Component({
@@ -24,6 +29,7 @@ import {AccountFormModalComponent} from '../components/account-form-modal.compon
     ConfirmModalComponent,
     MovementListComponent,
     AccountFormModalComponent,
+    AppIconComponent,
   ],
   templateUrl: './account-detail.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -63,20 +63,7 @@
                   class="rounded-lg p-1.5 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
                   [attr.aria-label]="'Reversar movimiento de ' + accountName(movement.accountId)"
                 >
-                  <svg
-                    class="h-4 w-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke-width="2"
-                    stroke="currentColor"
-                    aria-hidden="true"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3H5.25A2.25 2.25 0 0 0 3 5.25v13.5A2.25 2.25 0 0 0 5.25 21h8.25A2.25 2.25 0 0 0 15.75 18.75V15m.75 0v3.75m0 0 3.75-3.75M8.25 12h13.5"
-                    />
-                  </svg>
+                  <app-icon name="refresh-cw" size="16" class="h-4 w-4 text-slate-400" />
                 </button>
               }
             </div>
