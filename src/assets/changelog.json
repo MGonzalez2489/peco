@@ -1,5 +1,16 @@
 [
   {
+    "version": "v0.0.5-a",
+    "fecha": "2026-10-05",
+    "highlights": [
+      "Nueva Funcionalidad: integración de Lucide Icons para una interfaz más limpia e intuitiva",
+      "Nueva Funcionalidad: gestión completa de categorías con personalización de nombres, colores e íconos",
+      "Nueva Funcionalidad: menú de ajustes de Categorías con vista previa en tiempo real y reasignación automática al eliminar",
+      "Mejora de UX: panel de control unificado en Movimientos Programados con gráfico interactivo de distribución por color",
+      "Mejora de UX: tarjetas de movimientos con identificadores visuales y badges de categoría dinámicos"
+    ]
+  },
+  {
     "version": "v0.0.4-a",
     "fecha": "2026-10-04",
     "highlights": [
