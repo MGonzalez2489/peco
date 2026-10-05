@@ -43,16 +43,11 @@
               <option [value]="option.value">{{ option.label }}</option>
             }
           </select>
-          <svg
+          <app-icon
+            name="chevron-down"
+            size="16"
             class="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke-width="2"
-            stroke="currentColor"
-            aria-hidden="true"
-          >
-            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-          </svg>
+          />
         </div>
       </div>
 
@@ -100,19 +95,14 @@
             >
               <option value="" disabled>Selecciona una categoría</option>
               @for (category of availableCategories(); track category.id) {
-                <option [value]="category.id">{{ category.icon }} {{ category.displayName }}</option>
+                <option [value]="category.id">{{ category.displayName }}</option>
               }
             </select>
-            <svg
+            <app-icon
+              name="chevron-down"
+              size="16"
               class="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke-width="2"
-              stroke="currentColor"
-              aria-hidden="true"
-            >
-              <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-            </svg>
+            />
           </div>
           @if (errorFor('categoryId'); as error) {
             <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ error }}</p>
@@ -141,16 +131,11 @@
               <option [value]="account.id">{{ account.name }}</option>
             }
           </select>
-          <svg
+          <app-icon
+            name="chevron-down"
+            size="16"
             class="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke-width="2"
-            stroke="currentColor"
-            aria-hidden="true"
-          >
-            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-          </svg>
+          />
         </div>
         @if (errorFor('sourceAccountId'); as error) {
           <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ error }}</p>
@@ -180,16 +165,11 @@
                 <option [value]="account.id">{{ account.name }}</option>
               }
             </select>
-            <svg
+            <app-icon
+              name="chevron-down"
+              size="16"
               class="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke-width="2"
-              stroke="currentColor"
-              aria-hidden="true"
-            >
-              <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-            </svg>
+            />
           </div>
           @if (errorFor('destinationAccountId'); as error) {
             <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ error }}</p>
@@ -215,16 +195,11 @@
                 <option [value]="option.value">{{ option.label }}</option>
               }
             </select>
-            <svg
+            <app-icon
+              name="chevron-down"
+              size="16"
               class="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke-width="2"
-              stroke="currentColor"
-              aria-hidden="true"
-            >
-              <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-            </svg>
+            />
           </div>
         </div>
 
@@ -278,16 +253,11 @@
               <option [value]="option.value">{{ option.label }}</option>
             }
           </select>
-          <svg
+          <app-icon
+            name="chevron-down"
+            size="16"
             class="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke-width="2"
-            stroke="currentColor"
-            aria-hidden="true"
-          >
-            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-          </svg>
+          />
         </div>
       </div>
 

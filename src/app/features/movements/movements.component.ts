@@ -3,10 +3,11 @@ import {CurrencyPipe} from '@angular/common';
 import {MovementsStore} from '@core/stores/movements.store';
 import {FiltroMovimientosModalComponent} from './components/filtro-movimientos-modal/filtro-movimientos-modal.component';
 import {MovementListComponent} from '@shared/components';
+import {AppIconComponent} from '@shared/components/app-icon/app-icon.component';
 
 @Component({
   selector: 'app-movements',
-  imports: [CurrencyPipe, MovementListComponent, FiltroMovimientosModalComponent],
+  imports: [CurrencyPipe, MovementListComponent, FiltroMovimientosModalComponent, AppIconComponent],
   templateUrl: './movements.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

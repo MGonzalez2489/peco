@@ -4,10 +4,11 @@ import {Account} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {formatCurrency} from '@core/utils';
 import {StatCardComponent} from '@shared/components/stat-card/stat-card.component';
+import {AppIconComponent} from '@shared/components/app-icon/app-icon.component';
 
 @Component({
   selector: 'app-account-card',
-  imports: [RouterLink, StatCardComponent],
+  imports: [RouterLink, StatCardComponent, AppIconComponent],
   templateUrl: './account-card.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

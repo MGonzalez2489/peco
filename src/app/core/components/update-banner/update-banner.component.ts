@@ -1,9 +1,11 @@
 import {ChangeDetectionStrategy, Component, inject} from '@angular/core';
 import {UpdateNotificationService} from '@core/services/update-notification.service';
 
+import {AppIconComponent} from '@shared/components/app-icon/app-icon.component';
+
 @Component({
   selector: 'app-update-banner',
-  imports: [],
+  imports: [AppIconComponent],
   templateUrl: './update-banner.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

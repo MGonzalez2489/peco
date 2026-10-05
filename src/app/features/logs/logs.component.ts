@@ -1,9 +1,10 @@
 import {ChangeDetectionStrategy, Component, inject, signal} from '@angular/core';
 import {ChangelogStore} from '@core/stores/changelog.store';
+import {AppIconComponent} from '@shared/components/app-icon/app-icon.component';
 
 @Component({
   selector: 'app-logs',
-  imports: [],
+  imports: [AppIconComponent],
   templateUrl: './logs.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

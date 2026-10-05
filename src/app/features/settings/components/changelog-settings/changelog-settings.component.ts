@@ -1,8 +1,10 @@
 import {ChangeDetectionStrategy, Component, inject, signal} from '@angular/core';
 import {ChangelogStore} from '@core/stores/changelog.store';
+import {AppIconComponent} from '@shared/components';
 
 @Component({
   selector: 'app-changelog-settings',
+  imports: [AppIconComponent],
   template: `
     <section aria-labelledby="changelog-settings-title" class="space-y-4">
       <div>
@@ -93,21 +95,13 @@ import {ChangelogStore} from '@core/stores/changelog.store';
                         </time>
                       </span>
                     </span>
-                    <svg
-                      class="h-5 w-5 shrink-0 text-slate-400 transition-transform"
-                      [class]="openIndex() === index ? 'rotate-180' : ''"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke-width="2"
-                      stroke="currentColor"
-                      aria-hidden="true"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="m19.5 8.25-7.5 7.5-7.5-7.5"
-                      />
-                    </svg>
+                    <app-icon
+                      name="chevron-down"
+                      size="20"
+                      class="h-5 w-5 shrink-0 text-slate-400 transition-transform {{
+                        openIndex() === index ? 'rotate-180' : ''
+                      }}"
+                    />
                   </button>
                 </h3>
 

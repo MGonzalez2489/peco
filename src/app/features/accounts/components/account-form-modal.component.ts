@@ -16,10 +16,11 @@ import {AccountColor} from '@core/types';
 import {formatCurrency} from '@core/utils';
 import {ModalComponent} from '@shared/components';
 import {CurrencyInputDirective} from '@shared/directives';
+import {AppIconComponent} from '@shared/components/app-icon/app-icon.component';
 
 @Component({
   selector: 'app-account-form-modal',
-  imports: [ReactiveFormsModule, ModalComponent, CurrencyInputDirective],
+  imports: [ReactiveFormsModule, ModalComponent, CurrencyInputDirective, AppIconComponent],
   templateUrl: './account-form-modal.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

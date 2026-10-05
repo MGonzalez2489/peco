@@ -65,7 +65,7 @@
         <option value="">Todas las categorías</option>
         @for (category of categories(); track category.id) {
           <option [value]="category.id" [selected]="category.id === categoryId()">
-            {{ category.icon }} {{ category.displayName }}
+            {{ category.displayName }}
           </option>
         }
       </select>

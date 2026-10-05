@@ -7,12 +7,22 @@ export const settingsRoutes: Routes = [
     component: SettingsComponent,
     children: [
       {path: '', redirectTo: 'theme', pathMatch: 'full'},
+      {path: 'appearance', redirectTo: 'theme', pathMatch: 'full'},
+      {path: 'data-backup', redirectTo: 'data', pathMatch: 'full'},
       {
         path: 'theme',
         title: 'Apariencia',
         loadComponent: () =>
           import('./components/theme-settings/theme-settings.component').then(
             (m) => m.ThemeSettingsComponent,
+          ),
+      },
+      {
+        path: 'categories',
+        title: 'Categorías',
+        loadComponent: () =>
+          import('./components/categories-settings/categories-settings.component').then(
+            (m) => m.CategoriesSettingsComponent,
           ),
       },
       {

@@ -6,12 +6,16 @@ import {AccountsStore} from '@core/stores/accounts.store';
 import {CatalogStore} from '@core/stores/catalog.store';
 import {MovementsStore} from '@core/stores/movements.store';
 import {MovementType} from '@core/types';
-import {groupMovementsByDate, reversalImpact} from '@core/utils';
+import {groupMovementsByDate, reversalImpact, toSoftCategoryColor} from '@core/utils';
 import {ConfirmModalComponent} from '../confirm-modal/confirm-modal.component';
+
+import {AppIconComponent, IconName} from '../app-icon/app-icon.component';
+
+const FALLBACK_CATEGORY_COLOR = '#94a3b8';
 
 @Component({
   selector: 'app-movement-list',
-  imports: [CurrencyPipe, ConfirmModalComponent],
+  imports: [CurrencyPipe, ConfirmModalComponent, AppIconComponent],
   templateUrl: './movement-list.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -35,6 +39,8 @@ export class MovementListComponent {
 
   readonly movimientosAgrupados = computed(() => groupMovementsByDate(this.movements()));
 
+  readonly softCategoryColor = toSoftCategoryColor;
+
   readonly impactMessage = computed(() => {
     const movement = this.movementToRevert();
     if (!movement) return '';
@@ -54,12 +60,16 @@ export class MovementListComponent {
   readonly accountInitial = (id: string): string =>
     this.accountsById().get(id)?.name?.charAt(0).toUpperCase() ?? '?';
 
-  readonly categoryDisplay = (movement: Movement): string => {
+  readonly categoryName = (movement: Movement): string => {
     const category = this.categoriesById().get(movement.categoryId);
-    return category
-      ? `${category.icon} ${category.displayName}`
-      : MOVEMENT_TYPE_LABEL[movement.type];
+    return category ? category.displayName : MOVEMENT_TYPE_LABEL[movement.type];
   };
+
+  readonly categoryIcon = (movement: Movement): IconName =>
+    this.categoriesById().get(movement.categoryId)?.icon ?? 'folder-open';
+
+  readonly categoryColor = (movement: Movement): string =>
+    this.categoriesById().get(movement.categoryId)?.color ?? FALLBACK_CATEGORY_COLOR;
 
   readonly movementTime = (movement: Movement): string => {
     const [, time] = movement.date.split('T');

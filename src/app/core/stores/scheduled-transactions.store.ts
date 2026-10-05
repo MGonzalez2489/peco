@@ -15,6 +15,7 @@ import {
   withState,
 } from '@ngrx/signals';
 import {CreateScheduledTransactionDto} from '../dtos/create-scheduled-transaction.dto';
+import {IconName} from '@shared/components/app-icon/app-icon.component';
 import {MonthlyCommitmentsSummary} from '../models/monthly-commitments.model';
 import {ScheduledTransaction} from '../models/scheduled-transaction.model';
 import {ScheduledTransactionsStorageService} from '../services/scheduled-transactions-storage.service';
@@ -32,6 +33,7 @@ export interface CategoryDistributionItem {
   categoryId: string;
   categoryName: string;
   categoryColor: string;
+  categoryIcon: IconName;
   totalAmount: number;
   percentage: number;
 }
@@ -46,6 +48,7 @@ interface ScheduledTransactionsState {
 }
 
 const DEFAULT_TIMEFRAME_DAYS = 30;
+const FALLBACK_CATEGORY_COLOR = '#94a3b8';
 
 const initialState = (): ScheduledTransactionsState => ({
   scheduledTransactions: inject(ScheduledTransactionsStorageService).getAll(),
@@ -70,134 +73,148 @@ export const ScheduledTransactionsStore = signalStore(
 
       const activeSchedules = computed(() => scheduledTransactions().filter((item) => item.active));
 
-    const today = computed(() => todayIsoDate());
+      const today = computed(() => todayIsoDate());
 
-    const timeframeLimitDate = computed(() =>
-      toIsoDate(new Date(Date.now() + timeframeFilterDays() * 86_400_000)),
-    );
+      const timeframeLimitDate = computed(() =>
+        toIsoDate(new Date(Date.now() + timeframeFilterDays() * 86_400_000)),
+      );
 
-    const monthlyCommitmentsSummary = computed<MonthlyCommitmentsSummary>(() =>
-      activeSchedules().reduce<MonthlyCommitmentsSummary>(
-        (accumulator, item) => {
-          if (item.type === 'TRANSFER') {
+      const monthlyCommitmentsSummary = computed<MonthlyCommitmentsSummary>(() =>
+        activeSchedules().reduce<MonthlyCommitmentsSummary>(
+          (accumulator, item) => {
+            if (item.type === 'TRANSFER') {
+              return accumulator;
+            }
+
+            const amount = monthlyEquivalent(item.estimatedAmount, item.frequency);
+
+            if (isIncomeSchedule(item.type)) {
+              accumulator.totalIncome += amount;
+            } else {
+              accumulator.totalExpenses += amount;
+            }
+
+            accumulator.netProjectedImpact = accumulator.totalIncome - accumulator.totalExpenses;
+
             return accumulator;
+          },
+          {totalIncome: 0, totalExpenses: 0, netProjectedImpact: 0},
+        ),
+      );
+
+      return {
+        activeSchedules: computed(() => [...activeSchedules()].sort(byNextExecutionAscending)),
+        pausedSchedules: computed(() =>
+          scheduledTransactions()
+            .filter((item) => !item.active)
+            .sort(byNextExecutionAscending),
+        ),
+        today,
+        timeframeLimitDate,
+        dueTodayOrOverdue: computed(() =>
+          [...activeSchedules()]
+            .filter((item) => item.nextExecutionDate <= today())
+            .sort(byNextExecutionAscending),
+        ),
+        upcomingInTimeframe: computed(() =>
+          [...activeSchedules()]
+            .filter(
+              (item) =>
+                item.nextExecutionDate >= today() && item.nextExecutionDate <= timeframeLimitDate(),
+            )
+            .sort(byNextExecutionAscending),
+        ),
+        monthlyCommitmentsSummary,
+        projectedMonthlyNet: computed(() => monthlyCommitmentsSummary().netProjectedImpact),
+        netImpact: computed(() => monthlyCommitmentsSummary().netProjectedImpact),
+        projectedAvailableBalance: computed(
+          () => accountsStore.totalBalance() + monthlyCommitmentsSummary().netProjectedImpact,
+        ),
+        incomeCommitmentPercentage: computed(() => {
+          const {totalIncome, totalExpenses} = monthlyCommitmentsSummary();
+          if (totalIncome <= 0) return 0;
+          return Math.min(100, Math.max(0, Math.round((totalExpenses / totalIncome) * 100)));
+        }),
+        hasOverdueSchedules: computed(() =>
+          activeSchedules().some((item) => item.nextExecutionDate < today()),
+        ),
+        filteredSchedules: computed(() => {
+          const query = searchQuery().trim().toLowerCase();
+          const type = typeFilter();
+          const selectedCategory = selectedCategoryId();
+
+          return [...activeSchedules()]
+            .filter((item) => {
+              if (type !== 'ALL') {
+                if (type === 'INCOME' && item.type !== 'INCOME') return false;
+                if (type === 'EXPENSE' && item.type !== 'EXPENSE') return false;
+              }
+
+              if (selectedCategory !== null && item.categoryId !== selectedCategory) {
+                return false;
+              }
+
+              if (query) {
+                const name = item.name.toLowerCase();
+                if (!name.includes(query)) return false;
+              }
+
+              return true;
+            })
+            .sort(byNextExecutionAscending);
+        }),
+        categoryDistributionSummary: computed(() => {
+          const summary = monthlyCommitmentsSummary();
+          const totalExpenses = summary.totalExpenses;
+          if (totalExpenses <= 0) return [];
+
+          const map = new Map<
+            string,
+            {
+              categoryId: string;
+              categoryName: string;
+              categoryColor: string;
+              categoryIcon: IconName;
+              totalAmount: number;
+            }
+          >();
+
+          const categoriesById = new Map(
+            catalogStore.categories().map((category) => [category.id, category]),
+          );
+
+          for (const item of activeSchedules()) {
+            if (item.type === 'TRANSFER' || item.type === 'INCOME') continue;
+
+            const amount = monthlyEquivalent(item.estimatedAmount, item.frequency);
+            if (amount <= 0) continue;
+
+            const existing = map.get(item.categoryId);
+            if (existing) {
+              existing.totalAmount += amount;
+            } else {
+              const category = categoriesById.get(item.categoryId);
+              map.set(item.categoryId, {
+                categoryId: item.categoryId,
+                categoryName: category?.displayName ?? 'Sin categoría',
+                categoryColor: category?.color ?? FALLBACK_CATEGORY_COLOR,
+                categoryIcon: category?.icon ?? 'folder-open',
+                totalAmount: amount,
+              });
+            }
           }
 
-          const amount = monthlyEquivalent(item.estimatedAmount, item.frequency);
-
-          if (isIncomeSchedule(item.type)) {
-            accumulator.totalIncome += amount;
-          } else {
-            accumulator.totalExpenses += amount;
+          const items: CategoryDistributionItem[] = [];
+          for (const entry of map.values()) {
+            const percentage = Math.round((entry.totalAmount / totalExpenses) * 100);
+            items.push({...entry, percentage});
           }
 
-          accumulator.netProjectedImpact = accumulator.totalIncome - accumulator.totalExpenses;
-
-          return accumulator;
-        },
-        {totalIncome: 0, totalExpenses: 0, netProjectedImpact: 0},
-      ),
-    );
-
-    return {
-      activeSchedules: computed(() => [...activeSchedules()].sort(byNextExecutionAscending)),
-      pausedSchedules: computed(() =>
-        scheduledTransactions()
-          .filter((item) => !item.active)
-          .sort(byNextExecutionAscending),
-      ),
-      today,
-      timeframeLimitDate,
-      dueTodayOrOverdue: computed(() =>
-        [...activeSchedules()]
-          .filter((item) => item.nextExecutionDate <= today())
-          .sort(byNextExecutionAscending),
-      ),
-      upcomingInTimeframe: computed(() =>
-        [...activeSchedules()]
-          .filter(
-            (item) =>
-              item.nextExecutionDate >= today() && item.nextExecutionDate <= timeframeLimitDate(),
-          )
-          .sort(byNextExecutionAscending),
-      ),
-      monthlyCommitmentsSummary,
-      projectedMonthlyNet: computed(() => monthlyCommitmentsSummary().netProjectedImpact),
-      netImpact: computed(() => monthlyCommitmentsSummary().netProjectedImpact),
-      projectedAvailableBalance: computed(
-        () => accountsStore.totalBalance() + monthlyCommitmentsSummary().netProjectedImpact,
-      ),
-      incomeCommitmentPercentage: computed(() => {
-        const {totalIncome, totalExpenses} = monthlyCommitmentsSummary();
-        if (totalIncome <= 0) return 0;
-        return Math.min(100, Math.max(0, Math.round((totalExpenses / totalIncome) * 100)));
-      }),
-      hasOverdueSchedules: computed(() =>
-        activeSchedules().some((item) => item.nextExecutionDate < today()),
-      ),
-      filteredSchedules: computed(() => {
-        const query = searchQuery().trim().toLowerCase();
-        const type = typeFilter();
-        const selectedCategory = selectedCategoryId();
-
-        return [...activeSchedules()].filter((item) => {
-          if (type !== 'ALL') {
-            if (type === 'INCOME' && item.type !== 'INCOME') return false;
-            if (type === 'EXPENSE' && item.type !== 'EXPENSE') return false;
-          }
-
-          if (selectedCategory !== null && item.categoryId !== selectedCategory) {
-            return false;
-          }
-
-          if (query) {
-            const name = item.name.toLowerCase();
-            if (!name.includes(query)) return false;
-          }
-
-          return true;
-        }).sort(byNextExecutionAscending);
-      }),
-      categoryDistributionSummary: computed(() => {
-        const summary = monthlyCommitmentsSummary();
-        const totalExpenses = summary.totalExpenses;
-        if (totalExpenses <= 0) return [];
-
-        const map = new Map<
-          string,
-          {categoryId: string; categoryName: string; categoryColor: string; totalAmount: number}
-        >();
-
-        for (const item of activeSchedules()) {
-          if (item.type === 'TRANSFER' || item.type === 'INCOME') continue;
-
-          const amount = monthlyEquivalent(item.estimatedAmount, item.frequency);
-          if (amount <= 0) continue;
-
-          const existing = map.get(item.categoryId);
-          if (existing) {
-            existing.totalAmount += amount;
-          } else {
-            const category = catalogStore.categories().find((c) => c.id === item.categoryId);
-            map.set(item.categoryId, {
-              categoryId: item.categoryId,
-              categoryName: category?.displayName ?? 'Sin categoría',
-              categoryColor: '#94a3b8',
-              totalAmount: amount,
-            });
-          }
-        }
-
-        const items: CategoryDistributionItem[] = [];
-        for (const entry of map.values()) {
-          const percentage = Math.round((entry.totalAmount / totalExpenses) * 100);
-          items.push({...entry, percentage});
-        }
-
-        return items.sort((a, b) => b.totalAmount - a.totalAmount);
-      }),
-    };
-  }),
+          return items.sort((a, b) => b.totalAmount - a.totalAmount);
+        }),
+      };
+    },
+  ),
   withMethods((store) => {
     const storage = inject(ScheduledTransactionsStorageService);
     const movementsStore = inject(MovementsStore);
@@ -295,6 +312,26 @@ export const ScheduledTransactionsStore = signalStore(
 
         commit(store.scheduledTransactions().filter((item) => item.id !== id));
         return true;
+      },
+      reassignCategoryId(sourceCategoryId: string, targetCategoryId: string): void {
+        if (sourceCategoryId === targetCategoryId) return;
+        if (!store.scheduledTransactions().some((item) => item.categoryId === sourceCategoryId)) {
+          return;
+        }
+
+        commit(
+          store
+            .scheduledTransactions()
+            .map((item) =>
+              item.categoryId === sourceCategoryId
+                ? {...item, categoryId: targetCategoryId, updatedAt: new Date().toISOString()}
+                : item,
+            ),
+        );
+
+        if (store.selectedCategoryId() === sourceCategoryId) {
+          patchState(store, {selectedCategoryId: null});
+        }
       },
       scheduleById(id: string): ScheduledTransaction | undefined {
         return store.scheduledTransactions().find((item) => item.id === id);

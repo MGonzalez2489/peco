@@ -85,3 +85,21 @@ Use the Angular CLI to generate the code, then augment the code to meet the need
 4. Utility functions MUST be located in `app/core/utils/` using the format `name.util.ts`.
 5. Constants MUST be located in `app/core/constants/` using the format `name.constant.ts`.
 6. Strict Single Export Rule: NEVER include more than one `export` statement per file across models, DTOs, types, constants, or utilities.
+
+## Iconography & UI Standards
+
+### Rules for Icons Usage:
+1. **NO Hardcoded Inline `<svg>` Tags:** Raw `<svg>` elements in Angular templates are strictly prohibited. Always use `<app-icon>`.
+2. **Centralized Icon Provider:** All icons MUST be registered in `src/app/core/icons/app-icons.provider.ts` to preserve tree-shaking efficiency.
+3. **Strongly Typed Names:** When adding a new icon:
+   - Import the icon from `lucide-angular` in `app-icons.provider.ts`.
+   - Add it to the `ALLOWED_ICONS` object.
+   - Update the `IconName` union type in `src/app/shared/components/app-icon/app-icon.component.ts`.
+4. **Usage Syntax:**
+   ```html
+   <app-icon name="search" size="18" class="text-gray-400" />
+   ```
+
+### Language Standards:
+- All code, types, inputs, and components MUST be in English.
+- Accessible labels (aria-label) on icon-only buttons MUST be in Spanish (e.g., aria-label="Buscar movimiento").

@@ -8,9 +8,11 @@ import {
   ChangeDetectionStrategy,
 } from '@angular/core';
 
+import {AppIconComponent} from '../app-icon/app-icon.component';
+
 @Component({
   selector: 'app-modal',
-  imports: [],
+  imports: [AppIconComponent],
   templateUrl: './modal.component.html',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,

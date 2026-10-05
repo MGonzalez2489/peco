@@ -1,6 +1,6 @@
 {
   "name": "peco",
-  "version": "0.0.4-a",
+  "version": "0.0.5-a",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
@@ -21,6 +21,7 @@
     "@angular/router": "^22.0.0",
     "@angular/service-worker": "^22.0.0",
     "@ngrx/signals": "^22.0.1",
+    "lucide-angular": "^0.577.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },

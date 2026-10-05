@@ -64,7 +64,7 @@
           >
             <option value="" disabled>Selecciona una categoría</option>
             @for (category of availableCategories(); track category.id) {
-              <option [value]="category.id">{{ category.icon }} {{ category.displayName }}</option>
+              <option [value]="category.id">{{ category.displayName }}</option>
             }
           </select>
           @if (errorFor(form.controls.categoryId); as error) {

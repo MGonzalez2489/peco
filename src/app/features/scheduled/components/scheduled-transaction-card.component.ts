@@ -8,18 +8,20 @@ import {
   signal,
 } from '@angular/core';
 import {CurrencyPipe} from '@angular/common';
-import {formatLocalDate, isScheduleDue} from '@core/utils';
+import {formatLocalDate, isScheduleDue, toSoftCategoryColor} from '@core/utils';
 import {RECURRENCE_FREQUENCY_LABEL} from '@core/constants';
 import {ScheduledTransaction} from '@core/models';
 import {CatalogStore} from '@core/stores/catalog.store';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {ScheduledTransactionsStore} from '@core/stores/scheduled-transactions.store';
 import {ScheduledTransactionType} from '@core/types';
-import {ConfirmModalComponent} from '@shared/components';
+import {AppIconComponent, ConfirmModalComponent} from '@shared/components';
+
+const FALLBACK_CATEGORY_COLOR = '#94a3b8';
 
 @Component({
   selector: 'app-scheduled-transaction-card',
-  imports: [CurrencyPipe, ConfirmModalComponent],
+  imports: [CurrencyPipe, ConfirmModalComponent, AppIconComponent],
   templateUrl: './scheduled-transaction-card.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -69,13 +71,27 @@ export class ScheduledTransactionCardComponent {
     );
   });
 
-  protected readonly categoryDisplay = computed(() => {
-    const category = this.catalogStore
+  protected readonly category = computed(() => {
+    const found = this.catalogStore
       .categories()
       .find((item) => item.id === this.schedule().categoryId);
 
-    return category ? `${category.icon} ${category.displayName}` : 'Sin categoría';
+    return found ?? null;
   });
+
+  protected readonly categoryLabel = computed(
+    () => this.category()?.displayName ?? 'Sin categoría',
+  );
+
+  protected readonly categoryColor = computed(
+    () => this.category()?.color ?? FALLBACK_CATEGORY_COLOR,
+  );
+
+  protected readonly categoryIcon = computed(() => this.category()?.icon ?? 'folder-open');
+
+  protected readonly categoryBadgeBackground = computed(() =>
+    toSoftCategoryColor(this.categoryColor(), '20'),
+  );
 
   protected readonly typeLabel = (type: ScheduledTransactionType): string =>
     type === 'INCOME' ? 'Ingreso' : type === 'EXPENSE' ? 'Egreso' : 'Transferencia';

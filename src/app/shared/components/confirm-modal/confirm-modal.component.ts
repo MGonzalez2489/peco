@@ -1,11 +1,11 @@
 import {ChangeDetectionStrategy, Component, input, output} from '@angular/core';
 import {ModalComponent} from '../modal/modal.component';
+import {AppIconComponent} from '../app-icon/app-icon.component';
 
 @Component({
   selector: 'app-confirm-modal',
-  imports: [ModalComponent],
+  imports: [ModalComponent, AppIconComponent],
   templateUrl: './confirm-modal.component.html',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ConfirmModalComponent {
