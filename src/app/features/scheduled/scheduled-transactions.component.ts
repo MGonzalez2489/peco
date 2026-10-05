@@ -17,6 +17,7 @@ import {ScheduledTransactionFormModalComponent} from './components/scheduled-tra
     ScheduledTransactionFormModalComponent,
     ExecuteScheduleModalComponent,
     ScheduledFilterBarComponent,
+    AppIconComponent,
   ],
   templateUrl: './scheduled-transactions.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
