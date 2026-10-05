@@ -230,6 +230,24 @@ export const MovementsStore = signalStore(
               movement.accountId === accountId || movement.targetAccountId === accountId,
           );
       },
+      reassignCategoryId(sourceCategoryId: string, targetCategoryId: string): void {
+        if (sourceCategoryId === targetCategoryId) return;
+        if (!store.movements().some((movement) => movement.categoryId === sourceCategoryId)) return;
+
+        commit(
+          store
+            .movements()
+            .map((movement) =>
+              movement.categoryId === sourceCategoryId
+                ? {...movement, categoryId: targetCategoryId}
+                : movement,
+            ),
+        );
+
+        if (store.filters().categoryId === sourceCategoryId) {
+          patchState(store, {filters: {...store.filters(), categoryId: ''}});
+        }
+      },
       resetError(): void {
         patchState(store, setLoaded());
       },

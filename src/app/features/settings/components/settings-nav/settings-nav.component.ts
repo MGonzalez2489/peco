@@ -1,11 +1,13 @@
 import {ChangeDetectionStrategy, Component} from '@angular/core';
 import {RouterLink, RouterLinkActive} from '@angular/router';
+import {IconName} from '@shared/components/app-icon/app-icon.component';
+import {AppIconComponent} from '@shared/components/app-icon/app-icon.component';
 
 interface SettingsNavItem {
   label: string;
   description: string;
   route: string;
-  icon: string;
+  icon: IconName;
 }
 
 interface SettingsNavGroup {
@@ -21,7 +23,13 @@ const SETTINGS_NAV_GROUPS: readonly SettingsNavGroup[] = [
         label: 'Apariencia',
         description: 'Tema claro, oscuro o del sistema',
         route: '/settings/theme',
-        icon: '🎨',
+        icon: 'palette',
+      },
+      {
+        label: 'Categorías',
+        description: 'Íconos, colores y tipos',
+        route: '/settings/categories',
+        icon: 'tag',
       },
     ],
   },
@@ -32,7 +40,7 @@ const SETTINGS_NAV_GROUPS: readonly SettingsNavGroup[] = [
         label: 'Datos y copias',
         description: 'Exporta o restaura tu información',
         route: '/settings/data',
-        icon: '💾',
+        icon: 'save',
       },
     ],
   },
@@ -43,7 +51,7 @@ const SETTINGS_NAV_GROUPS: readonly SettingsNavGroup[] = [
         label: 'Novedades y cambios',
         description: 'Historial de versiones',
         route: '/settings/changelog',
-        icon: '📜',
+        icon: 'file-text',
       },
     ],
   },
@@ -51,7 +59,7 @@ const SETTINGS_NAV_GROUPS: readonly SettingsNavGroup[] = [
 
 @Component({
   selector: 'app-settings-nav',
-  imports: [RouterLink, RouterLinkActive],
+  imports: [RouterLink, RouterLinkActive, AppIconComponent],
   template: `
     <nav aria-label="Categorías de ajustes" class="space-y-5">
       @for (group of groups; track group.heading) {
@@ -70,7 +78,7 @@ const SETTINGS_NAV_GROUPS: readonly SettingsNavGroup[] = [
                   [routerLinkActiveOptions]="{exact: true}"
                   class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:text-slate-300 dark:hover:bg-slate-800 dark:focus-visible:ring-offset-slate-950"
                 >
-                  <span class="text-lg" aria-hidden="true">{{ item.icon }}</span>
+                  <app-icon [name]="item.icon" size="18" class="h-5 w-5 shrink-0 opacity-70" />
                   <span class="min-w-0">
                     <span class="block truncate">{{ item.label }}</span>
                     <span class="block truncate text-xs font-normal opacity-70">{{

@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
-import { LucideAngularModule } from 'lucide-angular';
+import {ChangeDetectionStrategy, Component, input} from '@angular/core';
+import {LucideAngularModule} from 'lucide-angular';
 
 export type IconName =
   | 'search'
@@ -52,14 +52,30 @@ export type IconName =
   | 'monitor'
   | 'square-pen'
   | 'copy'
-  | 'landmark';
+  | 'landmark'
+  | 'banknote'
+  | 'zap'
+  | 'car'
+  | 'baby'
+  | 'heart-handshake'
+  | 'gift'
+  | 'arrow-left-right'
+  | 'pencil'
+  | 'palette'
+  | 'shopping-cart'
+  | 'coffee'
+  | 'house'
+  | 'graduation-cap'
+  | 'piggy-bank'
+  | 'utensils'
+  | 'lock';
 
 @Component({
   selector: 'app-icon',
   standalone: true,
   imports: [LucideAngularModule],
   templateUrl: './app-icon.component.html',
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AppIconComponent {
   name = input.required<IconName>();

@@ -1,5 +1,5 @@
-import { Provider } from '@angular/core';
-import { LUCIDE_ICONS, LucideIconProvider } from 'lucide-angular';
+import {Provider} from '@angular/core';
+import {LUCIDE_ICONS, LucideIconProvider} from 'lucide-angular';
 import {
   Search,
   Filter,
@@ -51,7 +51,23 @@ import {
   Monitor,
   SquarePen,
   Copy,
-  Landmark
+  Landmark,
+  Banknote,
+  Zap,
+  Car,
+  Baby,
+  HeartHandshake,
+  Gift,
+  ArrowLeftRight,
+  Pencil,
+  Palette,
+  Lock,
+  ShoppingCart,
+  Coffee,
+  House,
+  GraduationCap,
+  PiggyBank,
+  Utensils,
 } from 'lucide-angular';
 
 export const ALLOWED_ICONS = {
@@ -105,13 +121,29 @@ export const ALLOWED_ICONS = {
   Monitor,
   SquarePen,
   Copy,
-  Landmark
+  Landmark,
+  Banknote,
+  Zap,
+  Car,
+  Baby,
+  HeartHandshake,
+  Gift,
+  ArrowLeftRight,
+  Pencil,
+  Palette,
+  Lock,
+  ShoppingCart,
+  Coffee,
+  House,
+  GraduationCap,
+  PiggyBank,
+  Utensils,
 };
 
 export function provideAppIcons(): Provider {
   return {
     provide: LUCIDE_ICONS,
     multi: true,
-    useValue: new LucideIconProvider(ALLOWED_ICONS)
+    useValue: new LucideIconProvider(ALLOWED_ICONS),
   };
-};
+}

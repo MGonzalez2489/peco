@@ -3,6 +3,7 @@ import {CurrencyPipe} from '@angular/common';
 import {ScheduledTransaction} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {ScheduledTransactionsStore} from '@core/stores/scheduled-transactions.store';
+import {toSoftCategoryColor} from '@core/utils';
 import {ExecuteScheduleModalComponent} from './components/execute-schedule-modal.component';
 import {ScheduledTransactionCardComponent} from './components/scheduled-transaction-card.component';
 import {ScheduledTransactionFormModalComponent} from './components/scheduled-transaction-form-modal.component';
@@ -37,6 +38,8 @@ export class ScheduledTransactionsComponent {
       this.scheduledStore.typeFilter() !== 'ALL' ||
       this.scheduledStore.selectedCategoryId() !== null,
   );
+
+  readonly toSoftCategoryColor = toSoftCategoryColor;
 
   readonly formOpen = signal(false);
   readonly scheduleToEdit = signal<ScheduledTransaction | null>(null);

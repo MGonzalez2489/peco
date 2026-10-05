@@ -1,0 +1,173 @@
+<app-modal [isOpen]="isOpen()" [title]="title()" (closed)="close.emit()">
+  <form class="mt-5 space-y-5" [formGroup]="form" (ngSubmit)="submit()">
+    <div
+      class="flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/50"
+      aria-live="polite"
+    >
+      <span
+        class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl"
+        [style.background-color]="toSoftCategoryColor(preview().color)"
+      >
+        <app-icon
+          [name]="preview().icon"
+          size="22"
+          class="h-6 w-6"
+          [style.color]="preview().color"
+        />
+      </span>
+      <span class="min-w-0">
+        <span
+          class="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+        >
+          Vista previa
+        </span>
+        <span class="block truncate text-base font-semibold text-slate-900 dark:text-white">
+          {{ preview().displayName }}
+        </span>
+        <span class="block text-xs font-medium text-slate-500 dark:text-slate-400">
+          {{ applyTypeLabel(preview().applyType) }}
+        </span>
+      </span>
+    </div>
+
+    <div class="space-y-1.5">
+      <label
+        for="category-display-name"
+        class="block text-sm font-medium text-slate-700 dark:text-slate-300"
+      >
+        Nombre de la categoría
+      </label>
+      <input
+        #nameInput
+        id="category-display-name"
+        type="text"
+        formControlName="displayName"
+        placeholder="Ej. Mascotas"
+        autocomplete="off"
+        aria-describedby="category-display-name-error"
+        [attr.aria-invalid]="errorFor(form.controls.displayName) ? 'true' : null"
+        class="w-full rounded-xl border bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 dark:bg-slate-900 dark:text-white dark:focus:ring-indigo-500/20"
+        [class.border-rose-400]="errorFor(form.controls.displayName)"
+        [class.border-slate-300]="!errorFor(form.controls.displayName)"
+        [class.focus:border-indigo-500]="!errorFor(form.controls.displayName)"
+        [class.dark:border-slate-700]="!errorFor(form.controls.displayName)"
+      />
+      @if (errorFor(form.controls.displayName); as message) {
+        <p
+          id="category-display-name-error"
+          role="alert"
+          class="text-xs font-medium text-rose-600 dark:text-rose-400"
+        >
+          {{ message }}
+        </p>
+      }
+    </div>
+
+    <div class="space-y-1.5">
+      <label
+        for="category-apply-type"
+        class="block text-sm font-medium text-slate-700 dark:text-slate-300"
+      >
+        Aplicación
+      </label>
+      <div class="relative">
+        <select
+          id="category-apply-type"
+          formControlName="applyType"
+          class="w-full appearance-none rounded-xl border border-slate-300 bg-white px-3 py-2.5 pr-10 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+        >
+          @for (option of applyTypeOptions; track option[0]) {
+            <option [value]="option[0]">{{ option[1] }}</option>
+          }
+        </select>
+        <app-icon
+          name="chevron-down"
+          size="16"
+          class="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+        />
+      </div>
+    </div>
+
+    <fieldset class="space-y-2">
+      <legend class="text-sm font-medium text-slate-700 dark:text-slate-300">Color</legend>
+      <div class="grid grid-cols-8 gap-2" role="radiogroup" aria-label="Color de la categoría">
+        @for (option of colorPalette; track option.hex) {
+          <button
+            type="button"
+            role="radio"
+            (click)="selectColor(option.hex)"
+            [attr.aria-checked]="form.controls.color.value === option.hex"
+            [attr.aria-label]="'Color ' + option.label"
+            [title]="option.label"
+            class="flex h-9 w-9 items-center justify-center rounded-full border-2 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
+            [style.background-color]="option.hex"
+            [class.border-slate-900]="form.controls.color.value === option.hex"
+            [class.border-white]="form.controls.color.value !== option.hex"
+          >
+            @if (form.controls.color.value === option.hex) {
+              <app-icon name="check" size="16" class="h-4 w-4 text-white" />
+            }
+          </button>
+        }
+      </div>
+    </fieldset>
+
+    <fieldset class="space-y-2">
+      <legend class="text-sm font-medium text-slate-700 dark:text-slate-300">Ícono</legend>
+      <div
+        class="grid max-h-52 grid-cols-6 gap-2 overflow-y-auto pr-1 sm:grid-cols-8"
+        role="radiogroup"
+        aria-label="Ícono de la categoría"
+      >
+        @for (option of iconOptions; track option.name) {
+          <button
+            type="button"
+            role="radio"
+            (click)="selectIcon(option.name)"
+            [attr.aria-checked]="form.controls.icon.value === option.name"
+            [attr.aria-label]="option.label"
+            [title]="option.label"
+            class="flex h-10 w-10 items-center justify-center rounded-xl border transition focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
+            [class.border-indigo-500]="form.controls.icon.value === option.name"
+            [class.bg-indigo-50]="form.controls.icon.value === option.name"
+            [class.ring-2]="form.controls.icon.value === option.name"
+            [class.ring-indigo-500/20]="form.controls.icon.value === option.name"
+            [class.border-slate-200]="form.controls.icon.value !== option.name"
+            [class.bg-white]="form.controls.icon.value !== option.name"
+            [class.dark:border-slate-700]="form.controls.icon.value !== option.name"
+            [class.dark:bg-slate-900]="form.controls.icon.value !== option.name"
+            [style.color]="form.controls.color.value"
+          >
+            <app-icon [name]="option.name" size="18" class="h-5 w-5" />
+          </button>
+        }
+      </div>
+    </fieldset>
+
+    <p
+      class="flex gap-2 rounded-xl bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-800 dark:bg-amber-500/10 dark:text-amber-200"
+    >
+      <app-icon name="info" size="16" class="mt-0.5 h-4 w-4 shrink-0" />
+      <span>
+        Los cambios en íconos y colores se reflejarán inmediatamente en tus movimientos programados,
+        historial y reportes.
+      </span>
+    </p>
+
+    <div class="flex justify-end gap-2">
+      <button
+        type="button"
+        (click)="close.emit()"
+        class="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+      >
+        Cancelar
+      </button>
+      <button
+        type="submit"
+        class="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-indigo-600/30 transition hover:bg-indigo-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
+      >
+        {{ submitLabel() }}
+      </button>
+    </div>
+  </form>
+</app-modal>

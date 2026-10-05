@@ -43,7 +43,11 @@
               <option [value]="option.value">{{ option.label }}</option>
             }
           </select>
-          <app-icon name="chevron-down" size="16" class="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+          <app-icon
+            name="chevron-down"
+            size="16"
+            class="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500"
+          />
         </div>
       </div>
 
@@ -91,10 +95,14 @@
             >
               <option value="" disabled>Selecciona una categoría</option>
               @for (category of availableCategories(); track category.id) {
-                <option [value]="category.id">{{ category.icon }} {{ category.displayName }}</option>
+                <option [value]="category.id">{{ category.displayName }}</option>
               }
             </select>
-            <app-icon name="chevron-down" size="16" class="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+            <app-icon
+              name="chevron-down"
+              size="16"
+              class="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500"
+            />
           </div>
           @if (errorFor('categoryId'); as error) {
             <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ error }}</p>
@@ -123,7 +131,11 @@
               <option [value]="account.id">{{ account.name }}</option>
             }
           </select>
-          <app-icon name="chevron-down" size="16" class="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+          <app-icon
+            name="chevron-down"
+            size="16"
+            class="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500"
+          />
         </div>
         @if (errorFor('sourceAccountId'); as error) {
           <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ error }}</p>
@@ -153,7 +165,11 @@
                 <option [value]="account.id">{{ account.name }}</option>
               }
             </select>
-            <app-icon name="chevron-down" size="16" class="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+            <app-icon
+              name="chevron-down"
+              size="16"
+              class="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500"
+            />
           </div>
           @if (errorFor('destinationAccountId'); as error) {
             <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ error }}</p>
@@ -179,7 +195,11 @@
                 <option [value]="option.value">{{ option.label }}</option>
               }
             </select>
-            <app-icon name="chevron-down" size="16" class="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+            <app-icon
+              name="chevron-down"
+              size="16"
+              class="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500"
+            />
           </div>
         </div>
 
@@ -233,7 +253,11 @@
               <option [value]="option.value">{{ option.label }}</option>
             }
           </select>
-          <app-icon name="chevron-down" size="16" class="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+          <app-icon
+            name="chevron-down"
+            size="16"
+            class="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500"
+          />
         </div>
       </div>
 

@@ -1,5 +1,9 @@
 export * from './account-colors.constant';
 export * from './app-version.constant';
+export * from './category-apply-type-label.constant';
+export * from './category-color-palette.constant';
+export * from './category-icon-options.constant';
+export * from './default-category-color.constant';
 export * from './local-storage-keys.constant';
 export * from './max-visible-releases.constant';
 export * from './movement-type-label.constant';
@@ -7,6 +11,7 @@ export * from './movement-type-palette.constant';
 export * from './navigation-items.constant';
 export * from './navigation-quick-links.constant';
 export * from './recurrence-frequency-label.constant';
+export * from './root-category-id.constant';
 export * from './scheduled-transaction-stop-condition-label.constant';
 export * from './seed-accounts.constant';
 export * from './seed-categories.constant';

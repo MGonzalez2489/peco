@@ -29,14 +29,27 @@
                   → {{ accountName(movement.targetAccountId) }}
                 }
               </p>
-              <p class="truncate text-xs text-slate-500 dark:text-slate-400">
-                {{ categoryDisplay(movement) }}
+              <p
+                class="flex items-center gap-1.5 truncate text-xs text-slate-500 dark:text-slate-400"
+              >
+                <span
+                  class="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full"
+                  [style.background-color]="softCategoryColor(categoryColor(movement), '20')"
+                >
+                  <app-icon
+                    [name]="categoryIcon(movement)"
+                    size="10"
+                    class="h-2.5 w-2.5"
+                    [style.color]="categoryColor(movement)"
+                  />
+                </span>
+                <span class="truncate">{{ categoryName(movement) }}</span>
                 @if (movement.note) {
-                  · {{ movement.note }}
+                  <span class="truncate">· {{ movement.note }}</span>
                 }
                 @if (movement.isCanceled) {
                   <span
-                    class="ml-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:bg-amber-500/15 dark:text-amber-400"
+                    class="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:bg-amber-500/15 dark:text-amber-400"
                   >
                     Omitido
                   </span>
