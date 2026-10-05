@@ -141,9 +141,16 @@
               >
                 <span class="flex min-w-0 items-center gap-2">
                   <span
-                    class="h-2.5 w-2.5 shrink-0 rounded-full"
-                    [style.background-color]="item.categoryColor"
-                  ></span>
+                    class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full"
+                    [style.background-color]="toSoftCategoryColor(item.categoryColor, '20')"
+                  >
+                    <app-icon
+                      [name]="item.categoryIcon"
+                      size="12"
+                      class="h-3 w-3"
+                      [style.color]="item.categoryColor"
+                    />
+                  </span>
                   <span class="truncate text-sm font-medium text-slate-700 dark:text-slate-200">
                     {{ item.categoryName }}
                   </span>
