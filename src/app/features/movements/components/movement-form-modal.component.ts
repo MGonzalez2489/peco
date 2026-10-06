@@ -15,14 +15,14 @@ import {
   RECURRENCE_FREQUENCY_LABEL,
   SCHEDULED_TRANSACTION_STOP_CONDITION_LABEL,
 } from '@core/constants';
-import {Category} from '@core/models';
+import {Account, Category, SelectOption} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {CatalogStore} from '@core/stores/catalog.store';
 import {MovementsStore} from '@core/stores/movements.store';
 import {ScheduledTransactionsStore} from '@core/stores/scheduled-transactions.store';
 import {MovementType, RecurrenceFrequency, ScheduledTransactionStopCondition} from '@core/types';
-import {todayIsoDate} from '@core/utils';
-import {ModalComponent} from '@shared/components';
+import {accountColor, toIconName, todayIsoDate} from '@core/utils';
+import {AppSelectComponent, ModalComponent} from '@shared/components';
 import {CurrencyInputDirective} from '@shared/directives';
 
 interface MovementFormValue {
@@ -42,7 +42,7 @@ interface MovementFormValue {
 
 @Component({
   selector: 'app-movement-form-modal',
-  imports: [ReactiveFormsModule, ModalComponent, CurrencyInputDirective],
+  imports: [ReactiveFormsModule, ModalComponent, CurrencyInputDirective, AppSelectComponent],
   templateUrl: './movement-form-modal.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -88,6 +88,23 @@ export class MovementFormModalComponent {
 
   readonly destinationAccounts = computed(() =>
     this.accounts().filter((account) => account.id !== this.sourceAccountId()),
+  );
+
+  readonly categoryOptions = computed<SelectOption[]>(() =>
+    this.availableCategories().map((category) => ({
+      value: category.id,
+      label: category.displayName,
+      icon: category.icon,
+      color: category.color,
+    })),
+  );
+
+  readonly accountOptions = computed<SelectOption[]>(() =>
+    this.accounts().map((account) => this.toAccountOption(account)),
+  );
+
+  readonly destinationAccountOptions = computed<SelectOption[]>(() =>
+    this.destinationAccounts().map((account) => this.toAccountOption(account)),
   );
 
   readonly typeOptions: Array<{value: MovementType; label: string}> = [
@@ -261,6 +278,15 @@ export class MovementFormModalComponent {
       destination.clearValidators();
     }
     destination.updateValueAndValidity();
+  }
+
+  private toAccountOption(account: Account): SelectOption {
+    return {
+      value: account.id,
+      label: account.name,
+      icon: toIconName(account.icon, 'wallet'),
+      color: accountColor(account.color).chip,
+    };
   }
 
   private syncStopCondition(condition: ScheduledTransactionStopCondition): void {
