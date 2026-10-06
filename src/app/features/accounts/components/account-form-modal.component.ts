@@ -9,7 +9,7 @@ import {
   viewChild,
 } from '@angular/core';
 import {FormBuilder, FormControl, ReactiveFormsModule, Validators} from '@angular/forms';
-import {ACCOUNT_COLORS} from '@core/constants';
+import {COLOR_PALETTE, ACCOUNT_COLORS, DEFAULT_ACCOUNT_COLOR} from '@core/constants';
 import {Account} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {AccountColor} from '@core/types';
@@ -43,13 +43,12 @@ export class AccountFormModalComponent {
       validators: [Validators.required, Validators.min(0)],
     }),
     targetGoal: this.fb.control<number | null>(null, Validators.min(0)),
-    color: this.fb.control<AccountColor>('indigo'),
+    color: this.fb.control<string>(DEFAULT_ACCOUNT_COLOR),
     pinToHome: this.fb.control<boolean>(false),
+    note: this.fb.control<string>(''),
   });
 
-  readonly colorOptions: Array<{key: AccountColor; classes: string}> = Object.entries(
-    ACCOUNT_COLORS,
-  ).map(([key, palette]) => ({key: key as AccountColor, classes: palette.chip}));
+  readonly colorPalette = COLOR_PALETTE;
 
   readonly formatCurrency = formatCurrency;
 
@@ -87,8 +86,9 @@ export class AccountFormModalComponent {
         name: editing.name,
         initialBalance: null,
         targetGoal: editing.targetGoal ?? null,
-        color: (editing.color as AccountColor) ?? 'indigo',
+        color: this.resolveColor(editing.color),
         pinToHome: editing.pinToHome ?? false,
+        note: editing.note ?? '',
       });
     } else {
       balance.setValidators([Validators.required, Validators.min(0)]);
@@ -97,10 +97,17 @@ export class AccountFormModalComponent {
         name: '',
         initialBalance: 0,
         targetGoal: null,
-        color: 'indigo',
+        color: DEFAULT_ACCOUNT_COLOR,
         pinToHome: false,
+        note: '',
       });
     }
+  }
+
+  private resolveColor(color?: string): string {
+    if (!color) return DEFAULT_ACCOUNT_COLOR;
+    if (color.startsWith('#')) return color;
+    return ACCOUNT_COLORS[color as AccountColor]?.chip ?? DEFAULT_ACCOUNT_COLOR;
   }
 
   save(): void {
@@ -114,16 +121,18 @@ export class AccountFormModalComponent {
       this.accountsStore.updateAccount(editing.id, {
         name: raw.name?.trim() ?? '',
         targetGoal: raw.targetGoal ?? undefined,
-        color: raw.color ?? 'indigo',
+        color: raw.color || DEFAULT_ACCOUNT_COLOR,
         pinToHome: raw.pinToHome ?? false,
+        note: raw.note?.trim() || undefined,
       });
     } else {
       this.accountsStore.createAccount({
         name: raw.name?.trim() ?? '',
         initialBalance: raw.initialBalance ?? 0,
         targetGoal: raw.targetGoal ?? undefined,
-        color: raw.color ?? 'indigo',
+        color: raw.color || DEFAULT_ACCOUNT_COLOR,
         pinToHome: raw.pinToHome ?? false,
+        note: raw.note?.trim() || undefined,
       });
     }
 

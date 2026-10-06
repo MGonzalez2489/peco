@@ -3,6 +3,8 @@ export * from './app-version.constant';
 export * from './category-apply-type-label.constant';
 export * from './category-color-palette.constant';
 export * from './category-icon-options.constant';
+export * from './color-palette.constant';
+export * from './default-account-color.constant';
 export * from './default-category-color.constant';
 export * from './local-storage-keys.constant';
 export * from './max-visible-releases.constant';

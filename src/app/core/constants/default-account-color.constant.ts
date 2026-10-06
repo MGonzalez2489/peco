@@ -1,0 +1,1 @@
+export const DEFAULT_ACCOUNT_COLOR = '#6366F1';

@@ -87,32 +87,46 @@
       }
     </div>
 
-    <fieldset>
-      <legend class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-        Color
-      </legend>
-      <div class="flex flex-wrap gap-2">
-        @for (option of colorOptions; track option.key) {
+    <fieldset class="space-y-2">
+      <legend class="text-sm font-medium text-slate-700 dark:text-slate-300">Color</legend>
+      <div class="grid grid-cols-8 gap-2" role="radiogroup" aria-label="Color de la cuenta">
+        @for (option of colorPalette; track option.hex) {
           <button
             type="button"
-            (click)="form.controls.color.setValue(option.key)"
-            class="flex h-9 w-9 items-center justify-center rounded-full transition"
-            [class]="
-              form.controls.color.value === option.key
-                ? option.classes +
-                  ' ring-2 ring-slate-400/70 ring-offset-2 ring-offset-white dark:ring-offset-slate-900'
-                : option.classes
-            "
-            [attr.aria-pressed]="form.controls.color.value === option.key"
-            [attr.aria-label]="'Usar color ' + option.key"
+            role="radio"
+            (click)="form.controls.color.setValue(option.hex)"
+            [attr.aria-checked]="form.controls.color.value === option.hex"
+            [attr.aria-label]="'Color ' + option.label"
+            [title]="option.label"
+            class="flex h-9 w-9 items-center justify-center rounded-full border-2 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
+            [style.background-color]="option.hex"
+            [class.border-slate-900]="form.controls.color.value === option.hex"
+            [class.border-white]="form.controls.color.value !== option.hex"
           >
-            @if (form.controls.color.value === option.key) {
-              <app-icon name="check" size="16" strokeWidth="3" class="h-4 w-4 text-white" />
+            @if (form.controls.color.value === option.hex) {
+              <app-icon name="check" size="16" class="h-4 w-4 text-white" />
             }
           </button>
         }
       </div>
     </fieldset>
+
+    <div>
+      <label
+        for="cat-note"
+        class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
+      >
+        Nota <span class="font-normal text-slate-400 dark:text-slate-500">(opcional)</span>
+      </label>
+      <input
+        id="cat-note"
+        formControlName="note"
+        type="text"
+        autocomplete="off"
+        placeholder="P. ej. CLABE, día de corte o recordatorio"
+        class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+      />
+    </div>
 
     <button
       type="button"

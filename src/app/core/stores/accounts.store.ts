@@ -65,6 +65,7 @@ export const AccountsStore = signalStore(
             color: dto.color,
             icon: dto.icon,
             pinToHome: dto.pinToHome ?? false,
+            note: dto.note,
             isRoot: accounts.length === 0 ? true : undefined,
           };
 
