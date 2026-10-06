@@ -24,35 +24,38 @@
       <button
         type="button"
         (click)="setTypeFilter('ALL')"
+        [attr.aria-pressed]="scheduledStore.typeFilter() === 'ALL'"
         [class]="
           scheduledStore.typeFilter() === 'ALL'
             ? 'rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition'
             : 'rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
         "
       >
-        Todos
+        Todos ({{ scheduledStore.totalFilteredCount() }})
       </button>
       <button
         type="button"
         (click)="setTypeFilter('INCOME')"
+        [attr.aria-pressed]="scheduledStore.typeFilter() === 'INCOME'"
         [class]="
           scheduledStore.typeFilter() === 'INCOME'
             ? 'rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition'
             : 'rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
         "
       >
-        Ingresos
+        Ingresos ({{ scheduledStore.incomeFilteredCount() }})
       </button>
       <button
         type="button"
         (click)="setTypeFilter('EXPENSE')"
+        [attr.aria-pressed]="scheduledStore.typeFilter() === 'EXPENSE'"
         [class]="
           scheduledStore.typeFilter() === 'EXPENSE'
             ? 'rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition'
             : 'rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
         "
       >
-        Egresos
+        Egresos ({{ scheduledStore.expenseFilteredCount() }})
       </button>
     </div>
 

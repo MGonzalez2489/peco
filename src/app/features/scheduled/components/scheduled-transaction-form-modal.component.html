@@ -15,6 +15,7 @@
         <input
           id="sch-name"
           formControlName="name"
+          data-autofocus
           type="text"
           autocomplete="off"
           placeholder="P. ej. Alquiler"
@@ -84,26 +85,14 @@
           >
             Categoría
           </label>
-          <div class="relative">
-            <select
-              id="sch-category"
-              formControlName="categoryId"
-              class="w-full appearance-none rounded-xl border border-slate-300 bg-white px-3 py-2.5 pr-10 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-              [attr.aria-invalid]="
-                form.controls.categoryId.touched && form.controls.categoryId.invalid
-              "
-            >
-              <option value="" disabled>Selecciona una categoría</option>
-              @for (category of availableCategories(); track category.id) {
-                <option [value]="category.id">{{ category.displayName }}</option>
-              }
-            </select>
-            <app-icon
-              name="chevron-down"
-              size="16"
-              class="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500"
-            />
-          </div>
+          <app-select
+            formControlName="categoryId"
+            controlId="sch-category"
+            ariaLabel="Categoría"
+            placeholder="Selecciona una categoría"
+            [options]="categoryOptions()"
+            [invalid]="form.controls.categoryId.touched && form.controls.categoryId.invalid"
+          />
           @if (errorFor('categoryId'); as error) {
             <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ error }}</p>
           }
@@ -117,26 +106,14 @@
         >
           Cuenta {{ selectedType() === 'TRANSFER' ? 'origen' : '' }}
         </label>
-        <div class="relative">
-          <select
-            id="sch-account"
-            formControlName="sourceAccountId"
-            class="w-full appearance-none rounded-xl border border-slate-300 bg-white px-3 py-2.5 pr-10 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-            [attr.aria-invalid]="
-              form.controls.sourceAccountId.touched && form.controls.sourceAccountId.invalid
-            "
-          >
-            <option value="" disabled>Selecciona una cuenta</option>
-            @for (account of accounts(); track account.id) {
-              <option [value]="account.id">{{ account.name }}</option>
-            }
-          </select>
-          <app-icon
-            name="chevron-down"
-            size="16"
-            class="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500"
-          />
-        </div>
+        <app-select
+          formControlName="sourceAccountId"
+          controlId="sch-account"
+          [ariaLabel]="selectedType() === 'TRANSFER' ? 'Cuenta origen' : 'Cuenta'"
+          placeholder="Selecciona una cuenta"
+          [options]="accountOptions()"
+          [invalid]="form.controls.sourceAccountId.touched && form.controls.sourceAccountId.invalid"
+        />
         @if (errorFor('sourceAccountId'); as error) {
           <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ error }}</p>
         }
@@ -150,27 +127,17 @@
           >
             Cuenta destino
           </label>
-          <div class="relative">
-            <select
-              id="sch-destination"
-              formControlName="destinationAccountId"
-              class="w-full appearance-none rounded-xl border border-slate-300 bg-white px-3 py-2.5 pr-10 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-              [attr.aria-invalid]="
-                form.controls.destinationAccountId.touched &&
-                form.controls.destinationAccountId.invalid
-              "
-            >
-              <option value="" disabled>Selecciona la cuenta destino</option>
-              @for (account of destinationAccounts(); track account.id) {
-                <option [value]="account.id">{{ account.name }}</option>
-              }
-            </select>
-            <app-icon
-              name="chevron-down"
-              size="16"
-              class="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500"
-            />
-          </div>
+          <app-select
+            formControlName="destinationAccountId"
+            controlId="sch-destination"
+            ariaLabel="Cuenta destino"
+            placeholder="Selecciona la cuenta destino"
+            [options]="destinationAccountOptions()"
+            [invalid]="
+              form.controls.destinationAccountId.touched &&
+              form.controls.destinationAccountId.invalid
+            "
+          />
           @if (errorFor('destinationAccountId'); as error) {
             <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ error }}</p>
           }

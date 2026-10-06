@@ -5,9 +5,12 @@ import {AccountsStore} from '@core/stores/accounts.store';
 import {ScheduledTransactionsStore} from '@core/stores/scheduled-transactions.store';
 import {toSoftCategoryColor} from '@core/utils';
 import {ExecuteScheduleModalComponent} from './components/execute-schedule-modal.component';
+import {ScheduledDistributionLegendComponent} from './components/scheduled-distribution-legend/scheduled-distribution-legend.component';
 import {ScheduledFilterBarComponent} from './components/scheduled-filter-bar/scheduled-filter-bar.component';
 import {ScheduledTransactionCardComponent} from './components/scheduled-transaction-card.component';
 import {ScheduledTransactionFormModalComponent} from './components/scheduled-transaction-form-modal.component';
+
+type DistributionType = 'EXPENSE' | 'INCOME';
 
 @Component({
   selector: 'app-scheduled-transactions',
@@ -17,6 +20,7 @@ import {ScheduledTransactionFormModalComponent} from './components/scheduled-tra
     ScheduledTransactionFormModalComponent,
     ExecuteScheduleModalComponent,
     ScheduledFilterBarComponent,
+    ScheduledDistributionLegendComponent,
   ],
   templateUrl: './scheduled-transactions.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -29,7 +33,6 @@ export class ScheduledTransactionsComponent {
   readonly projectedBalance = this.scheduledStore.netImpact;
   readonly commitmentPercentage = this.scheduledStore.incomeCommitmentPercentage;
   readonly filteredSchedules = this.scheduledStore.filteredSchedules;
-  readonly categoryDistribution = this.scheduledStore.categoryDistributionSummary;
   readonly hasFilters = computed(
     () =>
       this.scheduledStore.searchQuery().trim().length > 0 ||
@@ -38,6 +41,24 @@ export class ScheduledTransactionsComponent {
   );
 
   readonly toSoftCategoryColor = toSoftCategoryColor;
+
+  readonly distributionType = signal<DistributionType>('EXPENSE');
+
+  readonly distributionItems = computed(() =>
+    this.distributionType() === 'INCOME'
+      ? this.scheduledStore.incomeCategoryDistributionSummary()
+      : this.scheduledStore.categoryDistributionSummary(),
+  );
+
+  readonly distributionTypeLabel = computed(() =>
+    this.distributionType() === 'INCOME' ? 'ingresos' : 'egresos',
+  );
+
+  readonly listCounterLabel = computed(() => {
+    const shown = this.filteredSchedules().length;
+    const total = this.scheduledStore.scheduledTransactions().length;
+    return `Mostrando ${shown} de ${total} movimientos programados`;
+  });
 
   readonly formOpen = signal(false);
   readonly scheduleToEdit = signal<ScheduledTransaction | null>(null);
@@ -55,9 +76,10 @@ export class ScheduledTransactionsComponent {
   });
 
   protected readonly donutSegments = computed(() => {
-    const total = this.categoryDistribution().reduce((sum, item) => sum + item.totalAmount, 0);
+    const items = this.distributionItems();
+    const total = items.reduce((sum, item) => sum + item.totalAmount, 0);
     let offset = 0;
-    return this.categoryDistribution().map((item) => {
+    return items.map((item) => {
       const percent = total > 0 ? (item.totalAmount / total) * 100 : 0;
       const circumference = 2 * Math.PI * 45;
       const dash = (percent / 100) * circumference;
@@ -73,7 +95,7 @@ export class ScheduledTransactionsComponent {
   });
 
   protected readonly donutTotal = computed(() =>
-    this.categoryDistribution().reduce((sum, item) => sum + item.totalAmount, 0),
+    this.distributionItems().reduce((sum, item) => sum + item.totalAmount, 0),
   );
 
   openCreate(): void {
@@ -115,6 +137,17 @@ export class ScheduledTransactionsComponent {
 
   onSearch(query: string): void {
     this.scheduledStore.setSearchQuery(query);
+  }
+
+  setDistributionType(type: DistributionType): void {
+    this.distributionType.set(type);
+  }
+
+  onSegmentKeydown(event: KeyboardEvent, categoryId: string): void {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+
+    event.preventDefault();
+    this.onCategorySelected(categoryId);
   }
 
   onTypeFilterChange(type: 'ALL' | 'INCOME' | 'EXPENSE'): void {

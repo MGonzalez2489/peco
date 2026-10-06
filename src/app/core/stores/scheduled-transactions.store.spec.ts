@@ -139,4 +139,58 @@ describe('ScheduledTransactionsStore', () => {
     expect(store.scheduledTransactions().length).toBe(0);
     expect(store.deleteScheduledTransaction('missing')).toBe(false);
   });
+
+  it('counts the list with search and category filters but ignores the type chip', () => {
+    store.createScheduledTransaction(
+      create({name: 'Alquiler', categoryId: 'services', estimatedAmount: 500}),
+    );
+    store.createScheduledTransaction(
+      create({name: 'Nómina', type: 'INCOME', categoryId: 'payroll', estimatedAmount: 1000}),
+    );
+
+    expect(store.totalFilteredCount()).toBe(2);
+    expect(store.incomeFilteredCount()).toBe(1);
+    expect(store.expenseFilteredCount()).toBe(1);
+
+    store.setSearchQuery('Alquiler');
+    expect(store.totalFilteredCount()).toBe(1);
+    expect(store.incomeFilteredCount()).toBe(0);
+    expect(store.expenseFilteredCount()).toBe(1);
+
+    store.setSearchQuery('');
+    store.setTypeFilter('INCOME');
+    expect(store.totalFilteredCount()).toBe(1);
+    expect(store.incomeFilteredCount()).toBe(1);
+    expect(store.expenseFilteredCount()).toBe(1);
+
+    store.setTypeFilter('ALL');
+    store.setCategoryFilter('payroll');
+    expect(store.totalFilteredCount()).toBe(1);
+    expect(store.incomeFilteredCount()).toBe(1);
+    expect(store.expenseFilteredCount()).toBe(0);
+  });
+
+  it('builds the income and expense category distributions separately', () => {
+    store.createScheduledTransaction(
+      create({name: 'Nómina', type: 'INCOME', categoryId: 'payroll', estimatedAmount: 1000}),
+    );
+    store.createScheduledTransaction(
+      create({name: 'Freelance', type: 'INCOME', categoryId: 'payroll', estimatedAmount: 500}),
+    );
+    store.createScheduledTransaction(
+      create({name: 'Supermercado', categoryId: 'services', estimatedAmount: 500}),
+    );
+
+    const income = store.incomeCategoryDistributionSummary();
+    expect(income.length).toBe(1);
+    expect(income[0].categoryName).toBe('Nómina');
+    expect(income[0].totalAmount).toBe(1500);
+    expect(income[0].percentage).toBe(100);
+
+    const expenses = store.categoryDistributionSummary();
+    expect(expenses.length).toBe(1);
+    expect(expenses[0].categoryName).toBe('Servicios');
+    expect(expenses[0].totalAmount).toBe(500);
+    expect(expenses[0].percentage).toBe(100);
+  });
 });
