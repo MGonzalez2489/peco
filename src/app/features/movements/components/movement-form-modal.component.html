@@ -55,19 +55,14 @@
           >
             Categoría
           </label>
-          <select
-            id="mov-category"
+          <app-select
             formControlName="categoryId"
-            class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-            [attr.aria-invalid]="
-              form.controls.categoryId.touched && form.controls.categoryId.invalid
-            "
-          >
-            <option value="" disabled>Selecciona una categoría</option>
-            @for (category of availableCategories(); track category.id) {
-              <option [value]="category.id">{{ category.displayName }}</option>
-            }
-          </select>
+            controlId="mov-category"
+            ariaLabel="Categoría"
+            placeholder="Selecciona una categoría"
+            [options]="categoryOptions()"
+            [invalid]="form.controls.categoryId.touched && form.controls.categoryId.invalid"
+          />
           @if (errorFor(form.controls.categoryId); as error) {
             <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ error }}</p>
           }
@@ -81,17 +76,14 @@
         >
           Cuenta {{ selectedType() === 'TRANSFER' ? 'origen' : '' }}
         </label>
-        <select
-          id="mov-account"
+        <app-select
           formControlName="accountId"
-          class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-          [attr.aria-invalid]="form.controls.accountId.touched && form.controls.accountId.invalid"
-        >
-          <option value="" disabled>Selecciona una cuenta</option>
-          @for (account of accounts(); track account.id) {
-            <option [value]="account.id">{{ account.name }}</option>
-          }
-        </select>
+          controlId="mov-account"
+          [ariaLabel]="selectedType() === 'TRANSFER' ? 'Cuenta origen' : 'Cuenta'"
+          placeholder="Selecciona una cuenta"
+          [options]="accountOptions()"
+          [invalid]="form.controls.accountId.touched && form.controls.accountId.invalid"
+        />
         @if (errorFor(form.controls.accountId); as error) {
           <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ error }}</p>
         }
@@ -105,19 +97,16 @@
           >
             Cuenta destino
           </label>
-          <select
-            id="mov-destino"
+          <app-select
             formControlName="targetAccountId"
-            class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-            [attr.aria-invalid]="
+            controlId="mov-destino"
+            ariaLabel="Cuenta destino"
+            placeholder="Selecciona la cuenta destino"
+            [options]="destinationAccountOptions()"
+            [invalid]="
               form.controls.targetAccountId.touched && form.controls.targetAccountId.invalid
             "
-          >
-            <option value="" disabled>Selecciona la cuenta destino</option>
-            @for (account of destinationAccounts(); track account.id) {
-              <option [value]="account.id">{{ account.name }}</option>
-            }
-          </select>
+          />
           @if (errorFor(form.controls.targetAccountId); as error) {
             <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ error }}</p>
           }
