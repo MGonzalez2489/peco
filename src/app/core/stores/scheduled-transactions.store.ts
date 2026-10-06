@@ -102,6 +102,67 @@ export const ScheduledTransactionsStore = signalStore(
         ),
       );
 
+      const matchesSearchAndCategory = (item: ScheduledTransaction): boolean => {
+        const query = searchQuery().trim().toLowerCase();
+        if (query && !item.name.toLowerCase().includes(query)) return false;
+
+        const category = selectedCategoryId();
+        return category === null || item.categoryId === category;
+      };
+
+      const baseFilteredSchedules = computed(() =>
+        [...activeSchedules()].filter(matchesSearchAndCategory).sort(byNextExecutionAscending),
+      );
+
+      const filteredSchedules = computed(() => {
+        const type = typeFilter();
+        if (type === 'ALL') return baseFilteredSchedules();
+
+        return baseFilteredSchedules().filter((item) => item.type === type);
+      });
+
+      const buildCategoryDistribution = (
+        total: number,
+        matchesType: (item: ScheduledTransaction) => boolean,
+      ): CategoryDistributionItem[] => {
+        if (total <= 0) return [];
+
+        const categoriesById = new Map(
+          catalogStore.categories().map((category) => [category.id, category]),
+        );
+        const grouped = new Map<string, CategoryDistributionItem>();
+
+        for (const item of activeSchedules()) {
+          if (!matchesType(item)) continue;
+
+          const amount = monthlyEquivalent(item.estimatedAmount, item.frequency);
+          if (amount <= 0) continue;
+
+          const existing = grouped.get(item.categoryId);
+          if (existing) {
+            existing.totalAmount += amount;
+            continue;
+          }
+
+          const category = categoriesById.get(item.categoryId);
+          grouped.set(item.categoryId, {
+            categoryId: item.categoryId,
+            categoryName: category?.displayName ?? 'Sin categoría',
+            categoryColor: category?.color ?? FALLBACK_CATEGORY_COLOR,
+            categoryIcon: category?.icon ?? 'folder-open',
+            totalAmount: amount,
+            percentage: 0,
+          });
+        }
+
+        return [...grouped.values()]
+          .map((entry) => ({
+            ...entry,
+            percentage: Math.round((entry.totalAmount / total) * 100),
+          }))
+          .sort((a, b) => b.totalAmount - a.totalAmount);
+      };
+
       return {
         activeSchedules: computed(() => [...activeSchedules()].sort(byNextExecutionAscending)),
         pausedSchedules: computed(() =>
@@ -138,80 +199,25 @@ export const ScheduledTransactionsStore = signalStore(
         hasOverdueSchedules: computed(() =>
           activeSchedules().some((item) => item.nextExecutionDate < today()),
         ),
-        filteredSchedules: computed(() => {
-          const query = searchQuery().trim().toLowerCase();
-          const type = typeFilter();
-          const selectedCategory = selectedCategoryId();
-
-          return [...activeSchedules()]
-            .filter((item) => {
-              if (type !== 'ALL') {
-                if (type === 'INCOME' && item.type !== 'INCOME') return false;
-                if (type === 'EXPENSE' && item.type !== 'EXPENSE') return false;
-              }
-
-              if (selectedCategory !== null && item.categoryId !== selectedCategory) {
-                return false;
-              }
-
-              if (query) {
-                const name = item.name.toLowerCase();
-                if (!name.includes(query)) return false;
-              }
-
-              return true;
-            })
-            .sort(byNextExecutionAscending);
-        }),
-        categoryDistributionSummary: computed(() => {
-          const summary = monthlyCommitmentsSummary();
-          const totalExpenses = summary.totalExpenses;
-          if (totalExpenses <= 0) return [];
-
-          const map = new Map<
-            string,
-            {
-              categoryId: string;
-              categoryName: string;
-              categoryColor: string;
-              categoryIcon: IconName;
-              totalAmount: number;
-            }
-          >();
-
-          const categoriesById = new Map(
-            catalogStore.categories().map((category) => [category.id, category]),
-          );
-
-          for (const item of activeSchedules()) {
-            if (item.type === 'TRANSFER' || item.type === 'INCOME') continue;
-
-            const amount = monthlyEquivalent(item.estimatedAmount, item.frequency);
-            if (amount <= 0) continue;
-
-            const existing = map.get(item.categoryId);
-            if (existing) {
-              existing.totalAmount += amount;
-            } else {
-              const category = categoriesById.get(item.categoryId);
-              map.set(item.categoryId, {
-                categoryId: item.categoryId,
-                categoryName: category?.displayName ?? 'Sin categoría',
-                categoryColor: category?.color ?? FALLBACK_CATEGORY_COLOR,
-                categoryIcon: category?.icon ?? 'folder-open',
-                totalAmount: amount,
-              });
-            }
-          }
-
-          const items: CategoryDistributionItem[] = [];
-          for (const entry of map.values()) {
-            const percentage = Math.round((entry.totalAmount / totalExpenses) * 100);
-            items.push({...entry, percentage});
-          }
-
-          return items.sort((a, b) => b.totalAmount - a.totalAmount);
-        }),
+        filteredSchedules,
+        totalFilteredCount: computed(() => filteredSchedules().length),
+        incomeFilteredCount: computed(
+          () => baseFilteredSchedules().filter((item) => isIncomeSchedule(item.type)).length,
+        ),
+        expenseFilteredCount: computed(
+          () => baseFilteredSchedules().filter((item) => item.type === 'EXPENSE').length,
+        ),
+        categoryDistributionSummary: computed(() =>
+          buildCategoryDistribution(
+            monthlyCommitmentsSummary().totalExpenses,
+            (item) => item.type === 'EXPENSE',
+          ),
+        ),
+        incomeCategoryDistributionSummary: computed(() =>
+          buildCategoryDistribution(monthlyCommitmentsSummary().totalIncome, (item) =>
+            isIncomeSchedule(item.type),
+          ),
+        ),
       };
     },
   ),

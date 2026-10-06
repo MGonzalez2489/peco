@@ -1,4 +1,5 @@
 export * from './app-icon/app-icon.component';
+export * from './app-select/app-select.component';
 export * from './confirm-modal/confirm-modal.component';
 export * from './movement-list/movement-list.component';
 export * from './modal/modal.component';

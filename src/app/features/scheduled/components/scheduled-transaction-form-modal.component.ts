@@ -7,6 +7,7 @@ import {
   input,
   output,
   signal,
+  untracked,
 } from '@angular/core';
 import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
@@ -15,7 +16,7 @@ import {
   RECURRENCE_FREQUENCY_LABEL,
   SCHEDULED_TRANSACTION_STOP_CONDITION_LABEL,
 } from '@core/constants';
-import {Category, ScheduledTransaction} from '@core/models';
+import {Account, Category, ScheduledTransaction, SelectOption} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {CatalogStore} from '@core/stores/catalog.store';
 import {ScheduledTransactionsStore} from '@core/stores/scheduled-transactions.store';
@@ -24,14 +25,20 @@ import {
   ScheduledTransactionStopCondition,
   ScheduledTransactionType,
 } from '@core/types';
-import {todayIsoDate} from '@core/utils';
-import {ModalComponent} from '@shared/components';
+import {accountColor, toIconName, todayIsoDate} from '@core/utils';
+import {AppSelectComponent, ModalComponent} from '@shared/components';
 import {CurrencyInputDirective} from '@shared/directives';
 import {AppIconComponent} from '@shared/components/app-icon/app-icon.component';
 
 @Component({
   selector: 'app-scheduled-transaction-form-modal',
-  imports: [ReactiveFormsModule, ModalComponent, CurrencyInputDirective, AppIconComponent],
+  imports: [
+    ReactiveFormsModule,
+    ModalComponent,
+    CurrencyInputDirective,
+    AppIconComponent,
+    AppSelectComponent,
+  ],
   templateUrl: './scheduled-transaction-form-modal.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -97,6 +104,23 @@ export class ScheduledTransactionFormModalComponent {
     this.accounts().filter((account) => account.id !== this.sourceAccountId()),
   );
 
+  readonly categoryOptions = computed<SelectOption[]>(() =>
+    this.availableCategories().map((category) => ({
+      value: category.id,
+      label: category.displayName,
+      icon: category.icon,
+      color: category.color,
+    })),
+  );
+
+  readonly accountOptions = computed<SelectOption[]>(() =>
+    this.accounts().map((account) => this.toAccountOption(account)),
+  );
+
+  readonly destinationAccountOptions = computed<SelectOption[]>(() =>
+    this.destinationAccounts().map((account) => this.toAccountOption(account)),
+  );
+
   constructor() {
     const typeControl = this.form.controls.type;
     const sourceControl = this.form.controls.sourceAccountId;
@@ -126,29 +150,30 @@ export class ScheduledTransactionFormModalComponent {
       if (!this.isOpen()) return;
 
       const current = this.schedule();
+      const accounts = untracked(() => this.accounts());
+      const type = current?.type ?? 'EXPENSE';
+      const stopCondition = current ? this.resolveStopCondition(current) : 'NEVER';
 
       this.form.reset({
         name: current?.name ?? '',
         estimatedAmount: current?.estimatedAmount ?? 0,
-        type: current?.type ?? 'EXPENSE',
+        type,
         categoryId: current?.categoryId ?? '',
-        sourceAccountId: current?.sourceAccountId ?? this.accounts()[0]?.id ?? '',
+        sourceAccountId: current?.sourceAccountId ?? accounts[0]?.id ?? '',
         destinationAccountId: current?.destinationAccountId ?? '',
         frequency: current?.frequency ?? 'MONTHLY',
         nextExecutionDate: current?.nextExecutionDate ?? todayIsoDate(),
         autoApply: current?.autoApply ?? false,
-        stopCondition: current
-          ? this.resolveStopCondition(current)
-          : ('NEVER' as ScheduledTransactionStopCondition),
+        stopCondition,
         totalOccurrences: current?.totalOccurrences ?? null,
         endDate: current?.endDate ?? null,
       });
 
-      this.selectedType.set(current?.type ?? 'EXPENSE');
-      this.sourceAccountId.set(current?.sourceAccountId ?? '');
-      this.stopCondition.set(current ? this.resolveStopCondition(current) : 'NEVER');
-      this.syncValidators(current?.type ?? 'EXPENSE');
-      this.syncStopCondition(this.stopCondition());
+      this.selectedType.set(type);
+      this.sourceAccountId.set(current?.sourceAccountId ?? accounts[0]?.id ?? '');
+      this.stopCondition.set(stopCondition);
+      this.syncValidators(type);
+      this.syncStopCondition(stopCondition);
     });
 
     effect(() => {
@@ -239,6 +264,15 @@ export class ScheduledTransactionFormModalComponent {
     if (item.totalOccurrences !== undefined) return 'OCCURRENCES';
     if (item.endDate !== undefined) return 'DATE';
     return 'NEVER';
+  }
+
+  private toAccountOption(account: Account): SelectOption {
+    return {
+      value: account.id,
+      label: account.name,
+      icon: toIconName(account.icon, 'wallet'),
+      color: accountColor(account.color).chip,
+    };
   }
 
   private syncValidators(type: ScheduledTransactionType): void {
