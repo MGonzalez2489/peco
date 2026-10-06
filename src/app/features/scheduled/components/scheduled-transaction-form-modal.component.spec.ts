@@ -60,6 +60,33 @@ describe('ScheduledTransactionFormModalComponent', () => {
     expect(native().querySelector('#sch-occurrences')).not.toBeNull();
   });
 
+  it('shows a chevron indicator on the date input', async () => {
+    await open();
+
+    const next = native().querySelector('#sch-next');
+    if (!next) throw new Error('next execution input must be rendered');
+
+    expect(next.parentElement?.classList.contains('relative')).toBe(true);
+    expect(next.parentElement?.querySelector('app-icon')).not.toBeNull();
+    expect(next.classList.contains('pr-10')).toBe(true);
+  });
+
+  it('opens the native date picker when the date input is clicked', async () => {
+    await open();
+
+    const next = native().querySelector('#sch-next') as HTMLInputElement | null;
+    if (!next) throw new Error('next execution input must be rendered');
+
+    let opened = false;
+    next.showPicker = () => {
+      opened = true;
+    };
+
+    next.click();
+
+    expect(opened).toBe(true);
+  });
+
   it('replaces the category control with an accessible custom dropdown', async () => {
     await open();
 
