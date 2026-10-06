@@ -33,16 +33,22 @@ export const CatalogStore = signalStore(
     ),
     incomeCategories: computed(() =>
       categories().filter(
-        (category) => category.applyType === 'INCOME' || category.applyType === 'BOTH',
+        (category) =>
+          category.isSystem !== true &&
+          (category.applyType === 'INCOME' || category.applyType === 'BOTH'),
       ),
     ),
     expenseCategories: computed(() =>
       categories().filter(
-        (category) => category.applyType === 'EXPENSE' || category.applyType === 'BOTH',
+        (category) =>
+          category.isSystem !== true &&
+          (category.applyType === 'EXPENSE' || category.applyType === 'BOTH'),
       ),
     ),
     transferCategory: computed(() =>
-      categories().find((category) => category.applyType === 'TRANSFER'),
+      categories().find(
+        (category) => category.applyType === 'TRANSFER' || category.isSystem === true,
+      ),
     ),
   })),
   withMethods((store) => {

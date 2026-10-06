@@ -9,4 +9,5 @@ export interface Category {
   color: string;
   applyType: CategoryApplyType;
   isRoot?: boolean;
+  isSystem?: boolean;
 }
