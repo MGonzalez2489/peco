@@ -26,9 +26,8 @@ import {
   ScheduledTransactionType,
 } from '@core/types';
 import {accountColor, toIconName, todayIsoDate} from '@core/utils';
-import {AppSelectComponent, ModalComponent} from '@shared/components';
-import {CurrencyInputDirective} from '@shared/directives';
-import {AppIconComponent} from '@shared/components/app-icon/app-icon.component';
+import {AppIconComponent, AppSelectComponent, ModalComponent} from '@shared/components';
+import {CurrencyInputDirective, DateInputDirective} from '@shared/directives';
 
 @Component({
   selector: 'app-scheduled-transaction-form-modal',
@@ -36,6 +35,7 @@ import {AppIconComponent} from '@shared/components/app-icon/app-icon.component';
     ReactiveFormsModule,
     ModalComponent,
     CurrencyInputDirective,
+    DateInputDirective,
     AppIconComponent,
     AppSelectComponent,
   ],

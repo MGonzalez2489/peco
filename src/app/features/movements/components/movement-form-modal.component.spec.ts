@@ -83,4 +83,24 @@ describe('MovementFormModalComponent', () => {
     expect(destination?.getAttribute('role')).toBe('combobox');
     expect(destination?.textContent).toContain('Selecciona la cuenta destino');
   });
+
+  it('shows a chevron indicator on the end date input', async () => {
+    await open();
+
+    const recurring = native().querySelector<HTMLInputElement>(
+      'input[formcontrolname="isRecurring"]',
+    );
+    if (!recurring) throw new Error('recurring checkbox must be rendered');
+
+    recurring.click();
+    fixture.detectChanges();
+    changeNativeSelect('#mov-stop', 'DATE');
+
+    const endDate = native().querySelector('#mov-end-date');
+    if (!endDate) throw new Error('end date input must be rendered');
+
+    expect(endDate.parentElement?.classList.contains('relative')).toBe(true);
+    expect(endDate.parentElement?.querySelector('app-icon')).not.toBeNull();
+    expect(endDate.classList.contains('pr-10')).toBe(true);
+  });
 });

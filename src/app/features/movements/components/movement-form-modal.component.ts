@@ -22,8 +22,8 @@ import {MovementsStore} from '@core/stores/movements.store';
 import {ScheduledTransactionsStore} from '@core/stores/scheduled-transactions.store';
 import {MovementType, RecurrenceFrequency, ScheduledTransactionStopCondition} from '@core/types';
 import {accountColor, toIconName, todayIsoDate} from '@core/utils';
-import {AppSelectComponent, ModalComponent} from '@shared/components';
-import {CurrencyInputDirective} from '@shared/directives';
+import {AppIconComponent, AppSelectComponent, ModalComponent} from '@shared/components';
+import {CurrencyInputDirective, DateInputDirective} from '@shared/directives';
 
 interface MovementFormValue {
   amount: number | null;
@@ -42,7 +42,14 @@ interface MovementFormValue {
 
 @Component({
   selector: 'app-movement-form-modal',
-  imports: [ReactiveFormsModule, ModalComponent, CurrencyInputDirective, AppSelectComponent],
+  imports: [
+    ReactiveFormsModule,
+    ModalComponent,
+    CurrencyInputDirective,
+    DateInputDirective,
+    AppSelectComponent,
+    AppIconComponent,
+  ],
   templateUrl: './movement-form-modal.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
