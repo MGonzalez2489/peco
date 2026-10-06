@@ -6,7 +6,6 @@ import {accountColor} from '../../../core/utils/account-color.util';
   selector: 'app-stat-card',
   imports: [CurrencyPipe],
   templateUrl: './stat-card.component.html',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class StatCardComponent {
@@ -15,6 +14,7 @@ export class StatCardComponent {
   readonly color = input<string>('indigo');
   readonly goal = input<number | undefined>();
   readonly subtext = input<string | undefined>();
+  readonly note = input<string | undefined>();
 
   readonly palette = computed(() => accountColor(this.color()));
 

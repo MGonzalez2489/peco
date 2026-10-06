@@ -5,4 +5,5 @@ export interface CreateAccountDto {
   color?: string;
   icon?: string;
   pinToHome?: boolean;
+  note?: string;
 }

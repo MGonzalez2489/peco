@@ -7,4 +7,5 @@ export interface Account {
   icon?: string;
   pinToHome?: boolean;
   isRoot?: boolean;
+  note?: string;
 }

@@ -1,4 +1,6 @@
 import {TestBed} from '@angular/core/testing';
+import {LOCAL_STORAGE_KEYS} from '../constants/local-storage-keys.constant';
+import {Account} from '../models/account.model';
 import {AccountsStore} from './accounts.store';
 import {CatalogStore} from './catalog.store';
 import {MovementsStore} from './movements.store';
@@ -31,6 +33,23 @@ describe('Finance stores', () => {
     const rootId = accountsStore.rootAccount()?.id ?? '';
     expect(accountsStore.deleteAccount(rootId)).toBe(false);
     expect(accountsStore.accounts().some((account) => account.id === rootId)).toBe(true);
+  });
+
+  it('persists the optional note on create and update', () => {
+    const account = accountsStore.createAccount({
+      name: 'Tarjeta',
+      initialBalance: 0,
+      note: 'Día de corte: 5',
+    });
+    if (!account) throw new Error('account must be created');
+
+    const persisted = () =>
+      JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.accounts) ?? '[]') as Account[];
+
+    expect(persisted().find((item) => item.id === account.id)?.note).toBe('Día de corte: 5');
+
+    accountsStore.updateAccount(account.id, {note: undefined});
+    expect(persisted().find((item) => item.id === account.id)?.note).toBeUndefined();
   });
 
   it('adds income to the source balance', () => {
