@@ -19,10 +19,12 @@ export class CategoriesSettingsComponent {
 
   protected readonly toSoftCategoryColor = toSoftCategoryColor;
   protected readonly categories = computed(() =>
-    [...this.catalogStore.categories()].sort((a, b) => {
-      if (a.isRoot !== b.isRoot) return a.isRoot ? -1 : 1;
-      return a.displayName.localeCompare(b.displayName);
-    }),
+    [...this.catalogStore.categories()]
+      .filter((category) => category.isSystem !== true)
+      .sort((a, b) => {
+        if (a.isRoot !== b.isRoot) return a.isRoot ? -1 : 1;
+        return a.displayName.localeCompare(b.displayName);
+      }),
   );
 
   protected readonly formOpen = signal(false);

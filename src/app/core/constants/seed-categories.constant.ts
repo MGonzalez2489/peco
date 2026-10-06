@@ -74,5 +74,6 @@ export const SEED_CATEGORIES: Category[] = [
     icon: 'arrow-left-right',
     color: '#6366F1',
     applyType: 'TRANSFER',
+    isSystem: true,
   },
 ];

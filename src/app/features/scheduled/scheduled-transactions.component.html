@@ -89,7 +89,7 @@
 
       @if (categoryDistribution().length === 0) {
         <div
-          class="flex h-full min-h-55 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 p-6 text-center dark:border-slate-700"
+          class="flex min-h-55 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 p-6 text-center dark:border-slate-700"
         >
           <p class="text-sm font-medium text-slate-700 dark:text-slate-300">
             No hay egresos programados para el mes.
@@ -177,11 +177,13 @@
     </div>
   </div>
 
-  <app-scheduled-filter-bar
-    (searchChanged)="onSearch($event)"
-    (typeFilterChanged)="onTypeFilterChange($event)"
-    (categorySelected)="onCategorySelected($event)"
-  />
+  <div class="pb-2">
+    <app-scheduled-filter-bar
+      (searchChanged)="onSearch($event)"
+      (typeFilterChanged)="onTypeFilterChange($event)"
+      (categorySelected)="onCategorySelected($event)"
+    />
+  </div>
 
   <div>
     @if (filteredSchedules().length === 0) {

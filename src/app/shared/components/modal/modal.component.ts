@@ -65,7 +65,17 @@ export class ModalComponent {
     effect(() => {
       document.body.classList.toggle('overflow-hidden', this.isOpen());
       if (this.isOpen()) {
-        requestAnimationFrame(() => this.panelRef()?.nativeElement.focus());
+        requestAnimationFrame(() => {
+          const panel = this.panelRef()?.nativeElement;
+          // Content opts in with `data-autofocus`; the panel itself is the fallback.
+          const target = panel?.querySelector<HTMLElement>('[data-autofocus]');
+          (target ?? panel)?.focus();
+
+          // Selecting lets the user overwrite a pre-filled value instead of appending to it.
+          if (target instanceof HTMLInputElement && target.type === 'text') {
+            target.select();
+          }
+        });
       }
     });
   }
