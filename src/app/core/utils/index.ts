@@ -8,6 +8,7 @@ export * from './ensure-root-category.util';
 export * from './format-currency.util';
 export * from './format-local-date.util';
 export * from './group-movements-by-date.util';
+export * from './group-settings-sections.util';
 export * from './is-income-schedule.util';
 export * from './is-schedule-due.util';
 export * from './monthly-equivalent.util';

@@ -11,3 +11,4 @@ export * from './movement-totals.model';
 export * from './navigation-item.model';
 export * from './scheduled-transaction.model';
 export * from './select-option.model';
+export * from './settings-section.model';

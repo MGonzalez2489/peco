@@ -42,7 +42,7 @@ const THEME_OPTIONS: readonly ThemeOption[] = [
       <div>
         <h2
           id="theme-settings-title"
-          class="text-lg font-bold tracking-tight text-slate-900 dark:text-white"
+          class="hidden text-lg font-bold tracking-tight text-slate-900 md:block dark:text-white"
         >
           Apariencia
         </h2>
