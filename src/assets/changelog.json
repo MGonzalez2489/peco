@@ -1,5 +1,16 @@
 [
   {
+    "version": "v0.0.7-a",
+    "fecha": "2026-10-07",
+    "highlights": [
+      "Mejora de UX: rediseño de la vista móvil de Programados con navegación por pestañas contextuales (Resumen vs. Movimientos)",
+      "Mejora de UX: distribución visual adaptativa en móviles utilizando una barra de progreso multicolor segmentada en lugar del gráfico donut",
+      "Mejora de UX: optimización del espacio vertical en el resumen mensual mediante un grid compacto y leyenda de categorías en dos columnas",
+      "Mejora de UX: barra de búsqueda y filtros simplificada para pantallas móviles reduciendo la ocupación de pantalla",
+      "Mejora de UX: jerarquía visual de color neutralizada en las pestañas móviles para destacar el botón principal de acción"
+    ]
+  },
+  {
     "version": "v0.0.6-a",
     "fecha": "2026-10-06",
     "highlights": [
