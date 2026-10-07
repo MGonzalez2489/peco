@@ -22,4 +22,14 @@ describe('AppComponent', () => {
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('app-navbar')).not.toBeNull();
   });
+
+  it('should not render the global mobile tab bar inside the navbar', () => {
+    const fixture = TestBed.createComponent(AppComponent);
+    fixture.detectChanges();
+    const navbar = fixture.nativeElement.querySelector('app-navbar') as HTMLElement;
+
+    expect(navbar).not.toBeNull();
+    expect(navbar.textContent).not.toContain('Movimientos');
+    expect(navbar.textContent).not.toContain('Cuentas');
+  });
 });

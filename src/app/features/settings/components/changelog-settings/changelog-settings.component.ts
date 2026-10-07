@@ -10,7 +10,7 @@ import {AppIconComponent} from '@shared/components';
       <div>
         <h2
           id="changelog-settings-title"
-          class="text-lg font-bold tracking-tight text-slate-900 dark:text-white"
+          class="hidden text-lg font-bold tracking-tight text-slate-900 md:block dark:text-white"
         >
           Novedades y cambios
         </h2>

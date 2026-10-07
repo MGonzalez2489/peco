@@ -17,3 +17,4 @@ export * from './root-category-id.constant';
 export * from './scheduled-transaction-stop-condition-label.constant';
 export * from './seed-accounts.constant';
 export * from './seed-categories.constant';
+export * from './settings-sections.constant';

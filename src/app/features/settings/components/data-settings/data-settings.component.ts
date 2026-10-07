@@ -10,7 +10,7 @@ import {ConfirmModalComponent} from '@shared/components/confirm-modal/confirm-mo
       <div>
         <h2
           id="data-settings-title"
-          class="text-lg font-bold tracking-tight text-slate-900 dark:text-white"
+          class="hidden text-lg font-bold tracking-tight text-slate-900 md:block dark:text-white"
         >
           Datos y copias
         </h2>

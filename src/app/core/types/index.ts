@@ -9,3 +9,4 @@ export * from './pwa-install-prompt.type';
 export * from './recurrence-frequency.type';
 export * from './scheduled-transaction-stop-condition.type';
 export * from './scheduled-transaction-type.type';
+export * from './settings-section-group.type';

@@ -1,4 +1,5 @@
 import {Routes} from '@angular/router';
+import {settingsHubGuard} from './guards/settings-hub.guard';
 import {SettingsComponent} from './settings.component';
 
 export const settingsRoutes: Routes = [
@@ -6,7 +7,15 @@ export const settingsRoutes: Routes = [
     path: '',
     component: SettingsComponent,
     children: [
-      {path: '', redirectTo: 'theme', pathMatch: 'full'},
+      {
+        path: '',
+        title: 'Ajustes',
+        canActivate: [settingsHubGuard],
+        loadComponent: () =>
+          import('./components/settings-hub/settings-hub.component').then(
+            (m) => m.SettingsHubComponent,
+          ),
+      },
       {path: 'appearance', redirectTo: 'theme', pathMatch: 'full'},
       {path: 'data-backup', redirectTo: 'data', pathMatch: 'full'},
       {
