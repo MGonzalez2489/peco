@@ -1,6 +1,20 @@
 [
   {
     "version": "v0.0.6-a",
+    "fecha": "2026-10-06",
+    "highlights": [
+      "Nueva Funcionalidad: selector de tipo (Egresos vs. Ingresos) en el gráfico de distribución de movimientos programados",
+      "Mejora de UX: rediseño compacto de tarjetas en Próximos Pagos ocultando acciones no disponibles y optimizando el espacio vertical",
+      "Mejora de UX: navegación rediseñada en móviles, removiendo la barra de pestañas global para ganar espacio vertical",
+      "Mejora de UX: nueva barra de navegación contextual exclusiva para la sección de Ajustes en dispositivos móviles",
+      "Mejora de UX: leyenda del gráfico enriquecida con desglose explícito de montos y porcentajes",
+      "Mejora de UX: selectores visuales mejorados para categoría y cuenta con vista previa de ícono y punto de color",
+      "Mejora de UX: enfoque automático en el campo de nombre al abrir el formulario de nuevo movimiento programado",
+      "Corrección de Error: preservación de datos en el formulario al cambiar la condición de fin a repeticiones"
+    ]
+  },
+  {
+    "version": "v0.0.5-a",
     "fecha": "2026-10-05",
     "highlights": [
       "Nueva Funcionalidad: integración de Lucide Icons para una interfaz más limpia e intuitiva",
