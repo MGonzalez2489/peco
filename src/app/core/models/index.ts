@@ -2,6 +2,7 @@ export * from './account.model';
 export * from './backup-data.model';
 export * from './category.model';
 export * from './changelog.model';
+export * from './distribution-chart-item.model';
 export * from './monthly-commitments.model';
 export * from './movement.model';
 export * from './movement-filters.model';

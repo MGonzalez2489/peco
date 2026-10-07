@@ -1,6 +1,6 @@
 import {CurrencyPipe} from '@angular/common';
 import {ChangeDetectionStrategy, Component, input, output} from '@angular/core';
-import {CategoryDistributionItem} from '@core/stores/scheduled-transactions.store';
+import {DistributionChartItem} from '@core/models';
 
 @Component({
   selector: 'app-scheduled-distribution-legend',
@@ -9,7 +9,7 @@ import {CategoryDistributionItem} from '@core/stores/scheduled-transactions.stor
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ScheduledDistributionLegendComponent {
-  readonly items = input<CategoryDistributionItem[]>([]);
+  readonly items = input<DistributionChartItem[]>([]);
   readonly selectedCategoryId = input<string | null>(null);
 
   readonly categorySelected = output<string>();
