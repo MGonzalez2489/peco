@@ -43,20 +43,4 @@
       <app-nav-icon name="menu" sizeClass="h-6 w-6" />
     </button>
   </div>
-
-  <ul class="flex items-center gap-1 overflow-x-auto px-2 pb-2 no-scrollbar md:hidden">
-    @for (item of quickLinks; track item.route) {
-      <li class="shrink-0">
-        <a
-          [routerLink]="item.route"
-          [attr.aria-current]="isItemActive(item.route) ? 'page' : null"
-          class="flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950"
-          [class]="linkClasses(item.route)"
-        >
-          <app-nav-icon [name]="item.icon" sizeClass="h-4 w-4" />
-          <span>{{ item.label }}</span>
-        </a>
-      </li>
-    }
-  </ul>
 </nav>
