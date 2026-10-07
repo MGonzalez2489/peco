@@ -1,5 +1,5 @@
 <div
-  class="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between"
+  class="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:p-4"
 >
   <div class="relative w-full sm:max-w-xs">
     <app-icon
@@ -12,14 +12,16 @@
       [(ngModel)]="searchQueryLocal"
       (input)="onSearchInput()"
       placeholder="Buscar por nombre..."
-      class="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-12 pr-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+      class="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
       aria-label="Buscar por nombre"
     />
   </div>
 
-  <div class="flex flex-wrap items-center gap-2">
+  <div
+    class="flex flex-nowrap items-center gap-2 overflow-x-auto py-0.5 sm:flex-wrap sm:overflow-x-visible sm:py-0 no-scrollbar"
+  >
     <div
-      class="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1 dark:border-slate-700 dark:bg-slate-800/60"
+      class="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-0.5 dark:border-slate-700 dark:bg-slate-800/60"
     >
       <button
         type="button"
@@ -27,8 +29,8 @@
         [attr.aria-pressed]="scheduledStore.typeFilter() === 'ALL'"
         [class]="
           scheduledStore.typeFilter() === 'ALL'
-            ? 'rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition'
-            : 'rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
+            ? 'rounded-lg bg-indigo-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm transition sm:px-3 sm:py-1.5'
+            : 'rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-600 transition hover:text-slate-900 dark:text-slate-300 dark:hover:text-white sm:px-3 sm:py-1.5'
         "
       >
         Todos ({{ scheduledStore.totalFilteredCount() }})
@@ -39,8 +41,8 @@
         [attr.aria-pressed]="scheduledStore.typeFilter() === 'INCOME'"
         [class]="
           scheduledStore.typeFilter() === 'INCOME'
-            ? 'rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition'
-            : 'rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
+            ? 'rounded-lg bg-indigo-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm transition sm:px-3 sm:py-1.5'
+            : 'rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-600 transition hover:text-slate-900 dark:text-slate-300 dark:hover:text-white sm:px-3 sm:py-1.5'
         "
       >
         Ingresos ({{ scheduledStore.incomeFilteredCount() }})
@@ -51,8 +53,8 @@
         [attr.aria-pressed]="scheduledStore.typeFilter() === 'EXPENSE'"
         [class]="
           scheduledStore.typeFilter() === 'EXPENSE'
-            ? 'rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition'
-            : 'rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
+            ? 'rounded-lg bg-indigo-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm transition sm:px-3 sm:py-1.5'
+            : 'rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-600 transition hover:text-slate-900 dark:text-slate-300 dark:hover:text-white sm:px-3 sm:py-1.5'
         "
       >
         Egresos ({{ scheduledStore.expenseFilteredCount() }})
@@ -63,18 +65,18 @@
       <select
         [ngModel]="scheduledStore.selectedCategoryId()"
         (ngModelChange)="setCategoryFilter($event)"
-        class="w-full appearance-none rounded-xl border border-slate-300 bg-white px-3 py-2.5 pr-10 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+        class="w-full appearance-none rounded-xl border border-slate-300 bg-white px-3 py-1.5 pr-9 text-xs text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white sm:py-2.5 sm:text-sm"
         aria-label="Filtrar por categoría"
       >
-        <option [value]="null">Todas las categorías</option>
+        <option [value]="null">Categorías ▾</option>
         @for (category of catalogStore.categories(); track category.id) {
           <option [value]="category.id">{{ category.displayName }}</option>
         }
       </select>
       <app-icon
         name="chevron-down"
-        size="16"
-        class="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500"
+        size="14"
+        class="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500"
       />
     </div>
 
@@ -86,7 +88,7 @@
       <button
         type="button"
         (click)="resetFilters()"
-        class="rounded-xl px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+        class="shrink-0 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 sm:py-2"
       >
         Limpiar filtros
       </button>
