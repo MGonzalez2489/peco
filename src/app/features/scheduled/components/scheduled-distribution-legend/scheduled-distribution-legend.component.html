@@ -14,7 +14,7 @@
         <span
           aria-hidden="true"
           class="h-2.5 w-2.5 shrink-0 rounded-full"
-          [style.background-color]="item.categoryColor"
+          [style.background-color]="item.color"
         ></span>
         <span class="truncate text-sm font-medium text-slate-700 dark:text-slate-200">
           {{ item.categoryName }}
@@ -25,7 +25,7 @@
         <span
           class="w-20 shrink-0 text-right font-medium whitespace-nowrap tabular-nums text-slate-500"
         >
-          {{ item.totalAmount | currency: 'USD' : 'symbol' : '1.2-2' }}
+          {{ item.amount | currency: 'USD' : 'symbol' : '1.2-2' }}
         </span>
         <span class="w-12 shrink-0 text-right font-semibold whitespace-nowrap tabular-nums">
           ({{ item.percentage }}%)

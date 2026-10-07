@@ -1,26 +1,29 @@
 import {CurrencyPipe} from '@angular/common';
 import {ChangeDetectionStrategy, Component, computed, inject, signal} from '@angular/core';
-import {ScheduledTransaction} from '@core/models';
+import {DistributionChartItem, ScheduledTransaction} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {ScheduledTransactionsStore} from '@core/stores/scheduled-transactions.store';
 import {toSoftCategoryColor} from '@core/utils';
+import {AppIconComponent} from '@shared/components/app-icon/app-icon.component';
 import {ExecuteScheduleModalComponent} from './components/execute-schedule-modal.component';
-import {ScheduledDistributionLegendComponent} from './components/scheduled-distribution-legend/scheduled-distribution-legend.component';
+import {ScheduledDistributionChartComponent} from './components/scheduled-distribution-chart/scheduled-distribution-chart.component';
 import {ScheduledFilterBarComponent} from './components/scheduled-filter-bar/scheduled-filter-bar.component';
 import {ScheduledTransactionCardComponent} from './components/scheduled-transaction-card.component';
 import {ScheduledTransactionFormModalComponent} from './components/scheduled-transaction-form-modal.component';
 
 type DistributionType = 'EXPENSE' | 'INCOME';
+type MobileSection = 'summary' | 'transactions';
 
 @Component({
   selector: 'app-scheduled-transactions',
   imports: [
     CurrencyPipe,
+    AppIconComponent,
     ScheduledTransactionCardComponent,
     ScheduledTransactionFormModalComponent,
     ExecuteScheduleModalComponent,
     ScheduledFilterBarComponent,
-    ScheduledDistributionLegendComponent,
+    ScheduledDistributionChartComponent,
   ],
   templateUrl: './scheduled-transactions.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -50,9 +53,35 @@ export class ScheduledTransactionsComponent {
       : this.scheduledStore.categoryDistributionSummary(),
   );
 
-  readonly distributionTypeLabel = computed(() =>
-    this.distributionType() === 'INCOME' ? 'ingresos' : 'egresos',
+  readonly chartType = computed<'expense' | 'income'>(() =>
+    this.distributionType() === 'INCOME' ? 'income' : 'expense',
   );
+
+  readonly chartDistributionData = computed<DistributionChartItem[]>(() =>
+    this.distributionItems().map((item) => ({
+      categoryId: item.categoryId,
+      categoryName: item.categoryName,
+      color: item.categoryColor,
+      amount: item.totalAmount,
+      percentage: item.percentage,
+    })),
+  );
+
+  readonly chartTotalAmount = computed(() =>
+    this.distributionType() === 'INCOME'
+      ? this.summary().totalIncome
+      : this.summary().totalExpenses,
+  );
+
+  readonly chartAvailableAmount = computed(() =>
+    this.distributionType() === 'INCOME'
+      ? 0
+      : this.summary().totalIncome - this.summary().totalExpenses,
+  );
+
+  readonly movementsCount = computed(() => this.filteredSchedules().length);
+
+  readonly mobileSection = signal<MobileSection>('summary');
 
   readonly listCounterLabel = computed(() => {
     const shown = this.filteredSchedules().length;
@@ -74,29 +103,6 @@ export class ScheduledTransactionsComponent {
     if (percentage >= 50) return 'bg-amber-500';
     return 'bg-emerald-500';
   });
-
-  protected readonly donutSegments = computed(() => {
-    const items = this.distributionItems();
-    const total = items.reduce((sum, item) => sum + item.totalAmount, 0);
-    let offset = 0;
-    return items.map((item) => {
-      const percent = total > 0 ? (item.totalAmount / total) * 100 : 0;
-      const circumference = 2 * Math.PI * 45;
-      const dash = (percent / 100) * circumference;
-      const segment = {
-        ...item,
-        dash,
-        offset: circumference - (offset / 100) * circumference,
-        percent,
-      };
-      offset += percent;
-      return segment;
-    });
-  });
-
-  protected readonly donutTotal = computed(() =>
-    this.distributionItems().reduce((sum, item) => sum + item.totalAmount, 0),
-  );
 
   openCreate(): void {
     this.scheduleToEdit.set(null);
@@ -143,11 +149,8 @@ export class ScheduledTransactionsComponent {
     this.distributionType.set(type);
   }
 
-  onSegmentKeydown(event: KeyboardEvent, categoryId: string): void {
-    if (event.key !== 'Enter' && event.key !== ' ') return;
-
-    event.preventDefault();
-    this.onCategorySelected(categoryId);
+  selectMobileSection(section: MobileSection): void {
+    this.mobileSection.set(section);
   }
 
   onTypeFilterChange(type: 'ALL' | 'INCOME' | 'EXPENSE'): void {
