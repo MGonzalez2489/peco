@@ -9,14 +9,21 @@ import {
   viewChild,
 } from '@angular/core';
 import {FormBuilder, FormControl, ReactiveFormsModule, Validators} from '@angular/forms';
-import {COLOR_PALETTE, ACCOUNT_COLORS, DEFAULT_ACCOUNT_COLOR} from '@core/constants';
+import {
+  ADJUSTMENT_CATEGORY_ID,
+  COLOR_PALETTE,
+  ACCOUNT_COLORS,
+  DEFAULT_ACCOUNT_COLOR,
+} from '@core/constants';
 import {Account} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
+import {MovementsStore} from '@core/stores/movements.store';
 import {AccountColor} from '@core/types';
-import {formatCurrency} from '@core/utils';
 import {ModalComponent} from '@shared/components';
 import {CurrencyInputDirective} from '@shared/directives';
 import {AppIconComponent} from '@shared/components/app-icon/app-icon.component';
+
+const ADJUSTMENT_NOTE = 'Ajuste manual de saldo';
 
 @Component({
   selector: 'app-account-form-modal',
@@ -32,6 +39,7 @@ export class AccountFormModalComponent {
   readonly saved = output<void>();
 
   readonly accountsStore = inject(AccountsStore);
+  readonly movementsStore = inject(MovementsStore);
 
   private readonly fb = inject(FormBuilder);
 
@@ -44,13 +52,12 @@ export class AccountFormModalComponent {
     }),
     targetGoal: this.fb.control<number | null>(null, Validators.min(0)),
     color: this.fb.control<string>(DEFAULT_ACCOUNT_COLOR),
+    includeInTotal: this.fb.control<boolean>(true),
     pinToHome: this.fb.control<boolean>(false),
     note: this.fb.control<string>(''),
   });
 
   readonly colorPalette = COLOR_PALETTE;
-
-  readonly formatCurrency = formatCurrency;
 
   constructor() {
     effect(() => {
@@ -80,13 +87,14 @@ export class AccountFormModalComponent {
     const balance = this.form.controls.initialBalance;
 
     if (editing) {
-      balance.clearValidators();
+      balance.setValidators([Validators.required]);
       balance.updateValueAndValidity();
       this.form.reset({
         name: editing.name,
-        initialBalance: null,
+        initialBalance: editing.currentBalance,
         targetGoal: editing.targetGoal ?? null,
         color: this.resolveColor(editing.color),
+        includeInTotal: editing.includeInTotal ?? true,
         pinToHome: editing.pinToHome ?? false,
         note: editing.note ?? '',
       });
@@ -98,9 +106,20 @@ export class AccountFormModalComponent {
         initialBalance: 0,
         targetGoal: null,
         color: DEFAULT_ACCOUNT_COLOR,
+        includeInTotal: true,
         pinToHome: false,
         note: '',
       });
+    }
+  }
+
+  onAmountInputFocus(event: FocusEvent): void {
+    (event.target as HTMLInputElement).select();
+  }
+
+  onAmountInputBlur(): void {
+    if (this.form.controls.initialBalance.value === null) {
+      this.form.controls.initialBalance.setValue(0);
     }
   }
 
@@ -118,10 +137,25 @@ export class AccountFormModalComponent {
     const editing = this.account();
 
     if (editing) {
+      const newBalance = raw.initialBalance ?? 0;
+      const delta = Math.round((newBalance - editing.currentBalance) * 100) / 100;
+
+      if (delta !== 0) {
+        this.movementsStore.registerMovement({
+          accountId: editing.id,
+          categoryId: ADJUSTMENT_CATEGORY_ID,
+          type: delta > 0 ? 'INCOME' : 'EXPENSE',
+          amount: Math.abs(delta),
+          note: ADJUSTMENT_NOTE,
+        });
+      }
+
       this.accountsStore.updateAccount(editing.id, {
         name: raw.name?.trim() ?? '',
+        currentBalance: newBalance,
         targetGoal: raw.targetGoal ?? undefined,
         color: raw.color || DEFAULT_ACCOUNT_COLOR,
+        includeInTotal: raw.includeInTotal ?? true,
         pinToHome: raw.pinToHome ?? false,
         note: raw.note?.trim() || undefined,
       });
@@ -131,6 +165,7 @@ export class AccountFormModalComponent {
         initialBalance: raw.initialBalance ?? 0,
         targetGoal: raw.targetGoal ?? undefined,
         color: raw.color || DEFAULT_ACCOUNT_COLOR,
+        includeInTotal: raw.includeInTotal ?? true,
         pinToHome: raw.pinToHome ?? false,
         note: raw.note?.trim() || undefined,
       });

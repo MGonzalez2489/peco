@@ -1,9 +1,16 @@
 import {Account} from '../models/account.model';
 
-export const ensureRootAccount = (accounts: Account[]): Account[] => {
-  if (accounts.length === 0) return accounts;
-  if (accounts.some((account) => account.isRoot)) return accounts;
+const withIncludeInTotal = (account: Account): Account => ({
+  ...account,
+  includeInTotal: account.includeInTotal ?? true,
+});
 
-  const [first, ...rest] = accounts;
+export const ensureRootAccount = (accounts: Account[]): Account[] => {
+  const normalized = accounts.map(withIncludeInTotal);
+
+  if (normalized.length === 0) return normalized;
+  if (normalized.some((account) => account.isRoot)) return normalized;
+
+  const [first, ...rest] = normalized;
   return [{...first, isRoot: true}, ...rest];
 };

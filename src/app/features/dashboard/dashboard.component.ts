@@ -25,7 +25,7 @@ export class DashboardComponent {
   readonly accountsStore = inject(AccountsStore);
   readonly movementsStore = inject(MovementsStore);
 
-  readonly totalBalance = this.accountsStore.totalBalance;
+  readonly availableBalance = this.accountsStore.availableBalance;
 
   readonly pinnedAccounts = this.accountsStore.pinnedAccounts;
 

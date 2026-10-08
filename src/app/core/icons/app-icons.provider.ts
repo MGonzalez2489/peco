@@ -68,6 +68,7 @@ import {
   GraduationCap,
   PiggyBank,
   Utensils,
+  Scale,
 } from 'lucide-angular';
 
 export const ALLOWED_ICONS = {
@@ -138,6 +139,7 @@ export const ALLOWED_ICONS = {
   GraduationCap,
   PiggyBank,
   Utensils,
+  Scale,
 };
 
 export function provideAppIcons(): Provider {

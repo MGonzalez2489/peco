@@ -68,7 +68,8 @@ export type IconName =
   | 'graduation-cap'
   | 'piggy-bank'
   | 'utensils'
-  | 'lock';
+  | 'lock'
+  | 'scale';
 
 @Component({
   selector: 'app-icon',
