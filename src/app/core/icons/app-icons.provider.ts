@@ -69,6 +69,7 @@ import {
   PiggyBank,
   Utensils,
   Scale,
+  Pin,
 } from 'lucide-angular';
 
 export const ALLOWED_ICONS = {
@@ -140,6 +141,7 @@ export const ALLOWED_ICONS = {
   PiggyBank,
   Utensils,
   Scale,
+  Pin,
 };
 
 export function provideAppIcons(): Provider {

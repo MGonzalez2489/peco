@@ -4,8 +4,8 @@ import {AccountsStore} from '@core/stores/accounts.store';
 import {accountColor, formatCurrency} from '@core/utils';
 import {MovementFormModalComponent} from '@features/movements/components';
 import {AppIconComponent} from '@shared/components/app-icon/app-icon.component';
-import {AccountFormModalComponent} from './components/account-form-modal.component';
 import {AccountDistributionChartComponent} from './components/account-distribution-chart/account-distribution-chart.component';
+import {AccountFormModalComponent} from './components/account-form-modal.component';
 
 @Component({
   selector: 'app-accounts',
@@ -51,5 +51,11 @@ export class AccountsComponent {
 
   closeEditModal(): void {
     this.editingAccount.set(null);
+  }
+
+  getGoalProgress(account: Account): number {
+    const goal = account.targetGoal ?? 0;
+    if (goal <= 0) return 0;
+    return Math.min(100, Math.max(0, Math.round((account.currentBalance / goal) * 100)));
   }
 }
