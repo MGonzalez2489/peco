@@ -132,7 +132,7 @@
         <span class="block text-sm font-medium text-slate-900 dark:text-white">
           Fijar en la pantalla de Inicio
         </span>
-        <span class="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">
+        <span class="mt-0.5 hidden md:block text-xs text-slate-500 dark:text-slate-400">
           Muestra este apartado en el carrusel del Resumen.
         </span>
       </span>
@@ -165,7 +165,7 @@
         <span class="block text-sm font-medium text-slate-900 dark:text-white">
           Incluir en el saldo disponible
         </span>
-        <span class="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">
+        <span class="mt-0.5 hidden md:block text-xs text-slate-500 dark:text-slate-400">
           Si se desactiva, este saldo no se sumará a tu disponible en la pantalla principal.
         </span>
       </span>
@@ -199,7 +199,7 @@
         type="submit"
         class="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm shadow-indigo-600/30 transition hover:bg-indigo-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
       >
-        {{ account() ? 'Guardar cambios' : 'Crear apartado' }}
+        {{ account() ? 'Guardar cambios' : 'Crear cuenta' }}
       </button>
     </div>
   </form>
