@@ -69,7 +69,8 @@ export type IconName =
   | 'piggy-bank'
   | 'utensils'
   | 'lock'
-  | 'scale';
+  | 'scale'
+  | 'pin';
 
 @Component({
   selector: 'app-icon',
