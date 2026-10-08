@@ -29,6 +29,12 @@ export const AccountsStore = signalStore(
   withComputed(({accounts, selectedAccountId}) => ({
     rootAccount: computed(() => accounts().find((account) => account.isRoot === true)),
     pinnedAccounts: computed(() => accounts().filter((account) => account.pinToHome === true)),
+    featuredAccounts: computed(() =>
+      accounts().filter((account) => account.isRoot === true || (account.targetGoal ?? 0) > 0),
+    ),
+    secondaryAccounts: computed(() =>
+      accounts().filter((account) => account.isRoot !== true && (account.targetGoal ?? 0) <= 0),
+    ),
     totalBalance: computed(() =>
       accounts().reduce((total, account) => total + account.currentBalance, 0),
     ),

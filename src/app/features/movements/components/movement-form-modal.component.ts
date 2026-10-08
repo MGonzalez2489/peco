@@ -55,6 +55,7 @@ interface MovementFormValue {
 })
 export class MovementFormModalComponent {
   readonly isOpen = input(false);
+  readonly presetType = input<MovementType>('EXPENSE');
 
   readonly closed = output<void>();
 
@@ -162,9 +163,10 @@ export class MovementFormModalComponent {
 
     effect(() => {
       if (this.isOpen()) {
+        const preset = this.presetType();
         this.form.reset({
           amount: 0,
-          type: 'EXPENSE',
+          type: preset,
           accountId: '',
           categoryId: '',
           targetAccountId: null,
@@ -176,14 +178,14 @@ export class MovementFormModalComponent {
           totalOccurrences: null,
           endDate: null,
         });
-        this.selectedType.set('EXPENSE');
+        this.selectedType.set(preset);
         this.sourceAccountId.set('');
         this.isRecurring.set(false);
         this.stopCondition.set('NEVER');
         this.syncStopCondition('NEVER');
         const first = this.accounts()[0];
         if (first) sourceControl.setValue(first.id);
-        this.syncDestination('EXPENSE');
+        this.syncDestination(preset);
       }
     });
 
