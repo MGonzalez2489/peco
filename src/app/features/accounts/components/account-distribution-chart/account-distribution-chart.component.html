@@ -1,0 +1,37 @@
+@if (hasData()) {
+  <div class="relative" role="img" [attr.aria-label]="ariaLabel()">
+    <apx-chart
+      [chart]="chart()"
+      [series]="series()"
+      [labels]="labels()"
+      [colors]="colors()"
+      [plotOptions]="plotOptions()"
+      [dataLabels]="dataLabels()"
+      [legend]="legend()"
+      [stroke]="stroke()"
+      [theme]="theme()"
+      [tooltip]="tooltip()"
+    />
+
+    <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+      <span
+        class="text-[11px] font-medium tracking-wide text-slate-400 uppercase dark:text-slate-500"
+      >
+        Total
+      </span>
+      <span class="text-xl font-extrabold tabular-nums text-slate-900 dark:text-white">
+        {{ formatCurrency(totalBalance()) }}
+      </span>
+      <span class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+        {{ accountCount() }} cuentas
+      </span>
+    </div>
+  </div>
+} @else {
+  <div
+    class="flex min-h-60 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-200 p-6 text-center dark:border-slate-700"
+  >
+    <app-icon name="pie-chart" size="24" class="h-6 w-6 text-slate-300 dark:text-slate-600" />
+    <p class="text-sm text-slate-500 dark:text-slate-400">Aún no hay saldos para distribuir.</p>
+  </div>
+}
