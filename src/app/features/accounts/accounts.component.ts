@@ -6,6 +6,7 @@ import {MovementFormModalComponent} from '@features/movements/components';
 import {AppIconComponent} from '@shared/components/app-icon/app-icon.component';
 import {AccountDistributionChartComponent} from './components/account-distribution-chart/account-distribution-chart.component';
 import {AccountFormModalComponent} from './components/account-form-modal.component';
+import {RouterLink} from '@angular/router';
 
 @Component({
   selector: 'app-accounts',
@@ -14,6 +15,7 @@ import {AccountFormModalComponent} from './components/account-form-modal.compone
     AccountFormModalComponent,
     AccountDistributionChartComponent,
     MovementFormModalComponent,
+    RouterLink,
   ],
   templateUrl: './accounts.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
