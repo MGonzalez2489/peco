@@ -32,6 +32,11 @@ export const AccountsStore = signalStore(
     totalBalance: computed(() =>
       accounts().reduce((total, account) => total + account.currentBalance, 0),
     ),
+    availableBalance: computed(() =>
+      accounts()
+        .filter((account) => account.includeInTotal !== false)
+        .reduce((total, account) => total + account.currentBalance, 0),
+    ),
     selectedAccount: computed(() =>
       accounts().find((account) => account.id === selectedAccountId()),
     ),
@@ -61,6 +66,7 @@ export const AccountsStore = signalStore(
             id: crypto.randomUUID(),
             name: dto.name.trim(),
             currentBalance: dto.initialBalance,
+            includeInTotal: dto.includeInTotal ?? true,
             targetGoal: dto.targetGoal,
             color: dto.color,
             icon: dto.icon,

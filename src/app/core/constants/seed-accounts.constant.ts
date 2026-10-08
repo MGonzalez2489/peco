@@ -5,6 +5,7 @@ export const SEED_ACCOUNTS: Account[] = [
     id: 'c-cash',
     name: 'Efectivo',
     currentBalance: 0,
+    includeInTotal: true,
     color: 'emerald',
     icon: 'wallet',
     pinToHome: true,

@@ -76,4 +76,13 @@ export const SEED_CATEGORIES: Category[] = [
     applyType: 'TRANSFER',
     isSystem: true,
   },
+  {
+    id: 'adjustment',
+    name: 'adjustment',
+    displayName: 'Ajuste de Saldo',
+    icon: 'scale',
+    color: '#64748B',
+    applyType: 'BOTH',
+    isSystem: true,
+  },
 ];

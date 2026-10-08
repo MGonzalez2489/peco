@@ -46,9 +46,7 @@ export const CatalogStore = signalStore(
       ),
     ),
     transferCategory: computed(() =>
-      categories().find(
-        (category) => category.applyType === 'TRANSFER' || category.isSystem === true,
-      ),
+      categories().find((category) => category.applyType === 'TRANSFER'),
     ),
   })),
   withMethods((store) => {
@@ -120,7 +118,7 @@ export const CatalogStore = signalStore(
         updates: Partial<Pick<Category, 'applyType' | 'color' | 'displayName' | 'icon'>>,
       ): void {
         const target = store.categories().find((category) => category.id === id);
-        if (!target || isRootCategory(target)) return;
+        if (!target || isRootCategory(target) || target.isSystem === true) return;
 
         commit(
           store.categories().map((category) =>
@@ -138,7 +136,7 @@ export const CatalogStore = signalStore(
       },
       deleteCategory(id: string): boolean {
         const target = store.categories().find((category) => category.id === id);
-        if (!target || isRootCategory(target)) return false;
+        if (!target || isRootCategory(target) || target.isSystem === true) return false;
 
         injector.get(ScheduledTransactionsStore).reassignCategoryId(id, ROOT_CATEGORY_ID);
         injector.get(MovementsStore).reassignCategoryId(id, ROOT_CATEGORY_ID);

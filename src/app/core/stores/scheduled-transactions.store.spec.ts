@@ -124,7 +124,7 @@ describe('ScheduledTransactionsStore', () => {
     expect(store.monthlyCommitmentsSummary().totalIncome).toBe(1000);
     expect(store.monthlyCommitmentsSummary().totalExpenses).toBe(200);
     expect(store.monthlyCommitmentsSummary().netProjectedImpact).toBe(800);
-    expect(store.projectedAvailableBalance()).toBe(accountsStore.totalBalance() + 800);
+    expect(store.projectedAvailableBalance()).toBe(accountsStore.availableBalance() + 800);
     expect(store.incomeCommitmentPercentage()).toBe(20);
   });
 

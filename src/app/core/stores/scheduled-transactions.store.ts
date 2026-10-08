@@ -189,7 +189,7 @@ export const ScheduledTransactionsStore = signalStore(
         projectedMonthlyNet: computed(() => monthlyCommitmentsSummary().netProjectedImpact),
         netImpact: computed(() => monthlyCommitmentsSummary().netProjectedImpact),
         projectedAvailableBalance: computed(
-          () => accountsStore.totalBalance() + monthlyCommitmentsSummary().netProjectedImpact,
+          () => accountsStore.availableBalance() + monthlyCommitmentsSummary().netProjectedImpact,
         ),
         incomeCommitmentPercentage: computed(() => {
           const {totalIncome, totalExpenses} = monthlyCommitmentsSummary();
