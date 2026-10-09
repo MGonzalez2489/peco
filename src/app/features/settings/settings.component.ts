@@ -29,9 +29,7 @@ import {SettingsNavComponent} from './components/settings-nav/settings-nav.compo
           <app-settings-nav />
         </aside>
 
-        <div
-          class="min-w-0 md:rounded-2xl md:border md:border-slate-200 md:bg-white md:p-6 md:shadow-sm dark:border-slate-800 dark:bg-slate-900"
-        >
+        <div class="min-w-0 md:rounded-2xl   dark:border-slate-800 dark:bg-slate-900">
           @if (currentSection(); as section) {
             <div class="flex items-center gap-3 md:hidden">
               <button
