@@ -13,23 +13,19 @@ import {Account} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {MovementsStore} from '@core/stores/movements.store';
 import {formatCurrency} from '@core/utils';
-import {
-  AppIconComponent,
-  ConfirmModalComponent,
-  MovementListComponent,
-  StatCardComponent,
-} from '@shared/components';
+import {AppIconComponent, ConfirmModalComponent, MovementListComponent} from '@shared/components';
 import {AccountFormModalComponent} from '../components/account-form-modal.component';
+import {AccountProgressionChartComponent} from '../components/account-progression-chart/account-progression-chart.component';
 
 @Component({
   selector: 'app-account-detail',
   imports: [
     RouterLink,
-    StatCardComponent,
     ConfirmModalComponent,
     MovementListComponent,
     AccountFormModalComponent,
     AppIconComponent,
+    AccountProgressionChartComponent,
   ],
   templateUrl: './account-detail.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -75,9 +71,6 @@ export class AccountDetailComponent {
     }
     return `La cuenta "${account.name}" tiene un saldo de ${formatCurrency(account.currentBalance)}. Se creará una transferencia automática y luego se eliminará.`;
   });
-
-  readonly accountSubtext = (targetGoal: number | undefined): string =>
-    targetGoal !== undefined ? `Meta ${formatCurrency(targetGoal)}` : 'Sin meta asignada';
 
   readonly formatCurrency = formatCurrency;
 
