@@ -7,3 +7,4 @@ export * from './nav-icon/nav-icon.component';
 export * from './navbar/navbar.component';
 export * from './sidebar/sidebar.component';
 export * from './stat-card/stat-card.component';
+export * from './month-picker-bottom-sheet/month-picker-bottom-sheet.component';

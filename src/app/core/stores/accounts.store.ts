@@ -73,6 +73,7 @@ export const AccountsStore = signalStore(
             name: dto.name.trim(),
             currentBalance: dto.initialBalance,
             includeInTotal: dto.includeInTotal ?? true,
+            createdAt: dto.createdAt ?? new Date().toISOString(),
             targetGoal: dto.targetGoal,
             color: dto.color,
             icon: dto.icon,
