@@ -6,7 +6,7 @@ import {AccountsStore} from '@core/stores/accounts.store';
 import {CatalogStore} from '@core/stores/catalog.store';
 import {MovementsStore} from '@core/stores/movements.store';
 import {MovementType} from '@core/types';
-import {groupMovementsByDate, reversalImpact, toSoftCategoryColor} from '@core/utils';
+import {accountColor, groupMovementsByDate, reversalImpact, toSoftCategoryColor} from '@core/utils';
 import {ConfirmModalComponent} from '../confirm-modal/confirm-modal.component';
 
 import {AppIconComponent, IconName} from '../app-icon/app-icon.component';
@@ -57,8 +57,8 @@ export class MovementListComponent {
 
   readonly accountName = (id: string): string => this.accountsById().get(id)?.name ?? 'Sin cuenta';
 
-  readonly accountInitial = (id: string): string =>
-    this.accountsById().get(id)?.name?.charAt(0).toUpperCase() ?? '?';
+  readonly accountDotColor = (id: string): string =>
+    accountColor(this.accountsById().get(id)?.color).chip;
 
   readonly categoryName = (movement: Movement): string => {
     const category = this.categoriesById().get(movement.categoryId);
