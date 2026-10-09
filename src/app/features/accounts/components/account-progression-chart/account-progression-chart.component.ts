@@ -1,7 +1,7 @@
 import {ChangeDetectionStrategy, Component, computed, inject, input} from '@angular/core';
 import {Account, Movement} from '@core/models';
 import {ThemeService} from '@core/services/theme.service';
-import {accountColor, formatCurrency, formatShortDate, todayIsoDate} from '@core/utils';
+import {accountColor, formatCurrency, formatShortDate} from '@core/utils';
 import {
   ApexAxisChartSeries,
   ApexChart,
@@ -23,6 +23,11 @@ interface BalanceProgressionPoint {
   value: number;
 }
 
+interface Period {
+  month: number;
+  year: number;
+}
+
 @Component({
   selector: 'app-account-progression-chart',
   imports: [NgApexchartsModule],
@@ -32,6 +37,10 @@ interface BalanceProgressionPoint {
 export class AccountProgressionChartComponent {
   readonly account = input.required<Account>();
   readonly movements = input.required<Movement[]>();
+  readonly period = input<Period>({
+    month: new Date().getMonth() + 1,
+    year: new Date().getFullYear(),
+  });
 
   private readonly themeService = inject(ThemeService);
 
@@ -50,42 +59,40 @@ export class AccountProgressionChartComponent {
 
   protected readonly progression = computed<BalanceProgressionPoint[]>(() => {
     const {id: accountId, currentBalance} = this.account();
-    const relevant = this.movements()
-      .filter(
-        (movement) =>
-          !movement.isCanceled &&
-          (movement.accountId === accountId || movement.targetAccountId === accountId),
-      )
-      .sort((a, b) => a.date.localeCompare(b.date));
-
-    if (relevant.length === 0) {
-      const today = todayIsoDate();
-      return [
-        {date: this.previousDay(today), value: currentBalance},
-        {date: today, value: currentBalance},
-      ];
-    }
-
-    const netTotal = relevant.reduce(
-      (sum, movement) => sum + this.balanceImpact(movement, accountId),
-      0,
+    const period = this.period();
+    const relevant = this.movements().filter(
+      (movement) =>
+        !movement.isCanceled &&
+        (movement.accountId === accountId || movement.targetAccountId === accountId),
     );
-    const startingBalance = currentBalance - netTotal;
+
+    const impact = (movement: Movement): number => this.balanceImpact(movement, accountId);
+
+    const afterImpact = relevant
+      .filter((movement) => this.isAfterPeriod(movement.date, period))
+      .reduce((sum, movement) => sum + impact(movement), 0);
+    const periodImpact = relevant
+      .filter((movement) => this.isInPeriod(movement.date, period))
+      .reduce((sum, movement) => sum + impact(movement), 0);
+
+    const endingBalance = currentBalance - afterImpact;
+    const startingBalance = endingBalance - periodImpact;
 
     const dailyNet = new Map<string, number>();
     for (const movement of relevant) {
+      if (!this.isInPeriod(movement.date, period)) continue;
       const day = movement.date.slice(0, 10);
-      const impact = this.balanceImpact(movement, accountId);
-      dailyNet.set(day, (dailyNet.get(day) ?? 0) + impact);
+      dailyNet.set(day, (dailyNet.get(day) ?? 0) + impact(movement));
     }
 
-    const days = [...dailyNet.keys()].sort();
+    const firstDay = this.firstDayOfPeriod(period);
+    const lastDay = this.lastVisibleDayOfPeriod(period);
     const points: BalanceProgressionPoint[] = [
-      {date: this.previousDay(days[0]), value: startingBalance},
+      {date: this.previousDay(firstDay), value: startingBalance},
     ];
 
     let balance = startingBalance;
-    for (const day of days) {
+    for (const day of this.daysBetween(firstDay, lastDay)) {
       balance += dailyNet.get(day) ?? 0;
       points.push({date: day, value: balance});
     }
@@ -207,6 +214,54 @@ export class AccountProgressionChartComponent {
         if (movement.targetAccountId === accountId) return movement.amount;
         return 0;
     }
+  }
+
+  private isInPeriod(isoDate: string, period: Period): boolean {
+    const date = new Date(isoDate);
+    if (Number.isNaN(date.getTime())) return false;
+    return date.getMonth() + 1 === period.month && date.getFullYear() === period.year;
+  }
+
+  private isAfterPeriod(isoDate: string, period: Period): boolean {
+    const date = new Date(isoDate);
+    if (Number.isNaN(date.getTime())) return false;
+    const value = date.getFullYear() * 12 + (date.getMonth() + 1);
+    const boundary = period.year * 12 + period.month;
+    return value > boundary;
+  }
+
+  private firstDayOfPeriod(period: Period): string {
+    return this.toIsoDay(new Date(period.year, period.month - 1, 1));
+  }
+
+  private lastVisibleDayOfPeriod(period: Period): string {
+    const lastDay = new Date(period.year, period.month, 0);
+    const today = new Date();
+    const isCurrentOrFuture =
+      period.year > today.getFullYear() ||
+      (period.year === today.getFullYear() && period.month >= today.getMonth() + 1);
+    return this.toIsoDay(isCurrentOrFuture ? today : lastDay);
+  }
+
+  private daysBetween(startIsoDay: string, endIsoDay: string): string[] {
+    const days: string[] = [];
+    const [startYear, startMonth, startDay] = startIsoDay.split('-').map(Number);
+    const end = new Date(endIsoDay);
+    const cursor = new Date(Date.UTC(startYear, startMonth - 1, startDay));
+
+    while (cursor.getTime() <= end.getTime()) {
+      days.push(cursor.toISOString().slice(0, 10));
+      cursor.setUTCDate(cursor.getUTCDate() + 1);
+    }
+
+    return days;
+  }
+
+  private toIsoDay(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 
   private shortCurrency(value: number): string {

@@ -7,4 +7,5 @@ export interface CreateAccountDto {
   icon?: string;
   pinToHome?: boolean;
   note?: string;
+  createdAt?: string;
 }

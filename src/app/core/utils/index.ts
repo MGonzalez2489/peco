@@ -23,3 +23,4 @@ export * from './to-soft-category-color.util';
 export * from './today-iso-date.util';
 export * from './to-iso-date.util';
 export * from './write-storage-array.util';
+export * from './is-same-month-and-year.util';

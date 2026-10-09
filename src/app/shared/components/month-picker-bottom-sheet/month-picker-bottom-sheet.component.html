@@ -1,0 +1,63 @@
+@if (isOpen()) {
+  <div
+    class="fixed inset-0 z-50 flex items-end bg-slate-900/40 backdrop-blur-sm"
+    (click)="dismiss()"
+  >
+    <div
+      class="w-full max-w-lg mx-auto bg-white rounded-t-3xl shadow-xl"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="w-12 h-1.5 bg-slate-300 rounded-full mx-auto my-3"></div>
+
+      <div class="px-5 pb-5">
+        <div class="flex items-center justify-between mb-4">
+          <button
+            type="button"
+            (click)="previousYear()"
+            [disabled]="!canGoToPreviousYear()"
+            class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-slate-100 text-slate-700 transition hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <app-icon name="chevron-left" size="18" class="w-4 h-4" />
+          </button>
+          <div class="text-base font-bold text-slate-900">{{ currentYear() }}</div>
+          <button
+            type="button"
+            (click)="nextYear()"
+            [disabled]="!canGoToNextYear()"
+            class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-slate-100 text-slate-700 transition hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <app-icon name="chevron-right" size="18" class="w-4 h-4" />
+          </button>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2">
+          @for (month of months; track $index) {
+            <button
+              type="button"
+              (click)="selectMonth($index + 1)"
+              [disabled]="isMonthDisabled($index + 1)"
+              class="px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              [class.bg-indigo-600]="currentMonth() === $index + 1 && !isMonthDisabled($index + 1)"
+              [class.text-white]="currentMonth() === $index + 1 && !isMonthDisabled($index + 1)"
+              [class.bg-slate-100]="currentMonth() !== $index + 1 && !isMonthDisabled($index + 1)"
+              [class.text-slate-700]="currentMonth() !== $index + 1 && !isMonthDisabled($index + 1)"
+              [class.hover:bg-slate-200]="
+                currentMonth() !== $index + 1 && !isMonthDisabled($index + 1)
+              "
+            >
+              {{ month }}
+            </button>
+          }
+        </div>
+
+        <button
+          type="button"
+          (click)="apply()"
+          class="mt-4 w-full rounded-xl bg-indigo-600 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700"
+        >
+          Aplicar
+        </button>
+      </div>
+    </div>
+  </div>
+}

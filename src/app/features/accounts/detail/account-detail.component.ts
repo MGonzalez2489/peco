@@ -12,10 +12,21 @@ import {map} from 'rxjs';
 import {Account} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {MovementsStore} from '@core/stores/movements.store';
-import {formatCurrency} from '@core/utils';
-import {AppIconComponent, ConfirmModalComponent, MovementListComponent} from '@shared/components';
+import {formatCurrency, isSameMonthAndYear} from '@core/utils';
+import {
+  AppIconComponent,
+  ConfirmModalComponent,
+  MonthPickerBottomSheetComponent,
+  MonthPickerSelection,
+  MovementListComponent,
+} from '@shared/components';
 import {AccountFormModalComponent} from '../components/account-form-modal.component';
 import {AccountProgressionChartComponent} from '../components/account-progression-chart/account-progression-chart.component';
+
+interface Period {
+  month: number;
+  year: number;
+}
 
 @Component({
   selector: 'app-account-detail',
@@ -23,6 +34,7 @@ import {AccountProgressionChartComponent} from '../components/account-progressio
     RouterLink,
     ConfirmModalComponent,
     MovementListComponent,
+    MonthPickerBottomSheetComponent,
     AccountFormModalComponent,
     AppIconComponent,
     AccountProgressionChartComponent,
@@ -42,6 +54,30 @@ export class AccountDetailComponent {
   readonly account = computed(() =>
     this.accountsStore.accounts().find((account) => account.id === this.id()),
   );
+
+  readonly selectedPeriod = signal<Period>({
+    month: new Date().getMonth() + 1,
+    year: new Date().getFullYear(),
+  });
+
+  readonly isMonthPickerOpen = signal(false);
+
+  readonly minDate = computed(() => this.account()?.createdAt ?? new Date().toISOString());
+
+  readonly maxDate = computed(() => new Date());
+
+  readonly formattedSelectedMonthDesktop = computed(() => {
+    const {month, year} = this.selectedPeriod();
+    const monthName = new Intl.DateTimeFormat('es-ES', {month: 'long'}).format(
+      new Date(year, month - 1, 1),
+    );
+    return `${monthName.charAt(0).toUpperCase()}${monthName.slice(1)} ${year}`;
+  });
+
+  readonly formattedSelectedMonthMobile = computed(() => {
+    const {month, year} = this.selectedPeriod();
+    return `${String(month).padStart(2, '0')} / ${year}`;
+  });
 
   readonly editOpen = signal(false);
 
@@ -63,6 +99,12 @@ export class AccountDetailComponent {
     this.movementsStore.movementsForAccount(this.id() ?? ''),
   );
 
+  readonly filteredTransactions = computed(() =>
+    this.accountMovements().filter((movement) =>
+      isSameMonthAndYear(movement.date, this.selectedPeriod()),
+    ),
+  );
+
   readonly accountDeletionMessage = computed(() => {
     const account = this.accountToDelete();
     if (!account) return '';
@@ -73,6 +115,19 @@ export class AccountDetailComponent {
   });
 
   readonly formatCurrency = formatCurrency;
+
+  openMonthPicker(): void {
+    this.isMonthPickerOpen.set(true);
+  }
+
+  closeMonthPicker(): void {
+    this.isMonthPickerOpen.set(false);
+  }
+
+  onMonthSelected(selection: MonthPickerSelection): void {
+    this.selectedPeriod.set({month: selection.month, year: selection.year});
+    this.isMonthPickerOpen.set(false);
+  }
 
   proceedToDeleteAccount(): void {
     const account = this.accountToDelete();

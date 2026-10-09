@@ -5,8 +5,13 @@ const withIncludeInTotal = (account: Account): Account => ({
   includeInTotal: account.includeInTotal ?? true,
 });
 
+const withCreatedAt = (account: Account): Account => ({
+  ...account,
+  createdAt: account.createdAt ?? new Date().toISOString(),
+});
+
 export const ensureRootAccount = (accounts: Account[]): Account[] => {
-  const normalized = accounts.map(withIncludeInTotal);
+  const normalized = accounts.map(withIncludeInTotal).map(withCreatedAt);
 
   if (normalized.length === 0) return normalized;
   if (normalized.some((account) => account.isRoot)) return normalized;
