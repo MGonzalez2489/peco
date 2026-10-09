@@ -9,6 +9,7 @@ import {
   ApexFill,
   ApexGrid,
   ApexMarkers,
+  ApexPlotOptions,
   ApexStroke,
   ApexTheme,
   ApexTooltip,
@@ -131,16 +132,22 @@ export class AccountProgressionChartComponent {
     type: 'gradient',
     gradient: {
       shadeIntensity: 1,
-      opacityFrom: 0.45,
+      opacityFrom: 0.4,
       opacityTo: 0,
       stops: [0, 90, 100],
+    },
+  }));
+
+  protected readonly plotOptions = computed<ApexPlotOptions>(() => ({
+    area: {
+      fillTo: 'end',
     },
   }));
 
   protected readonly grid = computed<ApexGrid>(() => ({
     borderColor: '#f1f5f9',
     strokeDashArray: 4,
-    padding: {left: 0, right: 0},
+    padding: {left: 0, right: 0, top: 10, bottom: 0},
     xaxis: {lines: {show: false}},
     yaxis: {lines: {show: true}},
   }));
@@ -162,12 +169,17 @@ export class AccountProgressionChartComponent {
     const min = Math.min(...values);
     const max = Math.max(...values);
     const span = max - min;
-    const padding = span === 0 ? Math.max(Math.abs(max) * 0.1, 1) : span * 0.15;
+    const padding = span === 0 ? Math.max(Math.abs(max) * 0.1, 1) : span * 0.1;
 
     return {
-      show: false,
+      show: true,
+      tickAmount: 2,
       min: min - padding,
       max: max + padding,
+      labels: {
+        formatter: (value: number) => this.shortCurrency(value),
+        style: {colors: '#94a3b8', fontSize: '11px'},
+      },
     };
   });
 
@@ -195,6 +207,15 @@ export class AccountProgressionChartComponent {
         if (movement.targetAccountId === accountId) return movement.amount;
         return 0;
     }
+  }
+
+  private shortCurrency(value: number): string {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      notation: 'compact',
+      maximumFractionDigits: 1,
+    }).format(value);
   }
 
   private previousDay(isoDay: string): string {
