@@ -22,63 +22,77 @@
     </button>
   </div>
 
-  <ul class="space-y-2">
+  <ul
+    class="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900"
+  >
     @for (category of categories(); track category.id) {
-      <li
-        class="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700"
-      >
-        <span
-          class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl"
-          [style.background-color]="toSoftCategoryColor(category.color)"
+      <li class="p-4 transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/60">
+        <div
+          class="flex items-center justify-between gap-3 lg:grid lg:grid-cols-12 lg:items-center lg:gap-4"
         >
-          <app-icon
-            [name]="category.icon"
-            size="20"
-            class="h-5 w-5"
-            [style.color]="category.color"
-          />
-        </span>
-
-        <span class="min-w-0 flex-1">
-          <span class="block truncate text-sm font-semibold text-slate-900 dark:text-white">
-            {{ category.displayName }}
-          </span>
-          <span
-            class="mt-1 inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300"
-          >
-            {{ applyTypeLabel(category.applyType) }}
-          </span>
-        </span>
-
-        @if (category.isRoot) {
-          <span
-            class="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-slate-200 px-2.5 py-1 text-[11px] font-medium text-slate-500 dark:border-slate-700 dark:text-slate-400"
-          >
-            <app-icon name="lock" size="12" class="h-3 w-3" />
-            Predeterminada
-          </span>
-        } @else {
-          <span class="flex shrink-0 items-center gap-1">
-            <button
-              type="button"
-              (click)="openEdit(category)"
-              [attr.aria-label]="'Editar categoría ' + category.displayName"
-              [title]="'Editar ' + category.displayName"
-              class="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-indigo-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-indigo-400"
+          <!-- COLUMNS 1-5: IDENTITY & BADGES -->
+          <div class="flex min-w-0 items-center gap-3 lg:col-span-5">
+            <span
+              class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
+              [style.background-color]="toSoftCategoryColor(category.color)"
             >
-              <app-icon name="pencil" size="16" class="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              (click)="openDelete(category)"
-              [attr.aria-label]="'Eliminar categoría ' + category.displayName"
-              [title]="'Eliminar ' + category.displayName"
-              class="rounded-lg p-2 text-slate-500 transition hover:bg-rose-50 hover:text-rose-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 dark:text-slate-400 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
-            >
-              <app-icon name="trash-2" size="16" class="h-4 w-4" />
-            </button>
-          </span>
-        }
+              <app-icon
+                [name]="category.icon"
+                size="20"
+                class="h-5 w-5"
+                [style.color]="category.color"
+              />
+            </span>
+
+            <div class="min-w-0">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="truncate text-sm font-semibold text-slate-900 dark:text-white">
+                  {{ category.displayName }}
+                </span>
+
+                @if (category.isRoot) {
+                  <span
+                    class="inline-flex shrink-0 items-center gap-1 rounded-md border border-slate-200 bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                  >
+                    <app-icon name="lock" size="10" class="h-2.5 w-2.5" />
+                    Predeterminada
+                  </span>
+                }
+              </div>
+
+              <p class="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">
+                {{ applyTypeLabel(category.applyType) }}
+              </p>
+            </div>
+          </div>
+
+          <!-- COLUMNS 6-9: METADATA (DESKTOP ONLY) - KEEPS GRID ALIGNMENT -->
+          <div class="hidden lg:col-span-4 lg:block"></div>
+
+          <!-- COLUMNS 10-12: ACTIONS -->
+          <div class="flex shrink-0 items-center justify-end gap-1 lg:col-span-3">
+            @if (!category.isRoot) {
+              <button
+                type="button"
+                (click)="openEdit(category)"
+                [attr.aria-label]="'Editar categoría ' + category.displayName"
+                [title]="'Editar ' + category.displayName"
+                class="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-indigo-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-indigo-400"
+              >
+                <app-icon name="pencil" size="16" class="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                (click)="openDelete(category)"
+                [attr.aria-label]="'Eliminar categoría ' + category.displayName"
+                [title]="'Eliminar ' + category.displayName"
+                class="rounded-lg p-2 text-slate-500 transition hover:bg-rose-50 hover:text-rose-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 dark:text-slate-400 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
+              >
+                <app-icon name="trash-2" size="16" class="h-4 w-4" />
+              </button>
+            }
+          </div>
+        </div>
       </li>
     }
   </ul>
