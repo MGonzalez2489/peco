@@ -1,12 +1,19 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
+  ElementRef,
   computed,
+  effect,
+  inject,
   input,
   linkedSignal,
   output,
+  signal,
 } from '@angular/core';
 import {AppIconComponent} from '../app-icon/app-icon.component';
+
+const DESKTOP_MEDIA_QUERY = '(min-width: 768px)';
 
 export interface MonthPickerSelection {
   month: number;
@@ -18,6 +25,9 @@ export interface MonthPickerSelection {
   imports: [AppIconComponent],
   templateUrl: './month-picker-bottom-sheet.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: {
+    '(document:keydown.escape)': 'dismiss()',
+  },
 })
 export class MonthPickerBottomSheetComponent {
   readonly isOpen = input<boolean>(false);
@@ -30,6 +40,13 @@ export class MonthPickerBottomSheetComponent {
 
   readonly monthSelect = output<MonthPickerSelection>();
   readonly close = output<void>();
+
+  private readonly elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly destroyRef = inject(DestroyRef);
+
+  private readonly desktopMedia = window.matchMedia?.(DESKTOP_MEDIA_QUERY) ?? null;
+
+  protected readonly isDesktop = signal(this.desktopMedia?.matches ?? false);
 
   readonly currentYear = linkedSignal(() => this.selectedYear());
   readonly currentMonth = linkedSignal(() => this.selectedMonth());
@@ -77,6 +94,40 @@ export class MonthPickerBottomSheetComponent {
     return this.currentYear() < this.maxYear();
   });
 
+  constructor() {
+    const media = this.desktopMedia;
+    if (media) {
+      const onChange = (event: MediaQueryListEvent): void => this.isDesktop.set(event.matches);
+
+      media.addEventListener('change', onChange);
+      this.destroyRef.onDestroy(() => media.removeEventListener('change', onChange));
+    }
+
+    effect((onCleanup) => {
+      if (!this.isOpen()) {
+        return;
+      }
+
+      let handler: ((event: MouseEvent) => void) | null = null;
+      const timeoutId = setTimeout(() => {
+        handler = (event: MouseEvent): void => {
+          const target = event.target;
+          if (target instanceof Node && !this.elementRef.nativeElement.contains(target)) {
+            this.dismiss();
+          }
+        };
+        document.addEventListener('click', handler);
+      });
+
+      onCleanup(() => {
+        clearTimeout(timeoutId);
+        if (handler) {
+          document.removeEventListener('click', handler);
+        }
+      });
+    });
+  }
+
   protected isMonthDisabled(month: number): boolean {
     const year = this.currentYear();
     const minYear = this.minYear();
@@ -99,6 +150,10 @@ export class MonthPickerBottomSheetComponent {
       return;
     }
     this.currentMonth.set(month);
+
+    if (this.isDesktop()) {
+      this.apply();
+    }
   }
 
   protected previousYear(): void {
@@ -122,7 +177,9 @@ export class MonthPickerBottomSheetComponent {
   }
 
   protected dismiss(): void {
-    this.close.emit();
+    if (this.isOpen()) {
+      this.close.emit();
+    }
   }
 
   private normalizeDate(date: string | Date): Date {
