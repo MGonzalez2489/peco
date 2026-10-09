@@ -1,63 +1,81 @@
 @if (isOpen()) {
+  <!-- OVERLAY BACKDROP: Mobile only -->
   <div
-    class="fixed inset-0 z-50 flex items-end bg-slate-900/40 backdrop-blur-sm"
+    class="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm md:hidden"
     (click)="dismiss()"
+    aria-hidden="true"
+  ></div>
+
+  <!-- MAIN PICKER: Bottom sheet on mobile, popover dropdown on desktop -->
+  <div
+    class="fixed inset-x-0 bottom-0 z-50 bg-white p-5 shadow-2xl rounded-t-3xl md:absolute md:inset-x-auto md:bottom-auto md:top-full md:left-0 md:mt-2 md:w-80 md:rounded-2xl md:border md:border-slate-200/80 md:p-4 md:shadow-xl dark:bg-slate-900 dark:md:border-slate-800"
+    role="dialog"
+    aria-label="Seleccionar mes"
   >
+    <!-- DRAG HANDLE: Mobile only -->
     <div
-      class="w-full max-w-lg mx-auto bg-white rounded-t-3xl shadow-xl"
-      (click)="$event.stopPropagation()"
-    >
-      <div class="w-12 h-1.5 bg-slate-300 rounded-full mx-auto my-3"></div>
+      class="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-4 md:hidden"
+    ></div>
 
-      <div class="px-5 pb-5">
-        <div class="flex items-center justify-between mb-4">
-          <button
-            type="button"
-            (click)="previousYear()"
-            [disabled]="!canGoToPreviousYear()"
-            class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-slate-100 text-slate-700 transition hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <app-icon name="chevron-left" size="18" class="w-4 h-4" />
-          </button>
-          <div class="text-base font-bold text-slate-900">{{ currentYear() }}</div>
-          <button
-            type="button"
-            (click)="nextYear()"
-            [disabled]="!canGoToNextYear()"
-            class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-slate-100 text-slate-700 transition hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <app-icon name="chevron-right" size="18" class="w-4 h-4" />
-          </button>
-        </div>
+    <!-- YEAR NAVIGATION HEADER -->
+    <div class="flex items-center justify-between mb-4">
+      <button
+        type="button"
+        (click)="previousYear()"
+        [disabled]="!canGoToPreviousYear()"
+        aria-label="Año anterior"
+        class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-30 dark:text-slate-300 dark:hover:bg-slate-800"
+      >
+        <app-icon name="chevron-left" size="16" />
+      </button>
 
-        <div class="grid grid-cols-3 gap-2">
-          @for (month of months; track $index) {
-            <button
-              type="button"
-              (click)="selectMonth($index + 1)"
-              [disabled]="isMonthDisabled($index + 1)"
-              class="px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              [class.bg-indigo-600]="currentMonth() === $index + 1 && !isMonthDisabled($index + 1)"
-              [class.text-white]="currentMonth() === $index + 1 && !isMonthDisabled($index + 1)"
-              [class.bg-slate-100]="currentMonth() !== $index + 1 && !isMonthDisabled($index + 1)"
-              [class.text-slate-700]="currentMonth() !== $index + 1 && !isMonthDisabled($index + 1)"
-              [class.hover:bg-slate-200]="
-                currentMonth() !== $index + 1 && !isMonthDisabled($index + 1)
-              "
-            >
-              {{ month }}
-            </button>
-          }
-        </div>
+      <span class="text-sm font-bold text-slate-900 dark:text-white">{{ currentYear() }}</span>
 
+      <button
+        type="button"
+        (click)="nextYear()"
+        [disabled]="!canGoToNextYear()"
+        aria-label="Año siguiente"
+        class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-30 dark:text-slate-300 dark:hover:bg-slate-800"
+      >
+        <app-icon name="chevron-right" size="16" />
+      </button>
+    </div>
+
+    <!-- MONTHS GRID (3x4) -->
+    <div class="grid grid-cols-3 gap-2">
+      @for (month of months; track $index) {
+        @let monthNumber = $index + 1;
+        @let disabled = isMonthDisabled(monthNumber);
+        @let selected = currentMonth() === monthNumber && !disabled;
         <button
           type="button"
-          (click)="apply()"
-          class="mt-4 w-full rounded-xl bg-indigo-600 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700"
+          (click)="selectMonth(monthNumber)"
+          [disabled]="disabled"
+          class="rounded-xl px-3 py-2.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-30"
+          [class.bg-indigo-600]="selected"
+          [class.text-white]="selected"
+          [class.bg-slate-50]="!selected && !disabled"
+          [class.text-slate-700]="!selected && !disabled"
+          [class.dark:bg-slate-800]="!selected && !disabled"
+          [class.dark:text-slate-200]="!selected && !disabled"
+          [class.hover:bg-indigo-50]="!selected && !disabled"
+          [class.dark:hover:bg-slate-700]="!selected && !disabled"
         >
-          Aplicar
+          {{ month }}
         </button>
-      </div>
+      }
+    </div>
+
+    <!-- APPLY ACTION: Mobile only (desktop applies on month click) -->
+    <div class="mt-4 md:hidden">
+      <button
+        type="button"
+        (click)="apply()"
+        class="w-full rounded-xl bg-indigo-600 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
+      >
+        Aplicar
+      </button>
     </div>
   </div>
 }

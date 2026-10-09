@@ -116,8 +116,8 @@ export class AccountDetailComponent {
 
   readonly formatCurrency = formatCurrency;
 
-  openMonthPicker(): void {
-    this.isMonthPickerOpen.set(true);
+  toggleMonthPicker(): void {
+    this.isMonthPickerOpen.update((isOpen) => !isOpen);
   }
 
   closeMonthPicker(): void {
