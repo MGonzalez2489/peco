@@ -1,124 +1,72 @@
-@if (distributionData().length === 0) {
+@if (!hasData()) {
   <div
-    class="flex min-h-55 flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 p-6 text-center dark:border-slate-700"
+    class="flex min-h-55 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-200 p-6 text-center dark:border-slate-700"
   >
+    <app-icon name="pie-chart" size="24" class="h-6 w-6 text-slate-300 dark:text-slate-600" />
     <p class="text-sm font-medium text-slate-700 dark:text-slate-300">
       No hay {{ emptyStateLabel() }} programados para el mes.
     </p>
   </div>
 } @else {
-  <!-- Desktop (md and up): concentric donut chart with interactive legend -->
-  <div class="hidden md:block">
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-      <div class="relative mx-auto flex h-52 w-52 items-center justify-center sm:mx-0">
-        <svg viewBox="0 0 100 100" class="h-full w-full">
-          <circle
-            cx="50"
-            cy="50"
-            r="45"
-            fill="transparent"
-            class="stroke-slate-200 dark:stroke-slate-800"
-            stroke-width="10"
-          />
-          @for (segment of donutSegments(); track segment.categoryId) {
-            <circle
-              cx="50"
-              cy="50"
-              r="45"
-              fill="transparent"
-              [attr.stroke]="segment.color"
-              stroke-width="10"
-              stroke-linecap="round"
-              [attr.stroke-dasharray]="segment.dash + ' ' + (2 * 3.14159 * 45 - segment.dash)"
-              [attr.stroke-dashoffset]="segment.offset"
-              transform="rotate(-90 50 50)"
-              class="cursor-pointer transition hover:opacity-90"
-              (click)="categorySelected.emit(segment.categoryId)"
-              (keydown)="onSegmentKeydown($event, segment.categoryId)"
-              role="button"
-              tabindex="0"
-              [attr.aria-pressed]="segment.categoryId === selectedCategoryId()"
-              [attr.aria-label]="
-                'Filtrar por la categoría ' +
-                segment.categoryName +
-                ', ' +
-                segment.percentage +
-                ' por ciento'
-              "
-            />
-          }
-        </svg>
-        <div class="absolute inset-0 flex flex-col items-center justify-center">
-          <span class="text-xs text-slate-500 dark:text-slate-400">Total</span>
-          <span class="text-lg font-bold text-slate-900 dark:text-white">
-            {{ totalAmount() | currency: 'USD' : 'symbol' : '1.2-2' }}
-          </span>
-        </div>
-      </div>
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-center">
+    <div
+      class="relative mx-auto max-w-64 sm:mx-0 sm:w-56"
+      role="img"
+      [attr.aria-label]="ariaLabel()"
+    >
+      <apx-chart
+        [chart]="chart()"
+        [series]="series()"
+        [labels]="labels()"
+        [colors]="colors()"
+        [plotOptions]="plotOptions()"
+        [dataLabels]="dataLabels()"
+        [legend]="legend()"
+        [stroke]="stroke()"
+        [theme]="theme()"
+        [tooltip]="tooltip()"
+      />
 
+      <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+        <span
+          class="text-[11px] font-medium tracking-wide text-slate-400 uppercase dark:text-slate-500"
+        >
+          Total
+        </span>
+        <span class="text-xl font-extrabold tabular-nums text-slate-900 dark:text-white">
+          {{ totalAmount() | currency: 'USD' : 'symbol' : '1.2-2' }}
+        </span>
+        <span class="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+          {{ categoryCountLabel() }}
+        </span>
+      </div>
+    </div>
+
+    <div class="flex-1 space-y-2">
       <app-scheduled-distribution-legend
-        [items]="distributionData()"
+        [items]="legendItems()"
         [selectedCategoryId]="selectedCategoryId()"
         (categorySelected)="categorySelected.emit($event)"
         (clearSelection)="clearSelection.emit()"
       />
-    </div>
-  </div>
 
-  <!-- Mobile (below md): stacked horizontal progress bar with compact legend -->
-  <div class="space-y-2 md:hidden">
-    <div
-      aria-hidden="true"
-      class="flex h-3 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"
-    >
-      @for (segment of barSegments(); track segment.categoryId) {
-        <div
-          class="h-full"
-          [style.width.%]="segment.percentage"
-          [style.background-color]="segment.color"
-        ></div>
-      }
       @if (showAvailable()) {
         <div
-          class="h-full bg-slate-200 dark:bg-slate-800"
-          [style.width.%]="availablePercentage()"
-        ></div>
-      }
-    </div>
-
-    <ul class="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
-      @for (item of distributionData(); track item.categoryId) {
-        <li class="min-w-0">
-          <div class="flex items-center gap-1.5 truncate">
+          class="flex items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs dark:border-slate-800 dark:bg-slate-800/40"
+        >
+          <span class="flex min-w-0 items-center gap-2">
             <span
               aria-hidden="true"
-              class="h-1.5 w-1.5 shrink-0 rounded-full"
-              [style.background-color]="item.color"
+              class="h-2.5 w-2.5 shrink-0 rounded-full bg-slate-300 dark:bg-slate-600"
             ></span>
-            <span class="truncate text-slate-700 dark:text-slate-300">
-              {{ item.categoryName }}
-            </span>
-          </div>
-          <div class="mt-0.5 truncate font-medium tabular-nums text-slate-900 dark:text-white">
-            {{ item.amount | currency: 'USD' : 'symbol' : '1.2-2' }} ({{ item.percentage }}%)
-          </div>
-        </li>
-      }
-      @if (showAvailable()) {
-        <li class="min-w-0">
-          <div class="flex items-center gap-1.5 truncate">
-            <span
-              aria-hidden="true"
-              class="h-1.5 w-1.5 shrink-0 rounded-full bg-slate-200 dark:bg-slate-800"
-            ></span>
-            <span class="truncate text-slate-500 dark:text-slate-400">Disponible</span>
-          </div>
-          <div class="mt-0.5 truncate font-medium tabular-nums text-slate-500 dark:text-slate-400">
+            <span class="truncate font-medium text-slate-600 dark:text-slate-300">Disponible</span>
+          </span>
+          <span class="shrink-0 tabular-nums text-slate-500 dark:text-slate-400">
             {{ availableAmount() | currency: 'USD' : 'symbol' : '1.2-2' }}
-            ({{ availablePercentageLabel() }}%)
-          </div>
-        </li>
+            ({{ availablePercentage() }}%)
+          </span>
+        </div>
       }
-    </ul>
+    </div>
   </div>
 }
