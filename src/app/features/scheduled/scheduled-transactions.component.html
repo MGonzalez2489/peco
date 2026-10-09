@@ -212,16 +212,20 @@
           }
         </div>
       } @else {
-        <div class="max-h-150 space-y-3 overflow-y-auto pr-2">
-          @for (schedule of filteredSchedules(); track schedule.id) {
-            <app-scheduled-transaction-card
-              class="block"
-              [schedule]="schedule"
-              (edited)="openEdit($event)"
-              (executed)="openExecute($event)"
-              (canceled)="cancelOccurrence($event)"
-            />
-          }
+        <div class="max-h-150 overflow-y-auto pr-2">
+          <div
+            class="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900"
+          >
+            @for (schedule of filteredSchedules(); track schedule.id) {
+              <app-scheduled-transaction-card
+                class="block"
+                [schedule]="schedule"
+                (edited)="openEdit($event)"
+                (executed)="openExecute($event)"
+                (canceled)="cancelOccurrence($event)"
+              />
+            }
+          </div>
         </div>
       }
     </div>
