@@ -79,6 +79,19 @@ describe('calculateEventDrivenProgression', () => {
     ]);
   });
 
+  it('plots timestamps on their local calendar day', () => {
+    const evening = new Date(2020, 2, 5, 23, 30).toISOString();
+    const movements: Movement[] = [buildMovement({type: 'INCOME', amount: 300, date: evening})];
+
+    const points = calculateEventDrivenProgression(movements, 'account-1', 2020, 3, 1000);
+
+    expect(points).toEqual([
+      {x: '01 Mar', y: 1000},
+      {x: '05 Mar', y: 1300},
+      {x: '31 Mar', y: 1300},
+    ]);
+  });
+
   it('drops days whose net change is zero', () => {
     const movements: Movement[] = [
       buildMovement({type: 'INCOME', amount: 50, date: '2020-03-14'}),
