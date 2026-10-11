@@ -20,6 +20,7 @@ export * from './read-storage-array.util';
 export * from './reversal-impact.util';
 export * from './resolve-default-category-id.util';
 export * from './to-icon-name.util';
+export * from './to-local-iso-day.util';
 export * from './to-category-slug.util';
 export * from './to-soft-category-color.util';
 export * from './today-iso-date.util';

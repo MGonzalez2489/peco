@@ -3,6 +3,8 @@ import {ProgressionPoint} from '../models/progression-point.model';
 import {formatShortDate} from './format-short-date.util';
 import {isSameMonthAndYear} from './is-same-month-and-year.util';
 import {movementBalanceImpact} from './movement-balance-impact.util';
+import {toIsoDate} from './to-iso-date.util';
+import {toLocalIsoDay} from './to-local-iso-day.util';
 
 export function calculateEventDrivenProgression(
   movements: Movement[],
@@ -19,11 +21,11 @@ export function calculateEventDrivenProgression(
     const impact = movementBalanceImpact(movement, accountId);
     if (impact === 0) continue;
 
-    const day = movement.date.slice(0, 10);
+    const day = toLocalIsoDay(movement.date);
     dailyNet.set(day, (dailyNet.get(day) ?? 0) + impact);
   }
 
-  const firstDay = toIsoDay(new Date(selectedYear, selectedMonth - 1, 1));
+  const firstDay = toIsoDate(new Date(selectedYear, selectedMonth - 1, 1));
   const lastDay = resolveLastVisibleDay(selectedYear, selectedMonth);
   const eventDays = [...dailyNet.entries()].filter(([, net]) => net !== 0).map(([day]) => day);
   const orderedDays = [...new Set([firstDay, lastDay, ...eventDays])]
@@ -47,12 +49,5 @@ function resolveLastVisibleDay(selectedYear: number, selectedMonth: number): str
     selectedYear > today.getFullYear() ||
     (selectedYear === today.getFullYear() && selectedMonth >= today.getMonth() + 1);
 
-  return isCurrentOrFuture ? toIsoDay(today) : toIsoDay(new Date(selectedYear, selectedMonth, 0));
-}
-
-function toIsoDay(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  return isCurrentOrFuture ? toIsoDate(today) : toIsoDate(new Date(selectedYear, selectedMonth, 0));
 }
