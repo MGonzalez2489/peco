@@ -3,6 +3,7 @@ export * from './build-backup-filename.util';
 export * from './is-app-storage-key.util';
 export * from './backfill-movement-category.util';
 export * from './build-reversal-movement.util';
+export * from './calculate-movement-totals.util';
 export * from './chart-progression.util';
 export * from './ensure-root-account.util';
 export * from './ensure-root-category.util';

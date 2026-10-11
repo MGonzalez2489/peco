@@ -10,10 +10,10 @@ import {patchState, signalStore, withComputed, withMethods, withState} from '@ng
 import {CreateMovementDTO} from '../dtos/create-movement.dto';
 import {Movement} from '../models/movement.model';
 import {MovementFilters} from '../models/movement-filters.model';
-import {MovementTotals} from '../models/movement-totals.model';
 import {MovementsStorageService} from '../services/movements-storage.service';
 import {BalanceOperation} from '../types/balance-operation.type';
 import {buildReversalMovement} from '../utils/build-reversal-movement.util';
+import {calculateMovementTotals} from '../utils/calculate-movement-totals.util';
 import {formatCurrency} from '../utils/format-currency.util';
 import {groupMovementsByDate} from '../utils/group-movements-by-date.util';
 import {AccountsStore} from './accounts.store';
@@ -65,18 +65,7 @@ export const MovementsStore = signalStore(
       sortedMovements: computed(() => [...movements()].sort(byNewestFirst)),
       filteredMovements: computed(filtered),
       groupedMovementsByDate: computed(() => groupMovementsByDate(filtered())),
-      filteredTotals: computed<MovementTotals>(() => {
-        const {totalIncome, totalExpenses} = filtered().reduce(
-          (accumulator, movement) => {
-            if (movement.type === 'INCOME') accumulator.totalIncome += movement.amount;
-            if (movement.type === 'EXPENSE') accumulator.totalExpenses += movement.amount;
-            return accumulator;
-          },
-          {totalIncome: 0, totalExpenses: 0},
-        );
-
-        return {totalIncome, totalExpenses, netBalance: totalIncome - totalExpenses};
-      }),
+      filteredTotals: computed(() => calculateMovementTotals(filtered())),
       activeFilterCount: computed(() => {
         const {type, accountId, categoryId, hideReversals} = filters();
         return (

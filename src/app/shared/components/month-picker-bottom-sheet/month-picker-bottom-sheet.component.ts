@@ -38,6 +38,8 @@ export class MonthPickerBottomSheetComponent {
   readonly minDate = input<string | Date>(new Date());
   readonly maxDate = input<string | Date>(new Date());
 
+  readonly align = input<'left' | 'right'>('left');
+
   readonly monthSelect = output<MonthPickerSelection>();
   readonly close = output<void>();
 
@@ -93,6 +95,10 @@ export class MonthPickerBottomSheetComponent {
   readonly canGoToNextYear = computed(() => {
     return this.currentYear() < this.maxYear();
   });
+
+  readonly panelPositionClasses = computed(() =>
+    this.align() === 'right' ? 'md:left-auto md:right-0' : 'md:left-0',
+  );
 
   constructor() {
     const media = this.desktopMedia;
