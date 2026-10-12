@@ -19,12 +19,23 @@ import {
 } from '@core/constants';
 import {Category} from '@core/models';
 import {CategoryApplyType} from '@core/types';
-import {toCategorySlug, toSoftCategoryColor} from '@core/utils';
-import {AppIconComponent, ModalComponent} from '@shared/components';
+import {pickRandom, toCategorySlug, toSoftCategoryColor} from '@core/utils';
+import {
+  AppIconComponent,
+  ColorSelectComponent,
+  IconSelectComponent,
+  ModalComponent,
+} from '@shared/components';
 
 @Component({
   selector: 'app-category-form-modal',
-  imports: [ReactiveFormsModule, ModalComponent, AppIconComponent],
+  imports: [
+    ReactiveFormsModule,
+    ModalComponent,
+    AppIconComponent,
+    ColorSelectComponent,
+    IconSelectComponent,
+  ],
   templateUrl: './category-form-modal.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -53,8 +64,15 @@ export class CategoryFormModalComponent {
       validators: [Validators.required],
     }),
     applyType: this.fb.control<CategoryApplyType>('EXPENSE', {nonNullable: true}),
-    color: this.fb.control<string>(DEFAULT_CATEGORY_COLOR, {nonNullable: true}),
-    icon: this.fb.control<Category['icon']>('tag', {nonNullable: true}),
+    color: this.fb.control<string>(
+      pickRandom(CATEGORY_COLOR_PALETTE)?.hex ?? DEFAULT_CATEGORY_COLOR,
+      {
+        nonNullable: true,
+      },
+    ),
+    icon: this.fb.control<Category['icon']>(pickRandom(CATEGORY_ICON_OPTIONS)?.name ?? 'tag', {
+      nonNullable: true,
+    }),
   });
 
   private readonly formValue = toSignal(this.form.valueChanges, {
@@ -104,20 +122,12 @@ export class CategoryFormModalComponent {
         : {
             displayName: '',
             applyType: 'EXPENSE',
-            color: DEFAULT_CATEGORY_COLOR,
-            icon: 'tag',
+            color: pickRandom(CATEGORY_COLOR_PALETTE)?.hex ?? DEFAULT_CATEGORY_COLOR,
+            icon: pickRandom(CATEGORY_ICON_OPTIONS)?.name ?? 'tag',
           },
     );
 
     window.setTimeout(() => this.nameInput()?.nativeElement.focus({preventScroll: true}), 100);
-  }
-
-  protected selectColor(hex: string): void {
-    this.form.controls.color.setValue(hex);
-  }
-
-  protected selectIcon(icon: Category['icon']): void {
-    this.form.controls.icon.setValue(icon);
   }
 
   protected applyTypeLabel(applyType: CategoryApplyType): string {

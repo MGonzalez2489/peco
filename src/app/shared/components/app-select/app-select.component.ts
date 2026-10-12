@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  DestroyRef,
   ElementRef,
   computed,
   effect,
@@ -10,6 +11,7 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
+import {DOCUMENT} from '@angular/common';
 import {ControlValueAccessor, NG_VALUE_ACCESSOR} from '@angular/forms';
 import {SelectOption} from '@core/models';
 import {AppIconComponent} from '../app-icon/app-icon.component';
@@ -25,6 +27,7 @@ import {AppIconComponent} from '../app-icon/app-icon.component';
     '(document:click)': 'onDocumentClick($event)',
     '(focusout)': 'onFocusOut($event)',
     '(keydown.escape)': 'onEscapeKey($event)',
+    '(window:resize)': 'onViewportChange()',
   },
 })
 export class AppSelectComponent implements ControlValueAccessor {
@@ -33,6 +36,7 @@ export class AppSelectComponent implements ControlValueAccessor {
   readonly ariaLabel = input('');
   readonly controlId = input('');
   readonly invalid = input(false);
+  readonly showLabel = input(true);
 
   readonly isOpen = signal(false);
   readonly activeIndex = signal(-1);
@@ -42,6 +46,19 @@ export class AppSelectComponent implements ControlValueAccessor {
   private readonly hostRef = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly triggerRef = viewChild<ElementRef<HTMLButtonElement>>('trigger');
   private readonly listRef = viewChild<ElementRef<HTMLUListElement>>('list');
+
+  private readonly document = inject(DOCUMENT);
+  private readonly destroyRef = inject(DestroyRef);
+
+  protected readonly panelTop = signal(0);
+  protected readonly panelLeft = signal(0);
+  protected readonly panelWidth = signal(0);
+  protected readonly panelMaxHeight = signal(0);
+  protected readonly openUp = signal(false);
+
+  protected readonly onViewportChange = (): void => {
+    if (this.isOpen()) this.updatePanelPosition();
+  };
 
   private static instanceSequence = 0;
   private readonly instanceId = `app-select-${++AppSelectComponent.instanceSequence}`;
@@ -72,6 +89,11 @@ export class AppSelectComponent implements ControlValueAccessor {
   });
 
   constructor() {
+    this.document.addEventListener('scroll', this.onViewportChange, true);
+    this.destroyRef.onDestroy(() =>
+      this.document.removeEventListener('scroll', this.onViewportChange, true),
+    );
+
     effect(() => {
       const index = this.activeIndex();
       if (!this.isOpen() || index < 0) return;
@@ -81,6 +103,28 @@ export class AppSelectComponent implements ControlValueAccessor {
         if (option instanceof HTMLElement) option.scrollIntoView({block: 'nearest'});
       });
     });
+  }
+
+  private updatePanelPosition(): void {
+    const trigger = this.triggerRef()?.nativeElement;
+    if (!trigger) return;
+
+    const rect = trigger.getBoundingClientRect();
+    const gap = 4;
+    const viewportMargin = 8;
+    const maxPanelHeight = 224;
+
+    const spaceBelow = window.innerHeight - rect.bottom - gap - viewportMargin;
+    const spaceAbove = rect.top - gap - viewportMargin;
+    const openUp = spaceBelow < maxPanelHeight && spaceAbove > spaceBelow;
+
+    const available = openUp ? spaceAbove : spaceBelow;
+
+    this.openUp.set(openUp);
+    this.panelWidth.set(rect.width);
+    this.panelLeft.set(rect.left);
+    this.panelMaxHeight.set(Math.max(96, Math.min(maxPanelHeight, available)));
+    this.panelTop.set(openUp ? rect.top - gap : rect.bottom + gap);
   }
 
   optionId(index: number): string {
@@ -108,6 +152,7 @@ export class AppSelectComponent implements ControlValueAccessor {
       (option) => option.value === this.selectedValue(),
     );
 
+    this.updatePanelPosition();
     this.isOpen.set(true);
     this.activeIndex.set(selectedIndex >= 0 ? selectedIndex : 0);
   }
