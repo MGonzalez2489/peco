@@ -16,6 +16,7 @@ export * from './is-income-schedule.util';
 export * from './is-schedule-due.util';
 export * from './monthly-equivalent.util';
 export * from './movement-balance-impact.util';
+export * from './movement-progression.util';
 export * from './next-execution-date.util';
 export * from './read-storage-array.util';
 export * from './reversal-impact.util';
