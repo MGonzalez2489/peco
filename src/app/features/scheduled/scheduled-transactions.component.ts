@@ -7,7 +7,6 @@ import {toSoftCategoryColor} from '@core/utils';
 import {AppIconComponent} from '@shared/components/app-icon/app-icon.component';
 import {ExecuteScheduleModalComponent} from './components/execute-schedule-modal.component';
 import {ScheduledDistributionChartComponent} from './components/scheduled-distribution-chart/scheduled-distribution-chart.component';
-import {ScheduledFilterBarComponent} from './components/scheduled-filter-bar/scheduled-filter-bar.component';
 import {ScheduledFiltrosModalComponent} from './components/scheduled-filtros-modal/scheduled-filtros-modal.component';
 import {ScheduledTransactionCardComponent} from './components/scheduled-transaction-card.component';
 import {ScheduledTransactionFormModalComponent} from './components/scheduled-transaction-form-modal.component';
@@ -23,7 +22,6 @@ type MobileSection = 'summary' | 'transactions';
     ScheduledTransactionCardComponent,
     ScheduledTransactionFormModalComponent,
     ExecuteScheduleModalComponent,
-    ScheduledFilterBarComponent,
     ScheduledDistributionChartComponent,
     ScheduledFiltrosModalComponent,
   ],
