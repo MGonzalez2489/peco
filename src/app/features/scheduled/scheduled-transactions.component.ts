@@ -8,6 +8,7 @@ import {AppIconComponent} from '@shared/components/app-icon/app-icon.component';
 import {ExecuteScheduleModalComponent} from './components/execute-schedule-modal.component';
 import {ScheduledDistributionChartComponent} from './components/scheduled-distribution-chart/scheduled-distribution-chart.component';
 import {ScheduledFilterBarComponent} from './components/scheduled-filter-bar/scheduled-filter-bar.component';
+import {ScheduledFiltrosModalComponent} from './components/scheduled-filtros-modal/scheduled-filtros-modal.component';
 import {ScheduledTransactionCardComponent} from './components/scheduled-transaction-card.component';
 import {ScheduledTransactionFormModalComponent} from './components/scheduled-transaction-form-modal.component';
 
@@ -24,6 +25,7 @@ type MobileSection = 'summary' | 'transactions';
     ExecuteScheduleModalComponent,
     ScheduledFilterBarComponent,
     ScheduledDistributionChartComponent,
+    ScheduledFiltrosModalComponent,
   ],
   templateUrl: './scheduled-transactions.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -82,6 +84,16 @@ export class ScheduledTransactionsComponent {
   readonly movementsCount = computed(() => this.filteredSchedules().length);
 
   readonly mobileSection = signal<MobileSection>('summary');
+
+  readonly filtersOpen = signal(false);
+
+  readonly activeFilterCount = computed(() => {
+    let count = 0;
+    if (this.scheduledStore.searchQuery().trim().length > 0) count++;
+    if (this.scheduledStore.typeFilter() !== 'ALL') count++;
+    if (this.scheduledStore.selectedCategoryId() !== null) count++;
+    return count;
+  });
 
   readonly listCounterLabel = computed(() => {
     const shown = this.filteredSchedules().length;
