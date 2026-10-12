@@ -9,6 +9,7 @@ import {
   MovementListComponent,
 } from '@shared/components';
 import {FiltroMovimientosModalComponent} from './components/filtro-movimientos-modal/filtro-movimientos-modal.component';
+import {MovementsProgressionChartComponent} from './components/movements-progression-chart/movements-progression-chart.component';
 
 @Component({
   selector: 'app-movements',
@@ -16,6 +17,7 @@ import {FiltroMovimientosModalComponent} from './components/filtro-movimientos-m
     CurrencyPipe,
     MovementListComponent,
     FiltroMovimientosModalComponent,
+    MovementsProgressionChartComponent,
     AppIconComponent,
     MonthPickerBottomSheetComponent,
   ],
