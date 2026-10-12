@@ -6,7 +6,7 @@ import {AccountsStore} from '@core/stores/accounts.store';
 import {CatalogStore} from '@core/stores/catalog.store';
 import {MovementsStore} from '@core/stores/movements.store';
 import {MovementType} from '@core/types';
-import {accountColor, groupMovementsByDate, reversalImpact, toSoftCategoryColor} from '@core/utils';
+import {accountColor, formatLocalTime, groupMovementsByDate, reversalImpact, toSoftCategoryColor} from '@core/utils';
 import {ConfirmModalComponent} from '../confirm-modal/confirm-modal.component';
 
 import {AppIconComponent, IconName} from '../app-icon/app-icon.component';
@@ -71,14 +71,7 @@ export class MovementListComponent {
   readonly categoryColor = (movement: Movement): string =>
     this.categoriesById().get(movement.categoryId)?.color ?? FALLBACK_CATEGORY_COLOR;
 
-  readonly movementTime = (movement: Movement): string => {
-    const [, time] = movement.date.split('T');
-    if (!time) return '';
-    const [rawHours, minutes] = time.slice(0, 5).split(':').map(Number);
-    const suffix = rawHours >= 12 ? 'PM' : 'AM';
-    const hours = rawHours % 12 === 0 ? 12 : rawHours % 12;
-    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')} ${suffix}`;
-  };
+  readonly movementTime = (movement: Movement): string => formatLocalTime(movement.date);
 
   proceedToRevert(): void {
     const movement = this.movementToRevert();
