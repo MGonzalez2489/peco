@@ -19,15 +19,15 @@ import {Account} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {MovementsStore} from '@core/stores/movements.store';
 import {AccountColor} from '@core/types';
-import {ModalComponent} from '@shared/components';
+import {pickRandom} from '@core/utils';
+import {ColorSelectComponent, ModalComponent} from '@shared/components';
 import {CurrencyInputDirective} from '@shared/directives';
-import {AppIconComponent} from '@shared/components/app-icon/app-icon.component';
 
 const ADJUSTMENT_NOTE = 'Ajuste manual de saldo';
 
 @Component({
   selector: 'app-account-form-modal',
-  imports: [ReactiveFormsModule, ModalComponent, CurrencyInputDirective, AppIconComponent],
+  imports: [ReactiveFormsModule, ModalComponent, CurrencyInputDirective, ColorSelectComponent],
   templateUrl: './account-form-modal.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -51,7 +51,7 @@ export class AccountFormModalComponent {
       validators: [Validators.required, Validators.min(0)],
     }),
     targetGoal: this.fb.control<number | null>(null, Validators.min(0)),
-    color: this.fb.control<string>(DEFAULT_ACCOUNT_COLOR),
+    color: this.fb.control<string>(pickRandom(COLOR_PALETTE)?.hex ?? DEFAULT_ACCOUNT_COLOR),
     includeInTotal: this.fb.control<boolean>(true),
     pinToHome: this.fb.control<boolean>(false),
     note: this.fb.control<string>(''),
@@ -105,7 +105,7 @@ export class AccountFormModalComponent {
         name: '',
         initialBalance: 0,
         targetGoal: null,
-        color: DEFAULT_ACCOUNT_COLOR,
+        color: pickRandom(COLOR_PALETTE)?.hex ?? DEFAULT_ACCOUNT_COLOR,
         includeInTotal: true,
         pinToHome: false,
         note: '',

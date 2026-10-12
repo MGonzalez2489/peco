@@ -57,52 +57,45 @@
       }
     </div>
 
-    <div>
-      <label
-        for="cat-goal"
-        class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
-      >
-        Meta <span class="font-normal text-slate-400 dark:text-slate-500">(opcional)</span>
-      </label>
-      <input
-        id="cat-goal"
-        formControlName="targetGoal"
-        appCurrencyInput
-        type="text"
-        inputmode="decimal"
-        autocomplete="off"
-        placeholder="0.00"
-        class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-        [attr.aria-invalid]="form.controls.targetGoal.touched && form.controls.targetGoal.invalid"
-      />
-      @if (errorFor(form.controls.targetGoal); as error) {
-        <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ error }}</p>
-      }
-    </div>
-
-    <fieldset class="space-y-2">
-      <legend class="text-sm font-medium text-slate-700 dark:text-slate-300">Color</legend>
-      <div class="grid grid-cols-8 gap-2" role="radiogroup" aria-label="Color de la cuenta">
-        @for (option of colorPalette; track option.hex) {
-          <button
-            type="button"
-            role="radio"
-            (click)="form.controls.color.setValue(option.hex)"
-            [attr.aria-checked]="form.controls.color.value === option.hex"
-            [attr.aria-label]="'Color ' + option.label"
-            [title]="option.label"
-            class="flex h-9 w-9 items-center justify-center rounded-full border-2 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
-            [style.background-color]="option.hex"
-            [class.border-slate-900]="form.controls.color.value === option.hex"
-            [class.border-white]="form.controls.color.value !== option.hex"
-          >
-            @if (form.controls.color.value === option.hex) {
-              <app-icon name="check" size="16" class="h-4 w-4 text-white" />
-            }
-          </button>
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label
+          for="cat-goal"
+          class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
+        >
+          Meta <span class="font-normal text-slate-400 dark:text-slate-500">(opcional)</span>
+        </label>
+        <input
+          id="cat-goal"
+          formControlName="targetGoal"
+          appCurrencyInput
+          type="text"
+          inputmode="decimal"
+          autocomplete="off"
+          placeholder="0.00"
+          class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+          [attr.aria-invalid]="form.controls.targetGoal.touched && form.controls.targetGoal.invalid"
+        />
+        @if (errorFor(form.controls.targetGoal); as error) {
+          <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ error }}</p>
         }
       </div>
-    </fieldset>
+
+      <div>
+        <label
+          for="cat-color"
+          class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
+        >
+          Color
+        </label>
+        <app-color-select
+          controlId="cat-color"
+          ariaLabel="Color de la cuenta"
+          [palette]="colorPalette"
+          formControlName="color"
+        />
+      </div>
+    </div>
 
     <div>
       <label
