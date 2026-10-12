@@ -114,6 +114,14 @@ export class AccountDetailComponent {
     return `La cuenta "${account.name}" tiene un saldo de ${formatCurrency(account.currentBalance)}. Se creará una transferencia automática y luego se eliminará.`;
   });
 
+  readonly accountGoalProgress = computed(() => {
+    const account = this.account();
+    if (!account) return 0;
+    const goal = account.targetGoal ?? 0;
+    if (goal <= 0) return 0;
+    return Math.min(100, Math.max(0, Math.round((account.currentBalance / goal) * 100)));
+  });
+
   readonly formatCurrency = formatCurrency;
 
   toggleMonthPicker(): void {

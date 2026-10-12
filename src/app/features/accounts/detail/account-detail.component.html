@@ -35,24 +35,6 @@
           <span class="hidden sm:inline">Editar cuenta</span>
         </button>
         @if (account.isRoot) {
-          <span class="group relative inline-flex">
-            <button
-              type="button"
-              aria-disabled="true"
-              aria-describedby="root-delete-help"
-              class="inline-flex cursor-not-allowed items-center gap-2 rounded-xl bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-300 opacity-70 dark:bg-rose-500/10 dark:text-rose-500/50"
-            >
-              <app-icon name="trash-2" size="16" class="h-4 w-4" />
-              <span class="hidden sm:inline">Eliminar</span>
-            </button>
-            <span
-              id="root-delete-help"
-              role="tooltip"
-              class="pointer-events-none absolute right-0 top-full z-30 mt-2 w-max max-w-56 rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white opacity-0 shadow-lg ring-1 ring-white/10 transition group-hover:opacity-100 group-focus-within:opacity-100 dark:bg-slate-700"
-            >
-              La cuenta raíz no puede ser eliminada.
-            </span>
-          </span>
         } @else {
           <button
             type="button"
@@ -125,14 +107,30 @@
           [period]="selectedPeriod()"
         ></app-account-progression-chart>
       </div>
+
+      <!-- FOOTER TOTALS: GOAL PROGRESS -->
+      @if (account.targetGoal && account.targetGoal > 0) {
+        <dl class="grid grid-cols-2 gap-3">
+          <div class="rounded-xl bg-indigo-50 px-3 py-2 dark:bg-indigo-950/40">
+            <dt class="text-xs font-medium text-indigo-700 dark:text-indigo-300">Acumulado</dt>
+            <dd class="text-sm font-bold text-indigo-900 dark:text-indigo-200">
+              {{ formatCurrency(account.currentBalance) }} ({{ accountGoalProgress() }}%)
+            </dd>
+          </div>
+          <div class="rounded-xl bg-slate-50 px-3 py-2 dark:bg-slate-900/40">
+            <dt class="text-xs font-medium text-slate-700 dark:text-slate-300">Meta</dt>
+            <dd class="text-sm font-bold text-slate-900 dark:text-slate-200">
+              {{ formatCurrency(account.targetGoal) }}
+            </dd>
+          </div>
+        </dl>
+      }
     </div>
 
     <div>
       <h2
         class="my-4 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
-      >
-        Historial ({{ filteredTransactions().length }})
-      </h2>
+      ></h2>
       <app-movement-list
         [movements]="filteredTransactions()"
         emptyMessage="No hay movimientos asociados a esta cuenta."
