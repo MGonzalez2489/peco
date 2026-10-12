@@ -3,3 +3,4 @@ export * from './scheduled-distribution-chart/scheduled-distribution-chart.compo
 export * from './scheduled-distribution-legend/scheduled-distribution-legend.component';
 export * from './scheduled-transaction-form-modal.component';
 export * from './scheduled-filter-bar/scheduled-filter-bar.component';
+export * from './scheduled-filtros-modal/scheduled-filtros-modal.component';
