@@ -1,4 +1,4 @@
-import {ChangeDetectionStrategy, Component, inject, signal} from '@angular/core';
+import {ChangeDetectionStrategy, Component, computed, inject, signal} from '@angular/core';
 import {DataBackupService} from '@core/services/data-backup.service';
 import {ConfirmModalComponent} from '@shared/components/confirm-modal/confirm-modal.component';
 
@@ -39,7 +39,7 @@ import {ConfirmModalComponent} from '@shared/components/confirm-modal/confirm-mo
         <h3 class="text-sm font-semibold text-slate-900 dark:text-white">Importar información</h3>
         <p class="text-sm text-slate-500 dark:text-slate-400">
           Restaura la información desde un archivo de copia de seguridad previamente descargado.
-          Atención: esta acción reemplazará todos los datos actuales.
+          Atención: esta acción reemplazará los datos actuales.
         </p>
 
         <label
@@ -112,10 +112,69 @@ import {ConfirmModalComponent} from '@shared/components/confirm-modal/confirm-mo
       (dismissed)="cancelRestore()"
     >
       <p>
-        Esta acción reemplazará todos los datos actuales con el contenido de
+        Esta acción reemplazará los datos seleccionados con el contenido de
         <strong>{{ selectedFileName() }}</strong
         >. Esta operación no se puede deshacer.
       </p>
+
+      <fieldset class="mt-3 space-y-2">
+        <legend class="sr-only">Datos a restaurar</legend>
+
+        <label
+          for="import-accounts"
+          class="flex cursor-pointer items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900"
+        >
+          <input
+            id="import-accounts"
+            type="checkbox"
+            [checked]="importAccounts()"
+            (change)="toggleAccounts($any($event.target).checked)"
+            class="size-4 shrink-0 rounded border-slate-300 text-indigo-600 focus:ring-2 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-700"
+          />
+          <span class="text-sm font-medium text-slate-700 dark:text-slate-200">Cuentas</span>
+        </label>
+
+        <div class="space-y-1">
+          <label
+            for="import-movements"
+            class="flex items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900"
+            [class.cursor-pointer]="canImportMovements()"
+            [class.opacity-60]="!canImportMovements()"
+          >
+            <input
+              id="import-movements"
+              type="checkbox"
+              [checked]="importMovements()"
+              [disabled]="!canImportMovements()"
+              [attr.aria-describedby]="canImportMovements() ? null : 'import-movements-help'"
+              (change)="toggleMovements($any($event.target).checked)"
+              class="size-4 shrink-0 rounded border-slate-300 text-indigo-600 focus:ring-2 focus:ring-indigo-500 disabled:cursor-not-allowed dark:border-slate-600 dark:bg-slate-700"
+            />
+            <span class="text-sm font-medium text-slate-700 dark:text-slate-200">Movimientos</span>
+          </label>
+          @if (!canImportMovements()) {
+            <p id="import-movements-help" class="px-1 text-xs text-slate-500 dark:text-slate-400">
+              Requiere importar las cuentas.
+            </p>
+          }
+        </div>
+
+        <label
+          for="import-scheduled-transactions"
+          class="flex cursor-pointer items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900"
+        >
+          <input
+            id="import-scheduled-transactions"
+            type="checkbox"
+            [checked]="importScheduledTransactions()"
+            (change)="toggleScheduledTransactions($any($event.target).checked)"
+            class="size-4 shrink-0 rounded border-slate-300 text-indigo-600 focus:ring-2 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-700"
+          />
+          <span class="text-sm font-medium text-slate-700 dark:text-slate-200">
+            Movimientos programados
+          </span>
+        </label>
+      </fieldset>
     </app-confirm-modal>
 
     <app-confirm-modal
@@ -142,6 +201,16 @@ export class DataSettingsComponent {
   protected readonly isRestoring = signal(false);
   protected readonly showResetConfirm = signal(false);
 
+  protected readonly importAccounts = signal(true);
+  protected readonly importMovements = signal(true);
+  protected readonly importScheduledTransactions = signal(true);
+
+  protected readonly canImportMovements = computed(() => this.importAccounts());
+
+  protected readonly hasImportSelection = computed(
+    () => this.importAccounts() || this.importMovements() || this.importScheduledTransactions(),
+  );
+
   protected exportBackup(): void {
     this.errorMessage.set('');
     this.backupService.exportData();
@@ -158,11 +227,31 @@ export class DataSettingsComponent {
   protected requestRestore(): void {
     if (!this.selectedFile()) return;
     this.errorMessage.set('');
+    this.importAccounts.set(true);
+    this.importMovements.set(true);
+    this.importScheduledTransactions.set(true);
     this.showConfirm.set(true);
   }
 
   protected cancelRestore(): void {
     this.showConfirm.set(false);
+  }
+
+  protected toggleAccounts(checked: boolean): void {
+    this.importAccounts.set(checked);
+    if (!checked) this.importMovements.set(false);
+  }
+
+  protected toggleMovements(checked: boolean): void {
+    if (!this.importAccounts()) {
+      this.importMovements.set(false);
+      return;
+    }
+    this.importMovements.set(checked);
+  }
+
+  protected toggleScheduledTransactions(checked: boolean): void {
+    this.importScheduledTransactions.set(checked);
   }
 
   protected requestReset(): void {
@@ -181,15 +270,16 @@ export class DataSettingsComponent {
 
   protected async confirmRestore(): Promise<void> {
     const file = this.selectedFile();
-    if (!file) {
-      this.showConfirm.set(false);
-      return;
-    }
-
     this.showConfirm.set(false);
+    if (!file || !this.hasImportSelection()) return;
+
     this.isRestoring.set(true);
     try {
-      const restored = await this.backupService.importData(file);
+      const restored = await this.backupService.importData(file, {
+        accounts: this.importAccounts(),
+        movements: this.importMovements(),
+        scheduledTransactions: this.importScheduledTransactions(),
+      });
       if (!restored) {
         this.errorMessage.set(
           'El archivo no es una copia válida. Revisa el archivo e inténtalo de nuevo.',

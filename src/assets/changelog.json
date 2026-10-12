@@ -1,5 +1,15 @@
 [
   {
+    "version": "v0.0.8-a",
+    "fecha": "2026-10-11",
+    "highlights": [
+      "Mejora de UX: incorporación de filtros por fecha avanzados en los movimientos de cuentas y en la vista general",
+      "Mejora de UX: integración de gráficas reactivas y dinámicas para visualizar el comportamiento de los movimientos con mayor claridad",
+      "Mejora de UX: estandarización visual y de diseño en todas las listas de elementos dentro de la interfaz",
+      "Mejora de UX: importación de datos personalizada por propiedad, permitiendo seleccionar exactamente qué elementos importar desde el archivo"
+    ]
+  },
+  {
     "version": "v0.0.7-a",
     "fecha": "2026-10-07",
     "highlights": [
