@@ -42,3 +42,7 @@ __screenshots__/
 # System files
 .DS_Store
 Thumbs.db
+
+# Generated test data
+/scripts/test-data.json
+/scripts/td-report.md
