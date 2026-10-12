@@ -19,6 +19,7 @@ export * from './monthly-equivalent.util';
 export * from './movement-balance-impact.util';
 export * from './movement-progression.util';
 export * from './next-execution-date.util';
+export * from './pick-random.util';
 export * from './read-storage-array.util';
 export * from './reversal-impact.util';
 export * from './resolve-default-category-id.util';
