@@ -42,9 +42,10 @@ export class CategoryFormModalComponent {
   protected readonly colorPalette = CATEGORY_COLOR_PALETTE;
   protected readonly iconOptions = CATEGORY_ICON_OPTIONS;
   protected readonly toSoftCategoryColor = toSoftCategoryColor;
-  protected readonly applyTypeOptions = Object.entries(CATEGORY_APPLY_TYPE_LABEL) as ReadonlyArray<
-    [CategoryApplyType, string]
-  >;
+  // 'TRANSFER' is reserved for the system transfer category and must not be selectable by users.
+  protected readonly applyTypeOptions = (
+    Object.entries(CATEGORY_APPLY_TYPE_LABEL) as ReadonlyArray<[CategoryApplyType, string]>
+  ).filter(([applyType]) => applyType !== 'TRANSFER');
 
   protected readonly form = this.fb.group({
     displayName: this.fb.control<string>('', {
