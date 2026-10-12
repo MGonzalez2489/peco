@@ -109,3 +109,103 @@ describe('DataBackupService categories round trip', () => {
     expect(catalogStore.rootCategory()?.id).toBe('unknown');
   });
 });
+
+describe('DataBackupService selective import', () => {
+  let service: DataBackupService;
+
+  const buildFile = (data: Record<string, unknown>): File =>
+    new File(
+      [
+        JSON.stringify({
+          version: 'test',
+          exportedAt: new Date().toISOString(),
+          data,
+        } satisfies BackupData),
+      ],
+      'backup.json',
+      {type: 'application/json'},
+    );
+
+  beforeEach(() => {
+    localStorage.clear();
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({providers: [DataBackupService]});
+    service = TestBed.inject(DataBackupService);
+  });
+
+  it('imports accounts, movements and categories together while leaving scheduled untouched', async () => {
+    localStorage.setItem(LOCAL_STORAGE_KEYS.scheduledTransactions, JSON.stringify([{id: 'keep'}]));
+
+    const restored = await service.importData(
+      buildFile({
+        [LOCAL_STORAGE_KEYS.accounts]: [{id: 'a'}],
+        [LOCAL_STORAGE_KEYS.movements]: [{id: 'm'}],
+        [LOCAL_STORAGE_KEYS.categories]: [{id: 'cat'}],
+        [LOCAL_STORAGE_KEYS.scheduledTransactions]: [{id: 'new'}],
+      }),
+      {accounts: true, movements: true, scheduledTransactions: false},
+    );
+
+    expect(restored).toBe(true);
+    expect(localStorage.getItem(LOCAL_STORAGE_KEYS.accounts)).toContain('"a"');
+    expect(localStorage.getItem(LOCAL_STORAGE_KEYS.movements)).toContain('"m"');
+    expect(localStorage.getItem(LOCAL_STORAGE_KEYS.categories)).toContain('"cat"');
+    expect(localStorage.getItem(LOCAL_STORAGE_KEYS.scheduledTransactions)).toBe('[{"id":"keep"}]');
+  });
+
+  it('keeps current movements when only accounts are selected', async () => {
+    localStorage.setItem(LOCAL_STORAGE_KEYS.movements, JSON.stringify([{id: 'keep'}]));
+
+    await service.importData(
+      buildFile({
+        [LOCAL_STORAGE_KEYS.accounts]: [{id: 'a'}],
+        [LOCAL_STORAGE_KEYS.movements]: [{id: 'new'}],
+      }),
+      {accounts: true, movements: false, scheduledTransactions: false},
+    );
+
+    expect(localStorage.getItem(LOCAL_STORAGE_KEYS.accounts)).toContain('"a"');
+    expect(localStorage.getItem(LOCAL_STORAGE_KEYS.movements)).toBe('[{"id":"keep"}]');
+  });
+
+  it('never imports movements when accounts are not selected', async () => {
+    localStorage.setItem(LOCAL_STORAGE_KEYS.movements, JSON.stringify([{id: 'keep'}]));
+
+    await service.importData(
+      buildFile({[LOCAL_STORAGE_KEYS.movements]: [{id: 'new'}]}),
+      {accounts: false, movements: true, scheduledTransactions: false},
+    );
+
+    expect(localStorage.getItem(LOCAL_STORAGE_KEYS.movements)).toBe('[{"id":"keep"}]');
+  });
+
+  it('imports only scheduled transactions when they are the only selection', async () => {
+    localStorage.setItem(LOCAL_STORAGE_KEYS.accounts, JSON.stringify([{id: 'keep'}]));
+    localStorage.setItem(LOCAL_STORAGE_KEYS.categories, JSON.stringify([{id: 'keep'}]));
+
+    await service.importData(
+      buildFile({
+        [LOCAL_STORAGE_KEYS.accounts]: [{id: 'new'}],
+        [LOCAL_STORAGE_KEYS.categories]: [{id: 'new'}],
+        [LOCAL_STORAGE_KEYS.scheduledTransactions]: [{id: 'new'}],
+      }),
+      {accounts: false, movements: false, scheduledTransactions: true},
+    );
+
+    expect(localStorage.getItem(LOCAL_STORAGE_KEYS.accounts)).toBe('[{"id":"keep"}]');
+    expect(localStorage.getItem(LOCAL_STORAGE_KEYS.categories)).toBe('[{"id":"keep"}]');
+    expect(localStorage.getItem(LOCAL_STORAGE_KEYS.scheduledTransactions)).toContain('"new"');
+  });
+
+  it('changes nothing when no dataset is selected', async () => {
+    localStorage.setItem(LOCAL_STORAGE_KEYS.accounts, JSON.stringify([{id: 'keep'}]));
+
+    const restored = await service.importData(
+      buildFile({[LOCAL_STORAGE_KEYS.accounts]: [{id: 'new'}]}),
+      {accounts: false, movements: false, scheduledTransactions: false},
+    );
+
+    expect(restored).toBe(true);
+    expect(localStorage.getItem(LOCAL_STORAGE_KEYS.accounts)).toBe('[{"id":"keep"}]');
+  });
+});

@@ -4,6 +4,7 @@ import {LOCAL_STORAGE_KEYS} from '../constants/local-storage-keys.constant';
 import {SEED_ACCOUNTS} from '../constants/seed-accounts.constant';
 import {SEED_CATEGORIES} from '../constants/seed-categories.constant';
 import {BackupData} from '../models/backup-data.model';
+import {BackupImportSelection} from '../types/backup-import-selection.type';
 import {buildBackupFilename} from '../utils/build-backup-filename.util';
 import {isAppStorageKey} from '../utils/is-app-storage-key.util';
 
@@ -36,7 +37,7 @@ export class DataBackupService {
     URL.revokeObjectURL(url);
   }
 
-  async importData(file: File): Promise<boolean> {
+  async importData(file: File, selection: BackupImportSelection): Promise<boolean> {
     let parsed: unknown;
 
     try {
@@ -47,14 +48,14 @@ export class DataBackupService {
 
     if (!this.isBackupData(parsed)) return false;
 
-    this.clearAppEntries();
+    const keys = this.resolveImportKeys(selection);
+    if (keys.length === 0) return true;
 
-    for (const [key, value] of Object.entries(parsed.data)) {
-      if (typeof value === 'string') {
-        localStorage.setItem(key, value);
-      } else {
-        localStorage.setItem(key, JSON.stringify(value));
-      }
+    this.clearEntries(keys);
+
+    for (const key of keys) {
+      if (!(key in parsed.data)) continue;
+      this.writeValue(key, parsed.data[key]);
     }
 
     window.location.reload();
@@ -64,12 +65,32 @@ export class DataBackupService {
   resetAllData(): void {
     this.clearAppEntries();
 
-    localStorage.setItem(LOCAL_STORAGE_KEYS.accounts, JSON.stringify(SEED_ACCOUNTS));
-    localStorage.setItem(LOCAL_STORAGE_KEYS.movements, JSON.stringify([]));
-    localStorage.setItem(LOCAL_STORAGE_KEYS.categories, JSON.stringify(SEED_CATEGORIES));
-    localStorage.setItem(LOCAL_STORAGE_KEYS.scheduledTransactions, JSON.stringify([]));
+    this.writeValue(LOCAL_STORAGE_KEYS.accounts, SEED_ACCOUNTS);
+    this.writeValue(LOCAL_STORAGE_KEYS.movements, []);
+    this.writeValue(LOCAL_STORAGE_KEYS.categories, SEED_CATEGORIES);
+    this.writeValue(LOCAL_STORAGE_KEYS.scheduledTransactions, []);
 
     window.location.reload();
+  }
+
+  private resolveImportKeys(selection: BackupImportSelection): string[] {
+    const includeMovements = selection.movements && selection.accounts;
+    const keys: string[] = [];
+
+    if (selection.accounts) {
+      keys.push(LOCAL_STORAGE_KEYS.accounts, LOCAL_STORAGE_KEYS.accountsLegacy);
+    }
+    if (includeMovements) {
+      keys.push(LOCAL_STORAGE_KEYS.movements);
+    }
+    if (selection.accounts || includeMovements) {
+      keys.push(LOCAL_STORAGE_KEYS.categories, LOCAL_STORAGE_KEYS.categoriesLegacy);
+    }
+    if (selection.scheduledTransactions) {
+      keys.push(LOCAL_STORAGE_KEYS.scheduledTransactions);
+    }
+
+    return [...new Set(keys)];
   }
 
   private readValue(key: string): unknown {
@@ -79,6 +100,14 @@ export class DataBackupService {
       return JSON.parse(raw);
     } catch {
       return raw;
+    }
+  }
+
+  private writeValue(key: string, value: unknown): void {
+    if (typeof value === 'string') {
+      localStorage.setItem(key, value);
+    } else {
+      localStorage.setItem(key, JSON.stringify(value));
     }
   }
 
@@ -94,12 +123,16 @@ export class DataBackupService {
     );
   }
 
+  private clearEntries(keys: readonly string[]): void {
+    for (const key of keys) localStorage.removeItem(key);
+  }
+
   private clearAppEntries(): void {
     const keysToRemove: string[] = [];
     for (let index = 0; index < localStorage.length; index++) {
       const key = localStorage.key(index);
       if (key && isAppStorageKey(key)) keysToRemove.push(key);
     }
-    for (const key of keysToRemove) localStorage.removeItem(key);
+    this.clearEntries(keysToRemove);
   }
 }
