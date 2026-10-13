@@ -63,7 +63,8 @@ export class ScheduledTransactionFormModalComponent {
     categoryId: this.fb.control<string>('', Validators.required),
     sourceAccountId: this.fb.control<string>('', Validators.required),
     destinationAccountId: this.fb.control<string>('', Validators.required),
-    frequency: this.fb.control<RecurrenceFrequency>('MONTHLY', Validators.required),
+    frequency: this.fb.control<RecurrenceFrequency | null>('MONTHLY'),
+    interval: this.fb.control<number | null>(1),
     nextExecutionDate: this.fb.control<string>('', Validators.required),
     autoApply: this.fb.control<boolean>(false),
     stopCondition: this.fb.control<ScheduledTransactionStopCondition>('NEVER'),
@@ -162,6 +163,7 @@ export class ScheduledTransactionFormModalComponent {
         sourceAccountId: current?.sourceAccountId ?? accounts[0]?.id ?? '',
         destinationAccountId: current?.destinationAccountId ?? '',
         frequency: current?.frequency ?? 'MONTHLY',
+        interval: current?.interval ?? 1,
         nextExecutionDate: current?.nextExecutionDate ?? todayIsoDate(),
         autoApply: current?.autoApply ?? false,
         stopCondition,
@@ -228,14 +230,15 @@ export class ScheduledTransactionFormModalComponent {
       categoryId: raw.categoryId ?? '',
       sourceAccountId: raw.sourceAccountId ?? '',
       destinationAccountId: isTransfer ? destinationId : undefined,
-      frequency: raw.frequency ?? ('MONTHLY' as RecurrenceFrequency),
-      nextExecutionDate: raw.nextExecutionDate ?? todayIsoDate(),
-      autoApply: raw.autoApply ?? false,
-      active: this.schedule()?.active ?? true,
-      totalOccurrences:
-        stopCondition === 'OCCURRENCES' ? (raw.totalOccurrences ?? undefined) : undefined,
-      endDate: stopCondition === 'DATE' ? (raw.endDate ?? undefined) : undefined,
-    };
+       frequency: stopCondition === 'INTERVAL' ? (raw.frequency ?? ('MONTHLY' as RecurrenceFrequency)) : undefined,
+       interval: stopCondition === 'INTERVAL' ? (raw.interval ?? 1) : undefined,
+       nextExecutionDate: raw.nextExecutionDate ?? todayIsoDate(),
+       autoApply: raw.autoApply ?? false,
+       active: this.schedule()?.active ?? true,
+       totalOccurrences:
+         stopCondition === 'OCCURRENCES' ? (raw.totalOccurrences ?? undefined) : undefined,
+       endDate: stopCondition === 'DATE' ? (raw.endDate ?? undefined) : undefined,
+     } as any;
 
     const existing = this.schedule();
 
@@ -256,13 +259,15 @@ export class ScheduledTransactionFormModalComponent {
     const control = this.form.controls[field];
     if (!control.touched || !control.errors) return null;
     if (control.hasError('required')) return 'Este campo es obligatorio.';
-    if (control.hasError('min')) return 'Ingresa un monto mayor a cero.';
+    if (control.hasError('min')) return 'Ingresa un valor válido.';
+    if (control.hasError('max')) return 'Ingresa un valor válido.';
     return 'Valor inválido.';
   }
 
   private resolveStopCondition(item: ScheduledTransaction): ScheduledTransactionStopCondition {
     if (item.totalOccurrences !== undefined) return 'OCCURRENCES';
     if (item.endDate !== undefined) return 'DATE';
+    if (item.interval !== undefined && item.interval > 1) return 'INTERVAL';
     return 'NEVER';
   }
 
@@ -293,6 +298,8 @@ export class ScheduledTransactionFormModalComponent {
   private syncStopCondition(condition: ScheduledTransactionStopCondition): void {
     const occurrences = this.form.controls.totalOccurrences;
     const endDate = this.form.controls.endDate;
+    const frequency = this.form.controls.frequency;
+    const interval = this.form.controls.interval;
 
     if (condition === 'OCCURRENCES') {
       occurrences.enable();
@@ -300,12 +307,37 @@ export class ScheduledTransactionFormModalComponent {
       endDate.disable();
       endDate.setValue(null);
       endDate.clearValidators();
+      frequency.disable();
+      interval.disable();
+      frequency.setValue(null);
+      interval.setValue(null);
+      frequency.clearValidators();
+      interval.clearValidators();
     } else if (condition === 'DATE') {
       endDate.enable();
       endDate.setValidators(Validators.required);
       occurrences.disable();
       occurrences.setValue(null);
       occurrences.clearValidators();
+      frequency.disable();
+      interval.disable();
+      frequency.setValue(null);
+      interval.setValue(null);
+      frequency.clearValidators();
+      interval.clearValidators();
+    } else if (condition === 'INTERVAL') {
+      frequency.enable();
+      frequency.setValidators(Validators.required);
+      interval.enable();
+      interval.setValidators([Validators.required, Validators.min(1), Validators.max(999)]);
+      occurrences.disable();
+      occurrences.setValue(null);
+      occurrences.clearValidators();
+      endDate.disable();
+      endDate.setValue(null);
+      endDate.clearValidators();
+      if (!frequency.value) frequency.setValue('MONTHLY');
+      if (!interval.value || interval.value < 1) interval.setValue(1);
     } else {
       occurrences.disable();
       occurrences.setValue(null);
@@ -313,9 +345,17 @@ export class ScheduledTransactionFormModalComponent {
       endDate.disable();
       endDate.setValue(null);
       endDate.clearValidators();
+      frequency.disable();
+      interval.disable();
+      frequency.setValue(null);
+      interval.setValue(null);
+      frequency.clearValidators();
+      interval.clearValidators();
     }
 
     occurrences.updateValueAndValidity();
     endDate.updateValueAndValidity();
+    frequency.updateValueAndValidity();
+    interval.updateValueAndValidity();
   }
 }

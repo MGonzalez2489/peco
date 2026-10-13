@@ -34,6 +34,7 @@ interface MovementFormValue {
   note: string | null;
   isRecurring: boolean | null;
   frequency: RecurrenceFrequency | null;
+  interval?: number | null;
   autoApply: boolean | null;
   stopCondition: ScheduledTransactionStopCondition | null;
   totalOccurrences: number | null;
@@ -78,7 +79,8 @@ export class MovementFormModalComponent {
     targetAccountId: this.fb.control<string | null>(null),
     note: this.fb.control<string>(''),
     isRecurring: this.fb.control<boolean>(false),
-    frequency: this.fb.control<RecurrenceFrequency>('MONTHLY'),
+    frequency: this.fb.control<RecurrenceFrequency | null>('MONTHLY'),
+    interval: this.fb.control<number | null>(1),
     autoApply: this.fb.control<boolean>(false),
     stopCondition: this.fb.control<ScheduledTransactionStopCondition>('NEVER'),
     totalOccurrences: this.fb.control<number | null>(null),
@@ -173,6 +175,7 @@ export class MovementFormModalComponent {
           note: '',
           isRecurring: false,
           frequency: 'MONTHLY',
+          interval: 1,
           autoApply: false,
           stopCondition: 'NEVER',
           totalOccurrences: null,
@@ -261,14 +264,15 @@ export class MovementFormModalComponent {
       categoryId: raw.categoryId ?? '',
       sourceAccountId: raw.accountId ?? '',
       destinationAccountId: destinationId,
-      frequency: raw.frequency ?? 'MONTHLY',
+      frequency: condition === 'INTERVAL' ? (raw.frequency ?? 'MONTHLY') : undefined,
       nextExecutionDate: todayIsoDate(),
       autoApply: raw.autoApply ?? false,
       active: true,
+      interval: condition === 'INTERVAL' ? (raw.interval ?? 1) : undefined,
       totalOccurrences:
         condition === 'OCCURRENCES' ? (raw.totalOccurrences ?? undefined) : undefined,
       endDate: condition === 'DATE' ? (raw.endDate ?? undefined) : undefined,
-    });
+    } as any);
   }
 
   private categoryDisplayName(categoryId: string): string {
@@ -301,6 +305,8 @@ export class MovementFormModalComponent {
   private syncStopCondition(condition: ScheduledTransactionStopCondition): void {
     const occurrences = this.form.controls.totalOccurrences;
     const endDate = this.form.controls.endDate;
+    const frequency = this.form.controls.frequency;
+    const interval = this.form.controls.interval as any;
 
     if (condition === 'OCCURRENCES') {
       occurrences.enable();
@@ -308,12 +314,39 @@ export class MovementFormModalComponent {
       endDate.disable();
       endDate.setValue(null);
       endDate.clearValidators();
+      frequency.disable();
+      if (interval) interval.disable();
+      frequency.setValue(null);
+      if (interval) interval.setValue(null);
+      frequency.clearValidators();
+      if (interval) interval.clearValidators();
     } else if (condition === 'DATE') {
       endDate.enable();
       endDate.setValidators(Validators.required);
       occurrences.disable();
       occurrences.setValue(null);
       occurrences.clearValidators();
+      frequency.disable();
+      if (interval) interval.disable();
+      frequency.setValue(null);
+      if (interval) interval.setValue(null);
+      frequency.clearValidators();
+      if (interval) interval.clearValidators();
+    } else if (condition === 'INTERVAL') {
+      frequency.enable();
+      frequency.setValidators(Validators.required);
+      if (interval) {
+        interval.enable();
+        interval.setValidators([Validators.required, Validators.min(1), Validators.max(999)]);
+      }
+      occurrences.disable();
+      occurrences.setValue(null);
+      occurrences.clearValidators();
+      endDate.disable();
+      endDate.setValue(null);
+      endDate.clearValidators();
+      if (!frequency.value) frequency.setValue('MONTHLY');
+      if (interval && (!interval.value || interval.value < 1)) interval.setValue(1);
     } else {
       occurrences.disable();
       occurrences.setValue(null);
@@ -321,9 +354,17 @@ export class MovementFormModalComponent {
       endDate.disable();
       endDate.setValue(null);
       endDate.clearValidators();
+      frequency.disable();
+      if (interval) interval.disable();
+      frequency.setValue(null);
+      if (interval) interval.setValue(null);
+      frequency.clearValidators();
+      if (interval) interval.clearValidators();
     }
 
     occurrences.updateValueAndValidity();
     endDate.updateValueAndValidity();
+    frequency.updateValueAndValidity();
+    if (interval) interval.updateValueAndValidity();
   }
 }

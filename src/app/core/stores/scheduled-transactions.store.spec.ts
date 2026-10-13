@@ -32,6 +32,7 @@ describe('ScheduledTransactionsStore', () => {
       categoryId: 'services',
       sourceAccountId: account.id,
       frequency: 'MONTHLY',
+      interval: 1,
       nextExecutionDate: '2030-01-01',
       autoApply: false,
       active: true,
