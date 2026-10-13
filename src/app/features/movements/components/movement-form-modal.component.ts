@@ -21,7 +21,7 @@ import {CatalogStore} from '@core/stores/catalog.store';
 import {MovementsStore} from '@core/stores/movements.store';
 import {ScheduledTransactionsStore} from '@core/stores/scheduled-transactions.store';
 import {MovementType, RecurrenceFrequency, ScheduledTransactionStopCondition} from '@core/types';
-import {accountColor, toIconName, todayIsoDate} from '@core/utils';
+import {accountColor, defaultStopDate, toIconName, todayIsoDate} from '@core/utils';
 import {AppIconComponent, AppSelectComponent, ModalComponent} from '@shared/components';
 import {CurrencyInputDirective, DateInputDirective} from '@shared/directives';
 
@@ -34,7 +34,7 @@ interface MovementFormValue {
   note: string | null;
   isRecurring: boolean | null;
   frequency: RecurrenceFrequency | null;
-  interval?: number | null;
+  interval: number | null;
   autoApply: boolean | null;
   stopCondition: ScheduledTransactionStopCondition | null;
   totalOccurrences: number | null;
@@ -69,6 +69,8 @@ export class MovementFormModalComponent {
 
   private readonly fb = inject(FormBuilder);
 
+  private endDateIsDefault = false;
+
   protected readonly form = this.fb.group({
     amount: this.fb.control<number>(0, {
       validators: [Validators.required, Validators.min(0.01)],
@@ -79,8 +81,12 @@ export class MovementFormModalComponent {
     targetAccountId: this.fb.control<string | null>(null),
     note: this.fb.control<string>(''),
     isRecurring: this.fb.control<boolean>(false),
-    frequency: this.fb.control<RecurrenceFrequency | null>('MONTHLY'),
-    interval: this.fb.control<number | null>(1),
+    frequency: this.fb.control<RecurrenceFrequency>('MONTHLY'),
+    interval: this.fb.control<number>(1, [
+      Validators.required,
+      Validators.min(1),
+      Validators.max(999),
+    ]),
     autoApply: this.fb.control<boolean>(false),
     stopCondition: this.fb.control<ScheduledTransactionStopCondition>('NEVER'),
     totalOccurrences: this.fb.control<number | null>(null),
@@ -162,6 +168,18 @@ export class MovementFormModalComponent {
       this.stopCondition.set(condition);
       this.syncStopCondition(condition);
     });
+
+    this.form.controls.endDate.valueChanges
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => (this.endDateIsDefault = false));
+
+    this.form.controls.frequency.valueChanges
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.refreshDefaultEndDate());
+
+    this.form.controls.interval.valueChanges
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.refreshDefaultEndDate());
 
     effect(() => {
       if (this.isOpen()) {
@@ -250,6 +268,7 @@ export class MovementFormModalComponent {
     if (!field.touched || !field.errors) return null;
     if (field.hasError('required')) return 'Este campo es obligatorio.';
     if (field.hasError('min')) return `El valor mínimo es ${field.getError('min').min}.`;
+    if (field.hasError('max')) return `El valor máximo es ${field.getError('max').max}.`;
     return 'Valor inválido.';
   }
 
@@ -264,15 +283,15 @@ export class MovementFormModalComponent {
       categoryId: raw.categoryId ?? '',
       sourceAccountId: raw.accountId ?? '',
       destinationAccountId: destinationId,
-      frequency: condition === 'INTERVAL' ? (raw.frequency ?? 'MONTHLY') : undefined,
+      frequency: raw.frequency ?? 'MONTHLY',
       nextExecutionDate: todayIsoDate(),
       autoApply: raw.autoApply ?? false,
       active: true,
-      interval: condition === 'INTERVAL' ? (raw.interval ?? 1) : undefined,
+      interval: raw.interval ?? 1,
       totalOccurrences:
         condition === 'OCCURRENCES' ? (raw.totalOccurrences ?? undefined) : undefined,
       endDate: condition === 'DATE' ? (raw.endDate ?? undefined) : undefined,
-    } as any);
+    });
   }
 
   private categoryDisplayName(categoryId: string): string {
@@ -305,66 +324,49 @@ export class MovementFormModalComponent {
   private syncStopCondition(condition: ScheduledTransactionStopCondition): void {
     const occurrences = this.form.controls.totalOccurrences;
     const endDate = this.form.controls.endDate;
-    const frequency = this.form.controls.frequency;
-    const interval = this.form.controls.interval as any;
 
     if (condition === 'OCCURRENCES') {
       occurrences.enable();
       occurrences.setValidators([Validators.required, Validators.min(1)]);
+      if (!occurrences.value) occurrences.setValue(1, {emitEvent: false});
       endDate.disable();
-      endDate.setValue(null);
+      endDate.setValue(null, {emitEvent: false});
       endDate.clearValidators();
-      frequency.disable();
-      if (interval) interval.disable();
-      frequency.setValue(null);
-      if (interval) interval.setValue(null);
-      frequency.clearValidators();
-      if (interval) interval.clearValidators();
     } else if (condition === 'DATE') {
       endDate.enable();
       endDate.setValidators(Validators.required);
       occurrences.disable();
-      occurrences.setValue(null);
+      occurrences.setValue(null, {emitEvent: false});
       occurrences.clearValidators();
-      frequency.disable();
-      if (interval) interval.disable();
-      frequency.setValue(null);
-      if (interval) interval.setValue(null);
-      frequency.clearValidators();
-      if (interval) interval.clearValidators();
-    } else if (condition === 'INTERVAL') {
-      frequency.enable();
-      frequency.setValidators(Validators.required);
-      if (interval) {
-        interval.enable();
-        interval.setValidators([Validators.required, Validators.min(1), Validators.max(999)]);
+      if (!endDate.value) {
+        this.endDateIsDefault = true;
+        endDate.setValue(this.resolveDefaultEndDate(), {emitEvent: false});
+      } else {
+        this.endDateIsDefault = false;
       }
-      occurrences.disable();
-      occurrences.setValue(null);
-      occurrences.clearValidators();
-      endDate.disable();
-      endDate.setValue(null);
-      endDate.clearValidators();
-      if (!frequency.value) frequency.setValue('MONTHLY');
-      if (interval && (!interval.value || interval.value < 1)) interval.setValue(1);
     } else {
       occurrences.disable();
-      occurrences.setValue(null);
+      occurrences.setValue(null, {emitEvent: false});
       occurrences.clearValidators();
       endDate.disable();
-      endDate.setValue(null);
+      endDate.setValue(null, {emitEvent: false});
       endDate.clearValidators();
-      frequency.disable();
-      if (interval) interval.disable();
-      frequency.setValue(null);
-      if (interval) interval.setValue(null);
-      frequency.clearValidators();
-      if (interval) interval.clearValidators();
     }
 
-    occurrences.updateValueAndValidity();
-    endDate.updateValueAndValidity();
-    frequency.updateValueAndValidity();
-    if (interval) interval.updateValueAndValidity();
+    occurrences.updateValueAndValidity({emitEvent: false});
+    endDate.updateValueAndValidity({emitEvent: false});
+  }
+
+  private resolveDefaultEndDate(): string {
+    const frequency = this.form.controls.frequency.value ?? 'MONTHLY';
+    const interval = this.form.controls.interval.value ?? 1;
+
+    return defaultStopDate(todayIsoDate(), frequency, interval);
+  }
+
+  private refreshDefaultEndDate(): void {
+    if (this.stopCondition() !== 'DATE' || !this.endDateIsDefault) return;
+
+    this.form.controls.endDate.setValue(this.resolveDefaultEndDate(), {emitEvent: false});
   }
 }

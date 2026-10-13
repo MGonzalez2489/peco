@@ -1,4 +1,5 @@
 import {TestBed} from '@angular/core/testing';
+import {LOCAL_STORAGE_KEYS} from '../constants/local-storage-keys.constant';
 import {CreateScheduledTransactionDto} from '../dtos/create-scheduled-transaction.dto';
 import {AccountsStore} from './accounts.store';
 import {CatalogStore} from './catalog.store';
@@ -127,6 +128,58 @@ describe('ScheduledTransactionsStore', () => {
     expect(store.monthlyCommitmentsSummary().netProjectedImpact).toBe(800);
     expect(store.projectedAvailableBalance()).toBe(accountsStore.availableBalance() + 800);
     expect(store.incomeCommitmentPercentage()).toBe(20);
+  });
+
+  it('splits the monthly equivalent when the interval is greater than one', () => {
+    store.createScheduledTransaction(
+      create({estimatedAmount: 200, frequency: 'MONTHLY', interval: 2}),
+    );
+    store.createScheduledTransaction(
+      create({estimatedAmount: 2400, frequency: 'YEARLY', interval: 2}),
+    );
+
+    expect(store.monthlyCommitmentsSummary().totalExpenses).toBe(200);
+  });
+
+  it('advances the next execution date using the interval', () => {
+    const created = store.createScheduledTransaction(
+      create({frequency: 'MONTHLY', interval: 2, nextExecutionDate: '2026-01-15'}),
+    );
+    if (!created) throw new Error('schedule must be created');
+
+    store.executeScheduledTransaction(created.id);
+
+    expect(store.scheduleById(created.id)?.completedOccurrences).toBe(1);
+    expect(store.scheduleById(created.id)?.nextExecutionDate).toBe('2026-03-15');
+  });
+
+  it('normalizes legacy schedules missing frequency and interval on load', () => {
+    localStorage.setItem(
+      LOCAL_STORAGE_KEYS.scheduledTransactions,
+      JSON.stringify([
+        {
+          id: 'legacy-1',
+          name: 'Legado',
+          estimatedAmount: 200,
+          type: 'EXPENSE',
+          categoryId: 'services',
+          sourceAccountId: accountsStore.accounts()[0].id,
+          nextExecutionDate: '2030-01-01',
+          autoApply: false,
+          active: true,
+          completedOccurrences: 0,
+          createdAt: '2020-01-01T00:00:00.000Z',
+          updatedAt: '2020-01-01T00:00:00.000Z',
+        },
+      ]),
+    );
+
+    store.loadScheduledTransactions();
+
+    const loaded = store.scheduleById('legacy-1');
+    expect(loaded?.frequency).toBe('MONTHLY');
+    expect(loaded?.interval).toBe(1);
+    expect(store.monthlyCommitmentsSummary().totalExpenses).toBe(200);
   });
 
   it('toggles and deletes schedules', () => {

@@ -7,5 +7,4 @@ export const SCHEDULED_TRANSACTION_STOP_CONDITION_LABEL: Record<
   NEVER: 'Sin fin',
   OCCURRENCES: 'Por repeticiones',
   DATE: 'Por fecha límite',
-  INTERVAL: 'Repetir cada',
 };

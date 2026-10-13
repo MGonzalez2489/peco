@@ -1,12 +1,12 @@
 import {ChangeDetectionStrategy, Component, computed, inject, signal} from '@angular/core';
 import {CurrencyPipe} from '@angular/common';
 import {RouterLink} from '@angular/router';
-import {MOVEMENT_TYPE_PALETTE, RECURRENCE_FREQUENCY_LABEL} from '@core/constants';
+import {MOVEMENT_TYPE_PALETTE} from '@core/constants';
 import {ScheduledTransaction} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {CatalogStore} from '@core/stores/catalog.store';
 import {ScheduledTransactionsStore} from '@core/stores/scheduled-transactions.store';
-import {formatLocalDate, isScheduleDue, toSoftCategoryColor} from '@core/utils';
+import {formatLocalDate, isScheduleDue, recurrenceLabel, toSoftCategoryColor} from '@core/utils';
 import {ExecuteScheduleModalComponent} from '@features/scheduled/components';
 import {AppIconComponent} from '@shared/components';
 
@@ -52,7 +52,7 @@ export class UpcomingPaymentsWidgetComponent {
   protected readonly amountPalette = MOVEMENT_TYPE_PALETTE;
 
   protected readonly frequencyLabel = (schedule: ScheduledTransaction): string =>
-    RECURRENCE_FREQUENCY_LABEL[schedule.frequency];
+    recurrenceLabel(schedule.frequency, schedule.interval ?? 1);
 
   protected readonly amountSign = (schedule: ScheduledTransaction): string =>
     this.amountPalette[schedule.type].sign;
