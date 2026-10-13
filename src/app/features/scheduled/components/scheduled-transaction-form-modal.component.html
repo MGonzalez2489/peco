@@ -144,59 +144,34 @@
         </div>
       }
 
-      <div class="grid grid-cols-2 gap-3">
-        <div>
-          <label
-            for="sch-frequency"
-            class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
-          >
-            Frecuencia
-          </label>
-          <div class="relative">
-            <select
-              id="sch-frequency"
-              formControlName="frequency"
-              class="w-full appearance-none rounded-xl border border-slate-300 bg-white px-3 py-2.5 pr-10 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-            >
-              @for (option of frequencyOptions; track option.value) {
-                <option [value]="option.value">{{ option.label }}</option>
-              }
-            </select>
-            <app-icon
-              name="chevron-down"
-              size="16"
-              class="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500"
-            />
-          </div>
-        </div>
 
-        <div>
-          <label
-            for="sch-next"
-            class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
-          >
-            Próxima ejecución
-          </label>
-          <div class="relative">
-            <input
-              id="sch-next"
-              formControlName="nextExecutionDate"
-              type="date"
-              class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 pr-10 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white [&::-webkit-calendar-picker-indicator]:opacity-0"
-              [attr.aria-invalid]="
-                form.controls.nextExecutionDate.touched && form.controls.nextExecutionDate.invalid
-              "
-            />
-            <app-icon
-              name="chevron-down"
-              size="16"
-              class="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500"
-            />
-          </div>
-          @if (errorFor('nextExecutionDate'); as error) {
-            <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ error }}</p>
-          }
+
+      <div>
+        <label
+          for="sch-next"
+          class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
+        >
+          Próxima ejecución
+        </label>
+        <div class="relative">
+          <input
+            id="sch-next"
+            formControlName="nextExecutionDate"
+            type="date"
+            class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 pr-10 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white [&::-webkit-calendar-picker-indicator]:opacity-0"
+            [attr.aria-invalid]="
+              form.controls.nextExecutionDate.touched && form.controls.nextExecutionDate.invalid
+            "
+          />
+          <app-icon
+            name="chevron-down"
+            size="16"
+            class="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500"
+          />
         </div>
+        @if (errorFor('nextExecutionDate'); as error) {
+          <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ error }}</p>
+        }
       </div>
 
       <label class="flex items-center gap-3 rounded-xl bg-slate-50 p-3 dark:bg-slate-800/60">
@@ -234,6 +209,57 @@
           />
         </div>
       </div>
+
+      @if (stopCondition() === 'INTERVAL') {
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label
+              for="sch-frequency"
+              class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
+            >
+              Frecuencia
+            </label>
+            <div class="relative">
+              <select
+                id="sch-frequency"
+                formControlName="frequency"
+                class="w-full appearance-none rounded-xl border border-slate-300 bg-white px-3 py-2.5 pr-10 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+              >
+                @for (option of frequencyOptions; track option.value) {
+                  <option [value]="option.value">{{ option.label }}</option>
+                }
+              </select>
+              <app-icon
+                name="chevron-down"
+                size="16"
+                class="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label
+              for="sch-interval"
+              class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
+            >
+              Repetir cada
+            </label>
+            <input
+              id="sch-interval"
+              formControlName="interval"
+              type="number"
+              min="1"
+              max="999"
+              inputmode="numeric"
+              class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+              [attr.aria-invalid]="form.controls.interval.touched && form.controls.interval.invalid"
+            />
+            @if (errorFor('interval'); as error) {
+              <p class="mt-1 text-xs text-rose-600 dark:text-slate-400">{{ error }}</p>
+            }
+          </div>
+        </div>
+      }
 
       @if (stopCondition() === 'OCCURRENCES') {
         <div>

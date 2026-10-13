@@ -13,28 +13,29 @@ const shiftMonths = (date: Date, months: number): Date => {
   return new Date(date.getFullYear(), targetMonth, Math.min(date.getDate(), lastDayOfTargetMonth));
 };
 
-export const nextExecutionDate = (isoDate: string, frequency: RecurrenceFrequency): string => {
+export const nextExecutionDate = (isoDate: string, frequency: RecurrenceFrequency, interval: number = 1): string => {
   const current = parseIsoDate(isoDate);
+  const step = Math.max(1, Math.floor(interval || 1));
 
   switch (frequency) {
     case 'DAILY': {
       const next = new Date(current);
-      next.setDate(next.getDate() + 1);
+      next.setDate(next.getDate() + step);
       return toIsoDate(next);
     }
     case 'WEEKLY': {
       const next = new Date(current);
-      next.setDate(next.getDate() + 7);
+      next.setDate(next.getDate() + 7 * step);
       return toIsoDate(next);
     }
     case 'FORTNIGHTLY': {
       const next = new Date(current);
-      next.setDate(next.getDate() + 14);
+      next.setDate(next.getDate() + 14 * step);
       return toIsoDate(next);
     }
     case 'MONTHLY':
-      return toIsoDate(shiftMonths(current, 1));
+      return toIsoDate(shiftMonths(current, step));
     case 'YEARLY':
-      return toIsoDate(shiftMonths(current, 12));
+      return toIsoDate(shiftMonths(current, 12 * step));
   }
 };

@@ -109,7 +109,8 @@ describe('CatalogStore categories management', () => {
       categoryId: created.id,
       sourceAccountId: account.id,
       frequency: 'MONTHLY',
-      nextExecutionDate: '2030-03-01',
+      interval: 1,
+      nextExecutionDate: '2026-01-01',
       autoApply: false,
       active: true,
     });

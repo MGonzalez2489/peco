@@ -86,7 +86,7 @@ export const ScheduledTransactionsStore = signalStore(
               return accumulator;
             }
 
-            const amount = monthlyEquivalent(item.estimatedAmount, item.frequency);
+            const amount = monthlyEquivalent(item.estimatedAmount, item.frequency, item.interval ?? 1);
 
             if (isIncomeSchedule(item.type)) {
               accumulator.totalIncome += amount;
@@ -135,7 +135,7 @@ export const ScheduledTransactionsStore = signalStore(
         for (const item of activeSchedules()) {
           if (!matchesType(item)) continue;
 
-          const amount = monthlyEquivalent(item.estimatedAmount, item.frequency);
+          const amount = monthlyEquivalent(item.estimatedAmount, item.frequency, item.interval ?? 1);
           if (amount <= 0) continue;
 
           const existing = grouped.get(item.categoryId);
@@ -243,7 +243,7 @@ export const ScheduledTransactionsStore = signalStore(
       const advanced: ScheduledTransaction = {
         ...item,
         completedOccurrences,
-        nextExecutionDate: nextExecutionDate(item.nextExecutionDate, item.frequency),
+        nextExecutionDate: nextExecutionDate(item.nextExecutionDate, item.frequency, item.interval ?? 1),
         updatedAt: new Date().toISOString(),
       };
 
