@@ -117,6 +117,23 @@ export class ScheduledTransactionCardComponent {
     formatLocalDate(this.schedule().nextExecutionDate),
   );
 
+  private getFrequencyUnit(frequency: string): string {
+    switch (frequency) {
+      case 'DAILY':
+        return 'días';
+      case 'WEEKLY':
+        return 'semanas';
+      case 'FORTNIGHTLY':
+        return 'quincenas';
+      case 'MONTHLY':
+        return 'meses';
+      case 'YEARLY':
+        return 'años';
+      default:
+        return 'veces';
+    }
+  }
+
   protected readonly progressLabel = computed(() => {
     const {completedOccurrences, totalOccurrences} = this.schedule();
     if (totalOccurrences === undefined) return 'Sin fin';
