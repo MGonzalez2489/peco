@@ -13,7 +13,11 @@ const shiftMonths = (date: Date, months: number): Date => {
   return new Date(date.getFullYear(), targetMonth, Math.min(date.getDate(), lastDayOfTargetMonth));
 };
 
-export const nextExecutionDate = (isoDate: string, frequency: RecurrenceFrequency, interval: number = 1): string => {
+export const nextExecutionDate = (
+  isoDate: string,
+  frequency: RecurrenceFrequency,
+  interval: number = 1,
+): string => {
   const current = parseIsoDate(isoDate);
   const step = Math.max(1, Math.floor(interval || 1));
 
@@ -37,5 +41,7 @@ export const nextExecutionDate = (isoDate: string, frequency: RecurrenceFrequenc
       return toIsoDate(shiftMonths(current, step));
     case 'YEARLY':
       return toIsoDate(shiftMonths(current, 12 * step));
+    default:
+      return toIsoDate(shiftMonths(current, step));
   }
 };

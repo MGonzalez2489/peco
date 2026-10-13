@@ -1,9 +1,13 @@
 import {ComponentFixture, TestBed} from '@angular/core/testing';
 import {provideAppIcons} from '@core/icons/app-icons.provider';
+import {AccountsStore} from '@core/stores/accounts.store';
+import {ScheduledTransactionsStore} from '@core/stores/scheduled-transactions.store';
+import {defaultStopDate} from '@core/utils';
 import {ScheduledTransactionFormModalComponent} from './scheduled-transaction-form-modal.component';
 
 describe('ScheduledTransactionFormModalComponent', () => {
   let fixture: ComponentFixture<ScheduledTransactionFormModalComponent>;
+  let scheduledStore: InstanceType<typeof ScheduledTransactionsStore>;
 
   const native = (): HTMLElement => fixture.nativeElement as HTMLElement;
 
@@ -27,6 +31,13 @@ describe('ScheduledTransactionFormModalComponent', () => {
     fixture.detectChanges();
   };
 
+  const submit = (): void => {
+    const button = native().querySelector<HTMLButtonElement>('button[type="submit"]');
+    if (!button) throw new Error('submit button must be rendered');
+    button.click();
+    fixture.detectChanges();
+  };
+
   beforeEach(() => {
     localStorage.clear();
     TestBed.configureTestingModule({
@@ -34,6 +45,7 @@ describe('ScheduledTransactionFormModalComponent', () => {
       providers: [provideAppIcons()],
     });
 
+    scheduledStore = TestBed.inject(ScheduledTransactionsStore);
     fixture = TestBed.createComponent(ScheduledTransactionFormModalComponent);
     fixture.detectChanges();
   });
@@ -49,7 +61,6 @@ describe('ScheduledTransactionFormModalComponent', () => {
     await open();
 
     setControlValue('#sch-name', 'Internet fibra');
-    setControlValue('#sch-stop', 'INTERVAL');
     setControlValue('#sch-frequency', 'WEEKLY');
 
     expect(native().querySelector('#sch-occurrences')).toBeNull();
@@ -57,7 +68,54 @@ describe('ScheduledTransactionFormModalComponent', () => {
     setControlValue('#sch-stop', 'OCCURRENCES');
 
     expect(native().querySelector<HTMLInputElement>('#sch-name')?.value).toBe('Internet fibra');
+    expect(native().querySelector<HTMLSelectElement>('#sch-frequency')?.value).toBe('WEEKLY');
     expect(native().querySelector('#sch-occurrences')).not.toBeNull();
+  });
+
+  it('creates a schedule keeping the frequency and interval with the default stop condition', async () => {
+    await open();
+
+    setControlValue('#sch-name', 'Internet fibra');
+    setControlValue('#sch-amount', '800');
+    setControlValue('#sch-frequency', 'WEEKLY');
+
+    submit();
+
+    const created = scheduledStore.scheduledTransactions()[0];
+    expect(created?.frequency).toBe('WEEKLY');
+    expect(created?.interval).toBe(1);
+    expect(created?.totalOccurrences).toBeUndefined();
+    expect(created?.endDate).toBeUndefined();
+  });
+
+  it('preserves the frequency and interval when editing an existing schedule', async () => {
+    const account = TestBed.inject(AccountsStore).accounts()[0];
+    const created = scheduledStore.createScheduledTransaction({
+      name: 'Alquiler',
+      estimatedAmount: 500,
+      type: 'EXPENSE',
+      categoryId: 'services',
+      sourceAccountId: account.id,
+      frequency: 'MONTHLY',
+      interval: 2,
+      nextExecutionDate: '2030-01-01',
+      autoApply: false,
+      active: true,
+    });
+    if (!created) throw new Error('schedule must be created');
+
+    fixture.componentRef.setInput('schedule', created);
+    fixture.componentRef.setInput('isOpen', true);
+    TestBed.flushEffects();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    submit();
+
+    const updated = scheduledStore.scheduleById(created.id);
+    expect(updated?.frequency).toBe('MONTHLY');
+    expect(updated?.interval).toBe(2);
   });
 
   it('shows a chevron indicator on the date input', async () => {
@@ -104,5 +162,74 @@ describe('ScheduledTransactionFormModalComponent', () => {
     expect(listbox).not.toBeNull();
     expect(listbox?.querySelectorAll('[role="option"]').length).toBeGreaterThan(0);
     expect(listbox?.querySelector('[aria-selected="true"]')).not.toBeNull();
+  });
+
+  it('prefills one occurrence and clears the property when the condition changes', async () => {
+    await open();
+
+    setControlValue('#sch-name', 'Internet fibra');
+    setControlValue('#sch-amount', '800');
+    setControlValue('#sch-stop', 'OCCURRENCES');
+
+    const occurrences = native().querySelector('#sch-occurrences') as HTMLInputElement;
+    expect(occurrences.value).toBe('1');
+
+    setControlValue('#sch-stop', 'NEVER');
+    expect(native().querySelector('#sch-occurrences')).toBeNull();
+
+    submit();
+
+    const created = scheduledStore.scheduledTransactions()[0];
+    expect(created?.totalOccurrences).toBeUndefined();
+  });
+
+  it('prefills the end date using the next execution date and frequency', async () => {
+    await open();
+
+    setControlValue('#sch-name', 'Internet fibra');
+    setControlValue('#sch-amount', '800');
+    setControlValue('#sch-next', '2026-05-01');
+    setControlValue('#sch-stop', 'DATE');
+
+    const endDate = native().querySelector('#sch-end-date') as HTMLInputElement;
+    expect(endDate.value).toBe(defaultStopDate('2026-05-01', 'MONTHLY', 1));
+
+    setControlValue('#sch-frequency', 'WEEKLY');
+    expect(endDate.value).toBe(defaultStopDate('2026-05-01', 'WEEKLY', 1));
+
+    endDate.value = '2030-06-15';
+    endDate.dispatchEvent(new Event('input', {bubbles: true}));
+    fixture.detectChanges();
+
+    setControlValue('#sch-frequency', 'YEARLY');
+    expect(endDate.value).toBe('2030-06-15');
+  });
+
+  it('preserves a stored end date when editing a schedule', async () => {
+    const account = TestBed.inject(AccountsStore).accounts()[0];
+    const created = scheduledStore.createScheduledTransaction({
+      name: 'Alquiler',
+      estimatedAmount: 500,
+      type: 'EXPENSE',
+      categoryId: 'services',
+      sourceAccountId: account.id,
+      frequency: 'WEEKLY',
+      interval: 1,
+      nextExecutionDate: '2030-01-01',
+      autoApply: false,
+      active: true,
+      endDate: '2031-05-05',
+    });
+    if (!created) throw new Error('schedule must be created');
+
+    fixture.componentRef.setInput('schedule', created);
+    fixture.componentRef.setInput('isOpen', true);
+    TestBed.flushEffects();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const endDate = native().querySelector('#sch-end-date') as HTMLInputElement;
+    expect(endDate.value).toBe('2031-05-05');
   });
 });

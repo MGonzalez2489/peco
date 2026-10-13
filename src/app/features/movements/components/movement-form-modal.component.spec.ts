@@ -1,9 +1,12 @@
 import {ComponentFixture, TestBed} from '@angular/core/testing';
 import {provideAppIcons} from '@core/icons/app-icons.provider';
+import {ScheduledTransactionsStore} from '@core/stores/scheduled-transactions.store';
+import {defaultStopDate, todayIsoDate} from '@core/utils';
 import {MovementFormModalComponent} from './movement-form-modal.component';
 
 describe('MovementFormModalComponent', () => {
   let fixture: ComponentFixture<MovementFormModalComponent>;
+  let scheduledStore: InstanceType<typeof ScheduledTransactionsStore>;
 
   const native = (): HTMLElement => fixture.nativeElement as HTMLElement;
 
@@ -24,6 +27,36 @@ describe('MovementFormModalComponent', () => {
     fixture.detectChanges();
   };
 
+  const fillAmountAndRepeat = async (interval?: string): Promise<void> => {
+    await open();
+
+    const amount = native().querySelector('#mov-amount') as HTMLInputElement;
+    amount.value = '500';
+    amount.dispatchEvent(new Event('input', {bubbles: true}));
+    fixture.detectChanges();
+
+    const recurring = native().querySelector<HTMLInputElement>(
+      'input[formcontrolname="isRecurring"]',
+    );
+    if (!recurring) throw new Error('recurring checkbox must be rendered');
+    recurring.click();
+    fixture.detectChanges();
+
+    if (interval !== undefined) {
+      const intervalInput = native().querySelector('#mov-interval') as HTMLInputElement;
+      intervalInput.value = interval;
+      intervalInput.dispatchEvent(new Event('input', {bubbles: true}));
+      fixture.detectChanges();
+    }
+  };
+
+  const submit = (): void => {
+    const button = native().querySelector<HTMLButtonElement>('button[type="submit"]');
+    if (!button) throw new Error('submit button must be rendered');
+    button.click();
+    fixture.detectChanges();
+  };
+
   beforeEach(() => {
     localStorage.clear();
     TestBed.configureTestingModule({
@@ -31,6 +64,7 @@ describe('MovementFormModalComponent', () => {
       providers: [provideAppIcons()],
     });
 
+    scheduledStore = TestBed.inject(ScheduledTransactionsStore);
     fixture = TestBed.createComponent(MovementFormModalComponent);
     fixture.detectChanges();
   });
@@ -102,5 +136,102 @@ describe('MovementFormModalComponent', () => {
     expect(endDate.parentElement?.classList.contains('relative')).toBe(true);
     expect(endDate.parentElement?.querySelector('app-icon')).not.toBeNull();
     expect(endDate.classList.contains('pr-10')).toBe(true);
+  });
+
+  it('shows the frequency and interval controls whenever the movement is recurring', async () => {
+    await open();
+
+    expect(native().querySelector('#mov-frequency')).toBeNull();
+
+    const recurring = native().querySelector<HTMLInputElement>(
+      'input[formcontrolname="isRecurring"]',
+    );
+    if (!recurring) throw new Error('recurring checkbox must be rendered');
+    recurring.click();
+    fixture.detectChanges();
+
+    expect(native().querySelector('#mov-frequency')).not.toBeNull();
+    expect(native().querySelector('#mov-interval')).not.toBeNull();
+  });
+
+  it('keeps the frequency and interval with the default stop condition', async () => {
+    await fillAmountAndRepeat();
+    submit();
+
+    const created = scheduledStore.scheduledTransactions()[0];
+    expect(created?.frequency).toBe('MONTHLY');
+    expect(created?.interval).toBe(1);
+    expect(scheduledStore.monthlyCommitmentsSummary().totalExpenses).toBe(500);
+  });
+
+  it('persists the frequency and interval with the occurrences stop condition', async () => {
+    await fillAmountAndRepeat('2');
+    changeNativeSelect('#mov-stop', 'OCCURRENCES');
+
+    const occurrences = native().querySelector('#mov-occurrences') as HTMLInputElement;
+    occurrences.value = '3';
+    occurrences.dispatchEvent(new Event('input', {bubbles: true}));
+    fixture.detectChanges();
+
+    submit();
+
+    const created = scheduledStore.scheduledTransactions()[0];
+    expect(created?.frequency).toBe('MONTHLY');
+    expect(created?.interval).toBe(2);
+    expect(created?.totalOccurrences).toBe(3);
+  });
+
+  it('persists a custom recurrence interval', async () => {
+    await fillAmountAndRepeat('2');
+    submit();
+
+    const created = scheduledStore.scheduledTransactions()[0];
+    expect(created?.interval).toBe(2);
+    expect(created?.frequency).toBe('MONTHLY');
+    expect(scheduledStore.monthlyCommitmentsSummary().totalExpenses).toBe(250);
+  });
+
+  it('prefills one occurrence and clears the property when the condition changes', async () => {
+    await fillAmountAndRepeat();
+    changeNativeSelect('#mov-stop', 'OCCURRENCES');
+
+    const occurrences = native().querySelector('#mov-occurrences') as HTMLInputElement;
+    expect(occurrences.value).toBe('1');
+
+    changeNativeSelect('#mov-stop', 'NEVER');
+    expect(native().querySelector('#mov-occurrences')).toBeNull();
+
+    submit();
+
+    const created = scheduledStore.scheduledTransactions()[0];
+    expect(created?.totalOccurrences).toBeUndefined();
+  });
+
+  it('prefills the end date, recalculates it and respects manual edits', async () => {
+    await fillAmountAndRepeat();
+    changeNativeSelect('#mov-stop', 'DATE');
+
+    const endDate = native().querySelector('#mov-end-date') as HTMLInputElement;
+    expect(endDate.value).toBe(defaultStopDate(todayIsoDate(), 'MONTHLY', 1));
+
+    changeNativeSelect('#mov-frequency', 'WEEKLY');
+    expect(endDate.value).toBe(defaultStopDate(todayIsoDate(), 'WEEKLY', 1));
+
+    endDate.value = '2030-06-15';
+    endDate.dispatchEvent(new Event('input', {bubbles: true}));
+    fixture.detectChanges();
+
+    changeNativeSelect('#mov-frequency', 'YEARLY');
+    expect(endDate.value).toBe('2030-06-15');
+  });
+
+  it('persists the prefilled end date for the date stop condition', async () => {
+    await fillAmountAndRepeat();
+    changeNativeSelect('#mov-stop', 'DATE');
+    submit();
+
+    const created = scheduledStore.scheduledTransactions()[0];
+    expect(created?.endDate).toBe(defaultStopDate(todayIsoDate(), 'MONTHLY', 1));
+    expect(created?.totalOccurrences).toBeUndefined();
   });
 });

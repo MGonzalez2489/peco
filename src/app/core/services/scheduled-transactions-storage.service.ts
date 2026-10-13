@@ -7,7 +7,10 @@ import {writeStorageArray} from '../utils/write-storage-array.util';
 @Injectable({providedIn: 'root'})
 export class ScheduledTransactionsStorageService {
   getAll(): ScheduledTransaction[] {
-    return readStorageArray<ScheduledTransaction>(LOCAL_STORAGE_KEYS.scheduledTransactions) ?? [];
+    const items =
+      readStorageArray<ScheduledTransaction>(LOCAL_STORAGE_KEYS.scheduledTransactions) ?? [];
+
+    return items.map((item) => this.normalize(item));
   }
 
   saveAll(items: ScheduledTransaction[]): void {
@@ -24,5 +27,15 @@ export class ScheduledTransactionsStorageService {
 
   delete(id: string): void {
     this.saveAll(this.getAll().filter((entry) => entry.id !== id));
+  }
+
+  private normalize(item: ScheduledTransaction): ScheduledTransaction {
+    const interval = item.interval && item.interval > 0 ? Math.floor(item.interval) : 1;
+
+    return {
+      ...item,
+      frequency: item.frequency ?? 'MONTHLY',
+      interval,
+    };
   }
 }

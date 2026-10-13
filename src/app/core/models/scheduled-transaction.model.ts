@@ -11,7 +11,7 @@ export interface ScheduledTransaction {
   destinationAccountId?: string;
 
   frequency: RecurrenceFrequency;
-  interval: number;
+  interval?: number;
   nextExecutionDate: string;
   autoApply: boolean;
 

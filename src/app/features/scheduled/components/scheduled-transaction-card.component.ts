@@ -8,8 +8,7 @@ import {
   signal,
 } from '@angular/core';
 import {CurrencyPipe} from '@angular/common';
-import {formatLocalDate, isScheduleDue, toSoftCategoryColor} from '@core/utils';
-import {RECURRENCE_FREQUENCY_LABEL} from '@core/constants';
+import {formatLocalDate, isScheduleDue, recurrenceLabel, toSoftCategoryColor} from '@core/utils';
 import {ScheduledTransaction} from '@core/models';
 import {CatalogStore} from '@core/stores/catalog.store';
 import {AccountsStore} from '@core/stores/accounts.store';
@@ -40,13 +39,9 @@ export class ScheduledTransactionCardComponent {
   protected readonly confirmDeleteVisible = signal(false);
   protected readonly isExpanded = signal(false);
 
-  protected readonly frequencyLabel = computed(() => {
-    const schedule = this.schedule();
-    const label = RECURRENCE_FREQUENCY_LABEL[schedule.frequency];
-    const interval = schedule.interval ?? 1;
-    if (interval <= 1) return label;
-    return `Cada ${interval} ${this.getFrequencyUnit(schedule.frequency)}`;
-  });
+  protected readonly frequencyLabel = computed(() =>
+    recurrenceLabel(this.schedule().frequency, this.schedule().interval ?? 1),
+  );
 
   protected readonly isIncome = computed(() => this.schedule().type === 'INCOME');
 
@@ -122,23 +117,6 @@ export class ScheduledTransactionCardComponent {
   protected readonly nextExecutionLabel = computed(() =>
     formatLocalDate(this.schedule().nextExecutionDate),
   );
-
-  private getFrequencyUnit(frequency: string): string {
-    switch (frequency) {
-      case 'DAILY':
-        return 'días';
-      case 'WEEKLY':
-        return 'semanas';
-      case 'FORTNIGHTLY':
-        return 'quincenas';
-      case 'MONTHLY':
-        return 'meses';
-      case 'YEARLY':
-        return 'años';
-      default:
-        return 'veces';
-    }
-  }
 
   protected readonly progressLabel = computed(() => {
     const {completedOccurrences, totalOccurrences} = this.schedule();
