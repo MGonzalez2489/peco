@@ -1,1 +1,1 @@
-export type ScheduledTransactionStopCondition = 'NEVER' | 'OCCURRENCES' | 'DATE' | 'INTERVAL';
+export type ScheduledTransactionStopCondition = 'NEVER' | 'OCCURRENCES' | 'DATE';

@@ -63,7 +63,6 @@ describe('ScheduledTransactionFormModalComponent', () => {
     await open();
 
     setControlValue('#sch-name', 'Internet fibra');
-    setControlValue('#sch-stop', 'INTERVAL');
     setControlValue('#sch-frequency', 'WEEKLY');
 
     expect(native().querySelector('#sch-occurrences')).toBeNull();
@@ -71,6 +70,7 @@ describe('ScheduledTransactionFormModalComponent', () => {
     setControlValue('#sch-stop', 'OCCURRENCES');
 
     expect(native().querySelector<HTMLInputElement>('#sch-name')?.value).toBe('Internet fibra');
+    expect(native().querySelector<HTMLSelectElement>('#sch-frequency')?.value).toBe('WEEKLY');
     expect(native().querySelector('#sch-occurrences')).not.toBeNull();
   });
 
