@@ -291,7 +291,7 @@ export class MovementFormModalComponent {
       categoryId: raw.categoryId ?? '',
       sourceAccountId: raw.accountId ?? '',
       destinationAccountId: destinationId,
-      frequency: condition === 'INTERVAL' ? (raw.frequency ?? 'MONTHLY') : undefined,
+      frequency: raw.frequency ?? 'MONTHLY',
       nextExecutionDate: todayIsoDate(),
       autoApply: raw.autoApply ?? false,
       active: true,
@@ -299,7 +299,7 @@ export class MovementFormModalComponent {
       totalOccurrences:
         condition === 'OCCURRENCES' ? (raw.totalOccurrences ?? undefined) : undefined,
       endDate: condition === 'DATE' ? (raw.endDate ?? undefined) : undefined,
-    } as any);
+    });
   }
 
   private categoryDisplayName(categoryId: string): string {
@@ -323,8 +323,6 @@ export class MovementFormModalComponent {
   private syncStopCondition(condition: ScheduledTransactionStopCondition): void {
     const occurrences = this.form.controls.totalOccurrences;
     const endDate = this.form.controls.endDate;
-    const frequency = this.form.controls.frequency;
-    const interval = this.form.controls.interval as any;
 
     if (condition === 'OCCURRENCES') {
       occurrences.enable();
@@ -333,12 +331,6 @@ export class MovementFormModalComponent {
       endDate.disable();
       endDate.setValue(null, {emitEvent: false});
       endDate.clearValidators();
-      frequency.disable();
-      if (interval) interval.disable();
-      frequency.setValue(null);
-      if (interval) interval.setValue(null);
-      frequency.clearValidators();
-      if (interval) interval.clearValidators();
     } else if (condition === 'DATE') {
       endDate.enable();
       endDate.setValidators(Validators.required);
@@ -358,12 +350,6 @@ export class MovementFormModalComponent {
       endDate.disable();
       endDate.setValue(null, {emitEvent: false});
       endDate.clearValidators();
-      frequency.disable();
-      if (interval) interval.disable();
-      frequency.setValue(null);
-      if (interval) interval.setValue(null);
-      frequency.clearValidators();
-      if (interval) interval.clearValidators();
     }
 
     occurrences.updateValueAndValidity({emitEvent: false});

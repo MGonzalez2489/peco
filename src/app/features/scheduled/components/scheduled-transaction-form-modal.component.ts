@@ -325,7 +325,6 @@ export class ScheduledTransactionFormModalComponent {
   private resolveStopCondition(item: ScheduledTransaction): ScheduledTransactionStopCondition {
     if (item.totalOccurrences !== undefined) return 'OCCURRENCES';
     if (item.endDate !== undefined) return 'DATE';
-    if (item.interval !== undefined && item.interval > 1) return 'INTERVAL';
     return 'NEVER';
   }
 
@@ -347,8 +346,6 @@ export class ScheduledTransactionFormModalComponent {
   private syncStopCondition(condition: ScheduledTransactionStopCondition): void {
     const occurrences = this.form.controls.totalOccurrences;
     const endDate = this.form.controls.endDate;
-    const frequency = this.form.controls.frequency;
-    const interval = this.form.controls.interval;
 
     if (condition === 'OCCURRENCES') {
       occurrences.enable();
@@ -357,12 +354,6 @@ export class ScheduledTransactionFormModalComponent {
       endDate.disable();
       endDate.setValue(null, {emitEvent: false});
       endDate.clearValidators();
-      frequency.disable();
-      interval.disable();
-      frequency.setValue(null);
-      interval.setValue(null);
-      frequency.clearValidators();
-      interval.clearValidators();
     } else if (condition === 'DATE') {
       endDate.enable();
       endDate.setValidators(Validators.required);
@@ -382,12 +373,6 @@ export class ScheduledTransactionFormModalComponent {
       endDate.disable();
       endDate.setValue(null, {emitEvent: false});
       endDate.clearValidators();
-      frequency.disable();
-      interval.disable();
-      frequency.setValue(null);
-      interval.setValue(null);
-      frequency.clearValidators();
-      interval.clearValidators();
     }
 
     occurrences.updateValueAndValidity({emitEvent: false});
