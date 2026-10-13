@@ -12,11 +12,11 @@ import {AccountsStore} from '@core/stores/accounts.store';
 import {CatalogStore} from '@core/stores/catalog.store';
 import {MovementsStore} from '@core/stores/movements.store';
 import {MovementFilterType} from '@core/types';
-import {ModalComponent} from '@shared/components';
+import {AppIconComponent, ModalComponent} from '@shared/components';
 
 @Component({
   selector: 'app-filtro-movimientos-modal',
-  imports: [ModalComponent],
+  imports: [ModalComponent, AppIconComponent],
   templateUrl: './filtro-movimientos-modal.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `

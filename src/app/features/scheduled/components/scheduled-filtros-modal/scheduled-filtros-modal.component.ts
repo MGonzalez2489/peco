@@ -10,11 +10,11 @@ import {
 import {FormsModule} from '@angular/forms';
 import {CatalogStore} from '@core/stores/catalog.store';
 import {ScheduledTransactionsStore} from '@core/stores/scheduled-transactions.store';
-import {ModalComponent} from '@shared/components';
+import {AppIconComponent, ModalComponent} from '@shared/components';
 
 @Component({
   selector: 'app-scheduled-filtros-modal',
-  imports: [ModalComponent, FormsModule],
+  imports: [ModalComponent, FormsModule, AppIconComponent],
   templateUrl: './scheduled-filtros-modal.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
