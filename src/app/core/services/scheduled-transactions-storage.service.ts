@@ -2,6 +2,7 @@ import {Injectable} from '@angular/core';
 import {LOCAL_STORAGE_KEYS} from '../constants/local-storage-keys.constant';
 import {ScheduledTransaction} from '../models/scheduled-transaction.model';
 import {readStorageArray} from '../utils/read-storage-array.util';
+import {resolveScheduledTransactionType} from '../utils/resolve-scheduled-transaction-type.util';
 import {writeStorageArray} from '../utils/write-storage-array.util';
 
 @Injectable({providedIn: 'root'})
@@ -34,6 +35,7 @@ export class ScheduledTransactionsStorageService {
 
     return {
       ...item,
+      type: resolveScheduledTransactionType(item.type),
       frequency: item.frequency ?? 'MONTHLY',
       interval,
     };

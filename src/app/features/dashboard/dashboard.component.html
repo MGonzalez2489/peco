@@ -52,7 +52,7 @@
             <app-stat-card
               [title]="account.name"
               [amount]="account.currentBalance"
-              [color]="account.color ?? 'indigo'"
+              [color]="account.type | accountTypeColor"
               [goal]="account.targetGoal"
               [subtext]="accountSubtext(account)"
             />
@@ -61,8 +61,6 @@
       </div>
     }
   </div>
-
-  <app-upcoming-payments-widget />
 
   <div class="mt-8">
     <div class="mb-4 flex items-center justify-between gap-4">
@@ -78,4 +76,6 @@
     </div>
     <app-movement-list [movements]="recentMovements()" emptyMessage="Todavía no hay movimientos." />
   </div>
+
+  <app-upcoming-payments-widget />
 </section>

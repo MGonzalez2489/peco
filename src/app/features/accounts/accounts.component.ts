@@ -37,6 +37,8 @@ export class AccountsComponent {
 
   readonly accountColor = accountColor;
 
+  readonly accountDotColor = (account: Account): string => accountColor(account.type.color).chip;
+
   readonly formatCurrency = formatCurrency;
 
   openCreateModal(): void {

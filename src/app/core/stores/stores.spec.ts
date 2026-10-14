@@ -1,6 +1,8 @@
 import {TestBed} from '@angular/core/testing';
+import {ACCOUNT_TYPE_MAP} from '../constants/account-type-map.constant';
 import {LOCAL_STORAGE_KEYS} from '../constants/local-storage-keys.constant';
 import {Account} from '../models/account.model';
+import {AccountTypeKey} from '../types/account-type-key.enum';
 import {AccountsStore} from './accounts.store';
 import {CatalogStore} from './catalog.store';
 import {MovementsStore} from './movements.store';
@@ -35,10 +37,69 @@ describe('Finance stores', () => {
     expect(accountsStore.accounts().some((account) => account.id === rootId)).toBe(true);
   });
 
+  it('persists the semantic account type on creation', () => {
+    const account = accountsStore.createAccount({
+      name: 'Tarjeta',
+      initialBalance: 0,
+      type: ACCOUNT_TYPE_MAP[AccountTypeKey.CREDIT],
+    });
+    if (!account) throw new Error('account must be created');
+
+    expect(account.type.key).toBe(AccountTypeKey.CREDIT);
+    expect(accountsStore.accounts().find((item) => item.id === account.id)?.type.key).toBe(
+      AccountTypeKey.CREDIT,
+    );
+  });
+
+  it('allows a credit account to start with a negative balance (debt)', () => {
+    const account = accountsStore.createAccount({
+      name: 'Tarjeta',
+      initialBalance: -1500,
+      type: ACCOUNT_TYPE_MAP[AccountTypeKey.CREDIT],
+    });
+    if (!account) throw new Error('account must be created');
+
+    expect(account.currentBalance).toBe(-1500);
+    expect(account.type.key).toBe(AccountTypeKey.CREDIT);
+  });
+
+  it('increases credit debt on expenses and reduces it on payments', () => {
+    const card = accountsStore.createAccount({
+      name: 'Tarjeta',
+      initialBalance: 0,
+      type: ACCOUNT_TYPE_MAP[AccountTypeKey.CREDIT],
+    });
+    if (!card) throw new Error('account must be created');
+
+    const balance = (): number | undefined =>
+      accountsStore.accounts().find((item) => item.id === card.id)?.currentBalance;
+
+    movementsStore.registerMovement({
+      accountId: card.id,
+      categoryId: 'services',
+      type: 'EXPENSE',
+      amount: 300,
+    });
+
+    // A negative balance represents active debt: an expense grows the debt.
+    expect(balance()).toBe(-300);
+
+    movementsStore.registerMovement({
+      accountId: card.id,
+      categoryId: 'payroll',
+      type: 'INCOME',
+      amount: 100,
+    });
+
+    // A payment reduces the outstanding debt.
+    expect(balance()).toBe(-200);
+  });
+
   it('persists the optional note on create and update', () => {
     const account = accountsStore.createAccount({
       name: 'Tarjeta',
       initialBalance: 0,
+      type: ACCOUNT_TYPE_MAP[AccountTypeKey.CREDIT],
       note: 'Día de corte: 5',
     });
     if (!account) throw new Error('account must be created');
@@ -53,7 +114,11 @@ describe('Finance stores', () => {
   });
 
   it('adds income to the source balance', () => {
-    const target = accountsStore.createAccount({name: 'Ahorro', initialBalance: 0});
+    const target = accountsStore.createAccount({
+      name: 'Ahorro',
+      initialBalance: 0,
+      type: ACCOUNT_TYPE_MAP[AccountTypeKey.SAVINGS],
+    });
     if (!target) throw new Error('account must be created');
 
     const before = target.currentBalance;
@@ -71,7 +136,11 @@ describe('Finance stores', () => {
 
   it('moves balance on transfers in both directions', () => {
     const source = accountsStore.rootAccount();
-    const destination = accountsStore.createAccount({name: 'Ahorro', initialBalance: 200});
+    const destination = accountsStore.createAccount({
+      name: 'Ahorro',
+      initialBalance: 200,
+      type: ACCOUNT_TYPE_MAP[AccountTypeKey.SAVINGS],
+    });
     if (!source || !destination) throw new Error('accounts must exist');
 
     movementsStore.registerMovement({
@@ -92,7 +161,11 @@ describe('Finance stores', () => {
   });
 
   it('reverses a movement back into the original balance', () => {
-    const target = accountsStore.createAccount({name: 'Ahorro', initialBalance: 0});
+    const target = accountsStore.createAccount({
+      name: 'Ahorro',
+      initialBalance: 0,
+      type: ACCOUNT_TYPE_MAP[AccountTypeKey.SAVINGS],
+    });
     if (!target) throw new Error('account must be created');
 
     const baseline = target.currentBalance;
@@ -131,7 +204,13 @@ describe('Finance stores', () => {
     };
 
     try {
-      expect(accountsStore.createAccount({name: 'Fallback', initialBalance: 0})).toBeNull();
+      expect(
+        accountsStore.createAccount({
+          name: 'Fallback',
+          initialBalance: 0,
+          type: ACCOUNT_TYPE_MAP[AccountTypeKey.CASH],
+        }),
+      ).toBeNull();
       expect(accountsStore.error()).toBe('crypto unavailable');
       expect(accountsStore.loaded()).toBe(false);
     } finally {
@@ -143,7 +222,11 @@ describe('Finance stores', () => {
   });
 
   it('filters movements and derives totals', () => {
-    const account = accountsStore.createAccount({name: 'Ahorro', initialBalance: 0});
+    const account = accountsStore.createAccount({
+      name: 'Ahorro',
+      initialBalance: 0,
+      type: ACCOUNT_TYPE_MAP[AccountTypeKey.SAVINGS],
+    });
     if (!account) throw new Error('account must be created');
 
     movementsStore.registerMovement({
@@ -192,7 +275,11 @@ describe('Finance stores', () => {
   });
 
   it('toggles pin without touching the balance', () => {
-    const account = accountsStore.createAccount({name: 'Ahorro', initialBalance: 0});
+    const account = accountsStore.createAccount({
+      name: 'Ahorro',
+      initialBalance: 0,
+      type: ACCOUNT_TYPE_MAP[AccountTypeKey.SAVINGS],
+    });
     if (!account) throw new Error('account must be created');
 
     const before = account.currentBalance;

@@ -3,7 +3,7 @@
   [title]="account() ? 'Editar cuenta' : 'Nueva cuenta'"
   (closed)="closed.emit()"
 >
-  <form [formGroup]="form" (ngSubmit)="save()" class="mt-5 space-y-4" novalidate>
+  <form [formGroup]="form" (ngSubmit)="save()" class="md:mt-5 space-y-4" novalidate>
     <div>
       <label
         for="cat-name"
@@ -28,36 +28,52 @@
 
     <div>
       <label
-        for="cat-balance"
+        for="cat-type"
         class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
       >
-        {{ account() ? 'Saldo actual' : 'Saldo inicial' }}
+        Tipo de cuenta
       </label>
-      <input
-        id="cat-balance"
-        formControlName="initialBalance"
-        appCurrencyInput
-        type="text"
-        inputmode="decimal"
-        autocomplete="off"
-        placeholder="0.00"
-        (focus)="onAmountInputFocus($event)"
-        (blur)="onAmountInputBlur()"
-        class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-        [attr.aria-invalid]="
-          form.controls.initialBalance.touched && form.controls.initialBalance.invalid
-        "
+      <app-select
+        formControlName="type"
+        controlId="cat-type"
+        ariaLabel="Tipo de cuenta"
+        placeholder="Selecciona un tipo de cuenta"
+        [options]="accountTypeOptions"
       />
-      @if (errorFor(form.controls.initialBalance); as error) {
-        <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ error }}</p>
-      } @else if (account()) {
-        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
-          Si lo modificas, se registrará un movimiento de ajuste en tu historial.
-        </p>
-      }
     </div>
 
-    <div class="grid grid-cols-2 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label
+          for="cat-balance"
+          class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
+        >
+          {{ account() ? 'Saldo actual' : 'Saldo inicial' }}
+        </label>
+        <input
+          id="cat-balance"
+          formControlName="initialBalance"
+          appCurrencyInput
+          [appCurrencyAllowNegative]="form.controls.type.value === accountTypeKeys.CREDIT"
+          type="text"
+          inputmode="decimal"
+          autocomplete="off"
+          placeholder="0.00"
+          (focus)="onAmountInputFocus($event)"
+          (blur)="onAmountInputBlur()"
+          class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+          [attr.aria-invalid]="
+            form.controls.initialBalance.touched && form.controls.initialBalance.invalid
+          "
+        />
+        @if (errorFor(form.controls.initialBalance); as error) {
+          <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ error }}</p>
+        } @else if (account()) {
+          <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            Si lo modificas, se registrará un movimiento de ajuste en tu historial.
+          </p>
+        }
+      </div>
       <div>
         <label
           for="cat-goal"
@@ -79,21 +95,6 @@
         @if (errorFor(form.controls.targetGoal); as error) {
           <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ error }}</p>
         }
-      </div>
-
-      <div>
-        <label
-          for="cat-color"
-          class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
-        >
-          Color
-        </label>
-        <app-color-select
-          controlId="cat-color"
-          ariaLabel="Color de la cuenta"
-          [palette]="colorPalette"
-          formControlName="color"
-        />
       </div>
     </div>
 
@@ -180,7 +181,7 @@
       </span>
     </button>
 
-    <div class="flex justify-end gap-2 pt-2">
+    <div class="modal-footer flex justify-end gap-2 pt-2">
       <button
         type="button"
         (click)="closed.emit()"

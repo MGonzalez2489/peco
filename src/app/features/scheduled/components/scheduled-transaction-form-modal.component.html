@@ -4,7 +4,7 @@
       Primero crea una cuenta desde la sección Cuentas.
     </p>
   } @else {
-    <form [formGroup]="form" (ngSubmit)="save()" class="mt-5 space-y-4" novalidate>
+    <form [formGroup]="form" (ngSubmit)="save()" class="md:mt-5 space-y-4" novalidate>
       <div>
         <label
           for="sch-name"
@@ -34,24 +34,13 @@
         >
           Tipo
         </label>
-        <div class="relative">
-          <select
-            id="sch-type"
-            formControlName="type"
-            class="w-full appearance-none rounded-xl border border-slate-300 bg-white px-3 py-2.5 pr-10 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-          >
-            @for (option of typeOptions; track option.value) {
-              <option [value]="option.value">{{ option.label }}</option>
-            }
-          </select>
-          <div class="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2">
-            <app-icon
-              name="chevron-down"
-              size="16"
-              class="h-4 w-4 text-slate-400 dark:text-slate-500"
-            />
-          </div>
-        </div>
+        <app-select
+          formControlName="type"
+          controlId="sch-type"
+          ariaLabel="Tipo de programado"
+          placeholder="Selecciona un tipo"
+          [options]="typeOptions"
+        />
       </div>
 
       <div>
@@ -79,7 +68,7 @@
         }
       </div>
 
-      @if (selectedType() !== 'TRANSFER') {
+      @if (selectedType() !== typeKeys.TRANSFER) {
         <div>
           <label
             for="sch-category"
@@ -106,12 +95,12 @@
           for="sch-account"
           class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
         >
-          Cuenta {{ selectedType() === 'TRANSFER' ? 'origen' : '' }}
+          Cuenta {{ selectedType() === typeKeys.TRANSFER ? 'origen' : '' }}
         </label>
         <app-select
           formControlName="sourceAccountId"
           controlId="sch-account"
-          [ariaLabel]="selectedType() === 'TRANSFER' ? 'Cuenta origen' : 'Cuenta'"
+          [ariaLabel]="selectedType() === typeKeys.TRANSFER ? 'Cuenta origen' : 'Cuenta'"
           placeholder="Selecciona una cuenta"
           [options]="accountOptions()"
           [invalid]="form.controls.sourceAccountId.touched && form.controls.sourceAccountId.invalid"
@@ -121,7 +110,7 @@
         }
       </div>
 
-      @if (selectedType() === 'TRANSFER') {
+      @if (selectedType() === typeKeys.TRANSFER) {
         <div>
           <label
             for="sch-destination"
@@ -153,24 +142,15 @@
         >
           Próxima ejecución
         </label>
-        <div class="relative">
-          <input
-            id="sch-next"
-            formControlName="nextExecutionDate"
-            type="date"
-            class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 pr-10 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white [&::-webkit-calendar-picker-indicator]:opacity-0"
-            [attr.aria-invalid]="
-              form.controls.nextExecutionDate.touched && form.controls.nextExecutionDate.invalid
-            "
-          />
-          <div class="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2">
-            <app-icon
-              name="chevron-down"
-              size="16"
-              class="h-4 w-4 text-slate-400 dark:text-slate-500"
-            />
-          </div>
-        </div>
+        <app-date-picker
+          controlId="sch-next"
+          formControlName="nextExecutionDate"
+          ariaLabel="Próxima ejecución"
+          [min]="minNextExecutionDate"
+          [invalid]="
+            form.controls.nextExecutionDate.touched && form.controls.nextExecutionDate.invalid
+          "
+        />
         @if (errorFor('nextExecutionDate'); as error) {
           <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ error }}</p>
         }
@@ -298,29 +278,19 @@
           >
             Fecha límite
           </label>
-          <div class="relative">
-            <input
-              id="sch-end-date"
-              formControlName="endDate"
-              type="date"
-              class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 pr-10 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white [&::-webkit-calendar-picker-indicator]:opacity-0"
-              [attr.aria-invalid]="form.controls.endDate.touched && form.controls.endDate.invalid"
-            />
-            <div class="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2">
-              <app-icon
-                name="chevron-down"
-                size="16"
-                class="h-4 w-4 text-slate-400 dark:text-slate-500"
-              />
-            </div>
-          </div>
+          <app-date-picker
+            controlId="sch-end-date"
+            formControlName="endDate"
+            ariaLabel="Fecha límite"
+            [invalid]="form.controls.endDate.touched && form.controls.endDate.invalid"
+          />
           @if (errorFor('endDate'); as error) {
             <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ error }}</p>
           }
         </div>
       }
 
-      <div class="flex justify-end gap-2 pt-2">
+      <div class="modal-footer flex justify-end gap-2 pt-2">
         <button
           type="button"
           (click)="closed.emit()"

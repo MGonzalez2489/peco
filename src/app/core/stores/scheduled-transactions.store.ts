@@ -25,6 +25,9 @@ import {monthlyEquivalent} from '../utils/monthly-equivalent.util';
 import {nextExecutionDate} from '../utils/next-execution-date.util';
 import {todayIsoDate} from '../utils/today-iso-date.util';
 import {toIsoDate} from '../utils/to-iso-date.util';
+import {toMovementType} from '../utils/to-movement-type.util';
+import {MovementFilterType} from '../types/movement-filter-type.type';
+import {ScheduledTransactionTypeKey} from '../types/scheduled-transaction-type-key.enum';
 import {AccountsStore} from './accounts.store';
 import {CatalogStore} from './catalog.store';
 import {MovementsStore} from './movements.store';
@@ -43,7 +46,7 @@ interface ScheduledTransactionsState {
   isLoading: boolean;
   timeframeFilterDays: number;
   searchQuery: string;
-  typeFilter: 'ALL' | 'INCOME' | 'EXPENSE';
+  typeFilter: MovementFilterType;
   selectedCategoryId: string | null;
 }
 
@@ -82,13 +85,17 @@ export const ScheduledTransactionsStore = signalStore(
       const monthlyCommitmentsSummary = computed<MonthlyCommitmentsSummary>(() =>
         activeSchedules().reduce<MonthlyCommitmentsSummary>(
           (accumulator, item) => {
-            if (item.type === 'TRANSFER') {
+            if (item.type.key === ScheduledTransactionTypeKey.TRANSFER) {
               return accumulator;
             }
 
-            const amount = monthlyEquivalent(item.estimatedAmount, item.frequency, item.interval ?? 1);
+            const amount = monthlyEquivalent(
+              item.estimatedAmount,
+              item.frequency,
+              item.interval ?? 1,
+            );
 
-            if (isIncomeSchedule(item.type)) {
+            if (isIncomeSchedule(item.type.key)) {
               accumulator.totalIncome += amount;
             } else {
               accumulator.totalExpenses += amount;
@@ -118,7 +125,7 @@ export const ScheduledTransactionsStore = signalStore(
         const type = typeFilter();
         if (type === 'ALL') return baseFilteredSchedules();
 
-        return baseFilteredSchedules().filter((item) => item.type === type);
+        return baseFilteredSchedules().filter((item) => toMovementType(item.type.key) === type);
       });
 
       const buildCategoryDistribution = (
@@ -135,7 +142,11 @@ export const ScheduledTransactionsStore = signalStore(
         for (const item of activeSchedules()) {
           if (!matchesType(item)) continue;
 
-          const amount = monthlyEquivalent(item.estimatedAmount, item.frequency, item.interval ?? 1);
+          const amount = monthlyEquivalent(
+            item.estimatedAmount,
+            item.frequency,
+            item.interval ?? 1,
+          );
           if (amount <= 0) continue;
 
           const existing = grouped.get(item.categoryId);
@@ -202,20 +213,23 @@ export const ScheduledTransactionsStore = signalStore(
         filteredSchedules,
         totalFilteredCount: computed(() => filteredSchedules().length),
         incomeFilteredCount: computed(
-          () => baseFilteredSchedules().filter((item) => isIncomeSchedule(item.type)).length,
+          () => baseFilteredSchedules().filter((item) => isIncomeSchedule(item.type.key)).length,
         ),
         expenseFilteredCount: computed(
-          () => baseFilteredSchedules().filter((item) => item.type === 'EXPENSE').length,
+          () =>
+            baseFilteredSchedules().filter(
+              (item) => item.type.key === ScheduledTransactionTypeKey.EXPENSE,
+            ).length,
         ),
         categoryDistributionSummary: computed(() =>
           buildCategoryDistribution(
             monthlyCommitmentsSummary().totalExpenses,
-            (item) => item.type === 'EXPENSE',
+            (item) => item.type.key === ScheduledTransactionTypeKey.EXPENSE,
           ),
         ),
         incomeCategoryDistributionSummary: computed(() =>
           buildCategoryDistribution(monthlyCommitmentsSummary().totalIncome, (item) =>
-            isIncomeSchedule(item.type),
+            isIncomeSchedule(item.type.key),
           ),
         ),
       };
@@ -243,7 +257,11 @@ export const ScheduledTransactionsStore = signalStore(
       const advanced: ScheduledTransaction = {
         ...item,
         completedOccurrences,
-        nextExecutionDate: nextExecutionDate(item.nextExecutionDate, item.frequency, item.interval ?? 1),
+        nextExecutionDate: nextExecutionDate(
+          item.nextExecutionDate,
+          item.frequency,
+          item.interval ?? 1,
+        ),
         updatedAt: new Date().toISOString(),
       };
 
@@ -256,6 +274,26 @@ export const ScheduledTransactionsStore = signalStore(
           .scheduledTransactions()
           .map((item) => (item.id === id ? advanceSchedule(item) : item)),
       );
+    };
+
+    const executeSchedule = (id: string, actualAmount?: number): boolean => {
+      const item = store.scheduledTransactions().find((entry) => entry.id === id);
+      if (!item) return false;
+      if (!isScheduleDue(item.nextExecutionDate, todayIsoDate())) return false;
+
+      const movement = movementsStore.registerMovement({
+        accountId: item.sourceAccountId,
+        categoryId: item.categoryId,
+        type: toMovementType(item.type.key),
+        amount: actualAmount ?? item.estimatedAmount,
+        targetAccountId: item.destinationAccountId,
+        note: item.name,
+      });
+
+      if (!movement) return false;
+
+      advanceOccurrence(id);
+      return true;
     };
 
     return {
@@ -346,23 +384,32 @@ export const ScheduledTransactionsStore = signalStore(
         patchState(store, {timeframeFilterDays: Math.max(1, Math.round(days))});
       },
       executeScheduledTransaction(id: string, actualAmount?: number): boolean {
-        const item = store.scheduledTransactions().find((entry) => entry.id === id);
-        if (!item) return false;
-        if (!isScheduleDue(item.nextExecutionDate, todayIsoDate())) return false;
+        return executeSchedule(id, actualAmount);
+      },
+      /**
+       * Registers a movement for every active schedule that is due today or
+       * overdue and has `autoApply` enabled. It runs once when the app opens,
+       * so already executed occurrences never repeat in the same session.
+       * Returns the ids of the schedules that were applied.
+       */
+      autoApplyDueSchedules(): string[] {
+        const today = todayIsoDate();
+        const dueIds = store
+          .activeSchedules()
+          .filter((item) => item.autoApply && isScheduleDue(item.nextExecutionDate, today))
+          .map((item) => item.id);
 
-        const movement = movementsStore.registerMovement({
-          accountId: item.sourceAccountId,
-          categoryId: item.categoryId,
-          type: item.type,
-          amount: actualAmount ?? item.estimatedAmount,
-          targetAccountId: item.destinationAccountId,
-          note: item.name,
-        });
+        const executedIds: string[] = [];
+        try {
+          for (const id of dueIds) {
+            if (executeSchedule(id)) executedIds.push(id);
+          }
+        } catch {
+          // A storage failure while advancing one schedule must never block
+          // the app from starting; keep the occurrences already applied.
+        }
 
-        if (!movement) return false;
-
-        advanceOccurrence(id);
-        return true;
+        return executedIds;
       },
       cancelScheduledOccurrence(id: string): boolean {
         const item = store.scheduledTransactions().find((entry) => entry.id === id);
@@ -371,7 +418,7 @@ export const ScheduledTransactionsStore = signalStore(
         const movement = movementsStore.registerCanceledMovement({
           accountId: item.sourceAccountId,
           categoryId: item.categoryId,
-          type: item.type,
+          type: toMovementType(item.type.key),
           amount: item.estimatedAmount,
           targetAccountId: item.destinationAccountId,
           note: `${item.name} — omitido`,
@@ -389,7 +436,7 @@ export const ScheduledTransactionsStore = signalStore(
       setSearchQuery(query: string): void {
         patchState(store, {searchQuery: query});
       },
-      setTypeFilter(type: 'ALL' | 'INCOME' | 'EXPENSE'): void {
+      setTypeFilter(type: MovementFilterType): void {
         patchState(store, {typeFilter: type});
       },
       setCategoryFilter(categoryId: string | null): void {
@@ -407,6 +454,7 @@ export const ScheduledTransactionsStore = signalStore(
   withHooks({
     onInit(store) {
       store.loadScheduledTransactions();
+      store.autoApplyDueSchedules();
     },
   }),
   withDevtools('ScheduledTransactionsStore'),

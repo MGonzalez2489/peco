@@ -19,26 +19,36 @@
 >
   <span class="flex min-w-0 flex-1 items-center gap-2">
     @if (selectedOption(); as option) {
-      @if (option.icon) {
-        <app-icon
-          [name]="option.icon"
-          size="16"
-          class="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400"
-        />
-      }
-      @if (option.color) {
-        @if (showLabel()) {
-          <span
-            aria-hidden="true"
-            class="h-2.5 w-2.5 shrink-0 rounded-full"
-            [style.background-color]="option.color"
-          ></span>
-        } @else {
-          <span
-            aria-hidden="true"
-            class="h-5 w-full rounded-md"
-            [style.background-color]="option.color"
-          ></span>
+      @if (hasIconInsideCircle(option)) {
+        <span
+          aria-hidden="true"
+          class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full"
+          [style.background-color]="softColor(option.color!)"
+        >
+          <app-icon [name]="option.icon!" size="12" class="h-4 w-4" [style.color]="option.color" />
+        </span>
+      } @else {
+        @if (option.icon) {
+          <app-icon
+            [name]="option.icon"
+            size="16"
+            class="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400"
+          />
+        }
+        @if (option.color) {
+          @if (showLabel()) {
+            <span
+              aria-hidden="true"
+              class="h-2.5 w-2.5 shrink-0 rounded-full"
+              [style.background-color]="option.color"
+            ></span>
+          } @else {
+            <span
+              aria-hidden="true"
+              class="h-5 w-full rounded-md"
+              [style.background-color]="option.color"
+            ></span>
+          }
         }
       }
       @if (showLabel()) {
@@ -60,75 +70,132 @@
 </button>
 
 @if (isOpen() && options().length > 0) {
-  <ul
-    #list
-    [id]="listboxId"
-    role="listbox"
-    [attr.aria-label]="accessibleLabel()"
-    class="fixed z-[60] overflow-y-auto overscroll-contain rounded-xl border border-slate-200 bg-white p-1 shadow-lg shadow-slate-900/10 dark:border-slate-700 dark:bg-slate-800 dark:shadow-black/40"
-    [style.top.px]="panelTop()"
-    [style.left.px]="panelLeft()"
-    [style.width.px]="panelWidth()"
-    [style.maxHeight.px]="panelMaxHeight()"
-    [style.transform]="openUp() ? 'translateY(-100%)' : null"
-  >
-    @for (option of options(); track option.value; let i = $index) {
-      <li
-        [id]="optionId(i)"
-        role="option"
-        [attr.aria-selected]="isSelected(option.value)"
-        [attr.aria-label]="showLabel() ? null : option.label"
-        [attr.title]="showLabel() ? null : option.label"
-        (click)="selectOption(option)"
-        (mousemove)="setActiveIndex(i)"
-        class="flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-sm transition hover:bg-slate-100 dark:hover:bg-slate-700/70"
-        [class.bg-indigo-50]="i === activeIndex()"
-        [class.dark:bg-indigo-500/20]="i === activeIndex()"
+  @if (isDesktop()) {
+    <ul
+      #list
+      [id]="listboxId"
+      role="listbox"
+      [attr.aria-label]="accessibleLabel()"
+      class="fixed z-60 overflow-y-auto overscroll-contain rounded-xl border border-slate-200 bg-white p-1 shadow-lg shadow-slate-900/10 dark:border-slate-700 dark:bg-slate-800 dark:shadow-black/40"
+      [style.top.px]="panelTop()"
+      [style.left.px]="panelLeft()"
+      [style.width.px]="panelWidth()"
+      [style.maxHeight.px]="panelMaxHeight()"
+      [style.transform]="openUp() ? 'translateY(-100%)' : null"
+    >
+      @for (option of options(); track option.value; let i = $index) {
+        <ng-container
+          *ngTemplateOutlet="optionRow; context: {$implicit: option, index: i, sheet: false}"
+        ></ng-container>
+      }
+    </ul>
+  } @else {
+    <!-- MOBILE: bottom sheet (mirrors the month picker bottom sheet) -->
+    <div
+      class="fixed inset-0 z-[60] bg-slate-900/40 backdrop-blur-sm sm:hidden"
+      (click)="closeList(true)"
+      aria-hidden="true"
+    ></div>
+
+    <div
+      class="fixed inset-x-0 bottom-0 z-[70] max-h-[80dvh] overflow-y-auto rounded-t-3xl bg-white p-5 shadow-2xl sm:hidden dark:bg-slate-900"
+      role="dialog"
+      aria-modal="true"
+      [attr.aria-label]="sheetTitle() || accessibleLabel()"
+      (click)="$event.stopPropagation()"
+    >
+      <!-- DRAG HANDLE -->
+      <div class="mx-auto mb-4 h-1.5 w-12 rounded-full bg-slate-300 dark:bg-slate-700"></div>
+
+      @if (sheetTitle(); as sheetLabel) {
+        <p class="mb-3 text-sm font-bold text-slate-900 dark:text-white">{{ sheetLabel }}</p>
+      }
+
+      <ul
+        [id]="listboxId"
+        role="listbox"
+        [attr.aria-label]="accessibleLabel()"
+        class="flex flex-col gap-1"
       >
-        @if (option.icon) {
-          <app-icon
-            [name]="option.icon"
-            [size]="showLabel() ? 16 : 20"
-            class="shrink-0 text-slate-500 dark:text-slate-400"
-            [class.h-4]="showLabel()"
-            [class.w-4]="showLabel()"
-            [class.h-5]="!showLabel()"
-            [class.w-5]="!showLabel()"
-          />
+        @for (option of options(); track option.value; let i = $index) {
+          <ng-container
+            *ngTemplateOutlet="optionRow; context: {$implicit: option, index: i, sheet: true}"
+          ></ng-container>
         }
-        @if (option.color) {
-          @if (showLabel()) {
-            <span
-              aria-hidden="true"
-              class="h-2.5 w-2.5 shrink-0 rounded-full"
-              [style.background-color]="option.color"
-            ></span>
-          } @else {
-            <span
-              aria-hidden="true"
-              class="h-5 flex-1 rounded-md"
-              [style.background-color]="option.color"
-            ></span>
-          }
-        }
+      </ul>
+    </div>
+  }
+}
+
+<ng-template #optionRow let-option let-i="index" let-sheet="sheet">
+  <li
+    [id]="optionId(i)"
+    role="option"
+    [attr.aria-selected]="isSelected(option.value)"
+    [attr.aria-label]="showLabel() ? null : option.label"
+    [attr.title]="showLabel() ? null : option.label"
+    (click)="selectOption(option)"
+    (mousemove)="setActiveIndex(i)"
+    class="flex cursor-pointer items-center gap-2 rounded-lg text-sm transition hover:bg-slate-100 dark:hover:bg-slate-700/70"
+    [class.px-3]="sheet"
+    [class.py-3]="sheet"
+    [class.px-2.5]="!sheet"
+    [class.py-2]="!sheet"
+    [class.bg-indigo-50]="i === activeIndex()"
+    [class.dark:bg-indigo-500/20]="i === activeIndex()"
+  >
+    @if (hasIconInsideCircle(option)) {
+      <span
+        aria-hidden="true"
+        class="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full"
+        [style.background-color]="softColor(option.color!)"
+      >
+        <app-icon [name]="option.icon!" size="12" class="h-3 w-3" [style.color]="option.color" />
+      </span>
+    } @else {
+      @if (option.icon) {
+        <app-icon
+          [name]="option.icon"
+          [size]="showLabel() ? 16 : 20"
+          class="shrink-0 text-slate-500 dark:text-slate-400"
+          [class.h-4]="showLabel()"
+          [class.w-4]="showLabel()"
+          [class.h-5]="!showLabel()"
+          [class.w-5]="!showLabel()"
+        />
+      }
+      @if (option.color) {
         @if (showLabel()) {
           <span
-            class="min-w-0 flex-1 truncate text-slate-700 dark:text-slate-200"
-            [class.font-semibold]="isSelected(option.value)"
-          >
-            {{ option.label }}
-          </span>
-        } @else if (!option.color) {
-          <span class="flex-1" aria-hidden="true"></span>
+            aria-hidden="true"
+            class="h-2.5 w-2.5 shrink-0 rounded-full"
+            [style.background-color]="option.color"
+          ></span>
+        } @else {
+          <span
+            aria-hidden="true"
+            class="h-5 flex-1 rounded-md"
+            [style.background-color]="option.color"
+          ></span>
         }
-        @if (isSelected(option.value)) {
-          <app-icon
-            name="check"
-            size="16"
-            class="h-4 w-4 shrink-0 text-indigo-600 dark:text-indigo-400"
-          />
-        }
-      </li>
+      }
     }
-  </ul>
-}
+    @if (showLabel()) {
+      <span
+        class="min-w-0 flex-1 truncate text-slate-700 dark:text-slate-200"
+        [class.font-semibold]="isSelected(option.value)"
+      >
+        {{ option.label }}
+      </span>
+    } @else if (!option.color) {
+      <span class="flex-1" aria-hidden="true"></span>
+    }
+    @if (isSelected(option.value)) {
+      <app-icon
+        name="check"
+        size="16"
+        class="h-4 w-4 shrink-0 text-indigo-600 dark:text-indigo-400"
+      />
+    }
+  </li>
+</ng-template>

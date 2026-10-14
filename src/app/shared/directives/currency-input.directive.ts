@@ -6,17 +6,21 @@ const fixedFormatter = new Intl.NumberFormat('en-US', {
   maximumFractionDigits: 2,
 });
 
-function onlyNumeric(raw: string): string {
-  return raw.replace(/[^\d.]/g, '');
+function onlyNumeric(raw: string, allowNegative: boolean): string {
+  const digits = raw.replace(/[^\d.]/g, '');
+  return allowNegative && raw.trimStart().startsWith('-') ? `-${digits}` : digits;
 }
 
-function parseCurrency(raw: string): number | null {
-  const cleaned = onlyNumeric(raw);
-  if (!cleaned || cleaned === '.') return null;
-  const [integer = '0', ...rest] = cleaned.split('.');
+function parseCurrency(raw: string, allowNegative: boolean): number | null {
+  const cleaned = onlyNumeric(raw, allowNegative);
+  if (!cleaned || cleaned === '.' || cleaned === '-') return null;
+  const negative = cleaned.startsWith('-');
+  const unsigned = negative ? cleaned.slice(1) : cleaned;
+  const [integer = '0', ...rest] = unsigned.split('.');
   const decimals = rest.join('').slice(0, 2);
   const value = Number(decimals ? `${integer}.${decimals}` : integer);
-  return Number.isFinite(value) ? value : null;
+  if (!Number.isFinite(value)) return null;
+  return negative ? -value : value;
 }
 
 function groupInteger(integer: string): string {
@@ -41,6 +45,8 @@ export class CurrencyInputDirective implements ControlValueAccessor {
   private readonly element = inject(ElementRef<HTMLInputElement>);
 
   readonly prefix = input('', {alias: 'appCurrencyPrefix'});
+
+  readonly allowNegative = input(false, {alias: 'appCurrencyAllowNegative'});
 
   private onChange: (value: number | null) => void = () => {};
   private onTouched: () => void = () => {};
@@ -72,24 +78,27 @@ export class CurrencyInputDirective implements ControlValueAccessor {
     const digitsBeforeCaret = (raw.slice(0, input.selectionStart ?? raw.length).match(/\d/g) ?? [])
       .length;
 
-    const cleaned = onlyNumeric(raw);
+    const cleaned = onlyNumeric(raw, this.allowNegative());
     input.value = this.prefix() + this.formatTyped(cleaned);
-    this.onChange(parseCurrency(cleaned));
+    this.onChange(parseCurrency(cleaned, this.allowNegative()));
     this.restoreCaret(input, digitsBeforeCaret);
   }
 
   handleBlur(): void {
     this.onTouched();
     const input = this.element.nativeElement;
-    const numeric = parseCurrency(input.value);
+    const numeric = parseCurrency(input.value, this.allowNegative());
     input.value = numeric === null ? this.prefix() : this.prefix() + fixedFormatter.format(numeric);
   }
 
   private formatTyped(cleaned: string): string {
-    if (!cleaned) return '';
-    const [integer = '0', ...rest] = cleaned.split('.');
+    if (!cleaned || cleaned === '-') return cleaned;
+    const negative = cleaned.startsWith('-');
+    const unsigned = negative ? cleaned.slice(1) : cleaned;
+    const [integer = '0', ...rest] = unsigned.split('.');
     const decimals = rest.join('').slice(0, 2);
-    return decimals ? `${groupInteger(integer)}.${decimals}` : groupInteger(integer);
+    const formatted = decimals ? `${groupInteger(integer)}.${decimals}` : groupInteger(integer);
+    return negative ? `-${formatted}` : formatted;
   }
 
   private restoreCaret(input: HTMLInputElement, digitsBeforeCaret: number): void {

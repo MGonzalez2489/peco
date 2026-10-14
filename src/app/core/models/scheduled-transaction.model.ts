@@ -1,5 +1,5 @@
 import {RecurrenceFrequency} from '../types/recurrence-frequency.type';
-import {ScheduledTransactionType} from '../types/scheduled-transaction-type.type';
+import {ScheduledTransactionType} from './scheduled-transaction-type.model';
 
 export interface ScheduledTransaction {
   id: string;

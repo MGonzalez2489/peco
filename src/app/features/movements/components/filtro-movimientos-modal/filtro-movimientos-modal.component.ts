@@ -1,22 +1,26 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   effect,
   inject,
   input,
   output,
   signal,
 } from '@angular/core';
+import {FormsModule} from '@angular/forms';
 import {MOVEMENT_TYPE_LABEL} from '@core/constants';
+import {SelectOption} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {CatalogStore} from '@core/stores/catalog.store';
 import {MovementsStore} from '@core/stores/movements.store';
 import {MovementFilterType} from '@core/types';
-import {AppIconComponent, ModalComponent} from '@shared/components';
+import {toAccountOption, toCategoryOption} from '@core/utils';
+import {AppSelectComponent, ModalComponent} from '@shared/components';
 
 @Component({
   selector: 'app-filtro-movimientos-modal',
-  imports: [ModalComponent, AppIconComponent],
+  imports: [ModalComponent, AppSelectComponent, FormsModule],
   templateUrl: './filtro-movimientos-modal.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
@@ -50,7 +54,17 @@ export class FiltroMovimientosModalComponent {
   readonly movementsStore = inject(MovementsStore);
 
   readonly accounts = this.accountsStore.accounts;
-  readonly categories = this.catalogStore.categories;
+  readonly categories = this.catalogStore.filterableCategories;
+
+  readonly accountOptions = computed<SelectOption[]>(() => [
+    {value: '', label: 'Todas las cuentas'},
+    ...this.accounts().map((account) => toAccountOption(account)),
+  ]);
+
+  readonly categoryOptions = computed<SelectOption[]>(() => [
+    {value: '', label: 'Todas las categorías'},
+    ...this.categories().map((category) => toCategoryOption(category)),
+  ]);
 
   readonly typeOptions: Array<{value: MovementFilterType; label: string}> = [
     {value: 'ALL', label: 'Todos'},

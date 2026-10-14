@@ -8,26 +8,22 @@ import {
   output,
   viewChild,
 } from '@angular/core';
+import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {FormBuilder, FormControl, ReactiveFormsModule, Validators} from '@angular/forms';
-import {
-  ADJUSTMENT_CATEGORY_ID,
-  COLOR_PALETTE,
-  ACCOUNT_COLORS,
-  DEFAULT_ACCOUNT_COLOR,
-} from '@core/constants';
-import {Account} from '@core/models';
+import {ADJUSTMENT_CATEGORY_ID, ACCOUNT_TYPES, ACCOUNT_TYPE_MAP} from '@core/constants';
+import {Account, SelectOption} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {MovementsStore} from '@core/stores/movements.store';
-import {AccountColor} from '@core/types';
-import {pickRandom} from '@core/utils';
-import {ColorSelectComponent, ModalComponent} from '@shared/components';
+import {AccountTypeKey} from '@core/types';
+import {accountColor} from '@core/utils';
+import {AppSelectComponent, ModalComponent} from '@shared/components';
 import {CurrencyInputDirective} from '@shared/directives';
 
 const ADJUSTMENT_NOTE = 'Ajuste manual de saldo';
 
 @Component({
   selector: 'app-account-form-modal',
-  imports: [ReactiveFormsModule, ModalComponent, CurrencyInputDirective, ColorSelectComponent],
+  imports: [ReactiveFormsModule, ModalComponent, AppSelectComponent, CurrencyInputDirective],
   templateUrl: './account-form-modal.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -45,19 +41,26 @@ export class AccountFormModalComponent {
 
   private readonly nameInput = viewChild<ElementRef<HTMLInputElement>>('nameInput');
 
+  protected readonly accountTypeOptions: SelectOption[] = ACCOUNT_TYPES.map((type) => ({
+    value: type.key,
+    label: type.name,
+    icon: type.icon,
+    color: accountColor(type.color).chip,
+  }));
+
+  protected readonly accountTypeKeys = AccountTypeKey;
+
   protected readonly form = this.fb.group({
     name: this.fb.control<string>('', Validators.required),
+    type: this.fb.control<AccountTypeKey>(AccountTypeKey.CASH, Validators.required),
     initialBalance: this.fb.control<number | null>(0, {
       validators: [Validators.required, Validators.min(0)],
     }),
     targetGoal: this.fb.control<number | null>(null, Validators.min(0)),
-    color: this.fb.control<string>(pickRandom(COLOR_PALETTE)?.hex ?? DEFAULT_ACCOUNT_COLOR),
     includeInTotal: this.fb.control<boolean>(true),
     pinToHome: this.fb.control<boolean>(false),
     note: this.fb.control<string>(''),
   });
-
-  readonly colorPalette = COLOR_PALETTE;
 
   constructor() {
     effect(() => {
@@ -66,6 +69,9 @@ export class AccountFormModalComponent {
     effect(() => {
       if (!this.isOpen()) return;
       this.focusNameField();
+    });
+    this.form.controls.type.valueChanges.pipe(takeUntilDestroyed()).subscribe((type) => {
+      if (type) this.applyBalanceValidators(type);
     });
   }
 
@@ -84,33 +90,39 @@ export class AccountFormModalComponent {
     const editing = this.account();
     if (!this.isOpen()) return;
 
-    const balance = this.form.controls.initialBalance;
-
     if (editing) {
-      balance.setValidators([Validators.required]);
-      balance.updateValueAndValidity();
+      this.applyBalanceValidators(editing.type.key);
       this.form.reset({
         name: editing.name,
+        type: editing.type.key,
         initialBalance: editing.currentBalance,
         targetGoal: editing.targetGoal ?? null,
-        color: this.resolveColor(editing.color),
         includeInTotal: editing.includeInTotal ?? true,
         pinToHome: editing.pinToHome ?? false,
         note: editing.note ?? '',
       });
     } else {
-      balance.setValidators([Validators.required, Validators.min(0)]);
-      balance.updateValueAndValidity();
+      this.applyBalanceValidators(AccountTypeKey.CASH);
       this.form.reset({
         name: '',
+        type: AccountTypeKey.CASH,
         initialBalance: 0,
         targetGoal: null,
-        color: pickRandom(COLOR_PALETTE)?.hex ?? DEFAULT_ACCOUNT_COLOR,
         includeInTotal: true,
         pinToHome: false,
         note: '',
       });
     }
+  }
+
+  private applyBalanceValidators(type: AccountTypeKey): void {
+    const balance = this.form.controls.initialBalance;
+    if (type === AccountTypeKey.CREDIT) {
+      balance.setValidators([Validators.required]);
+    } else {
+      balance.setValidators([Validators.required, Validators.min(0)]);
+    }
+    balance.updateValueAndValidity();
   }
 
   onAmountInputFocus(event: FocusEvent): void {
@@ -121,12 +133,6 @@ export class AccountFormModalComponent {
     if (this.form.controls.initialBalance.value === null) {
       this.form.controls.initialBalance.setValue(0);
     }
-  }
-
-  private resolveColor(color?: string): string {
-    if (!color) return DEFAULT_ACCOUNT_COLOR;
-    if (color.startsWith('#')) return color;
-    return ACCOUNT_COLORS[color as AccountColor]?.chip ?? DEFAULT_ACCOUNT_COLOR;
   }
 
   save(): void {
@@ -153,8 +159,8 @@ export class AccountFormModalComponent {
       this.accountsStore.updateAccount(editing.id, {
         name: raw.name?.trim() ?? '',
         currentBalance: newBalance,
+        type: ACCOUNT_TYPE_MAP[raw.type ?? editing.type.key],
         targetGoal: raw.targetGoal ?? undefined,
-        color: raw.color || DEFAULT_ACCOUNT_COLOR,
         includeInTotal: raw.includeInTotal ?? true,
         pinToHome: raw.pinToHome ?? false,
         note: raw.note?.trim() || undefined,
@@ -163,8 +169,8 @@ export class AccountFormModalComponent {
       this.accountsStore.createAccount({
         name: raw.name?.trim() ?? '',
         initialBalance: raw.initialBalance ?? 0,
+        type: ACCOUNT_TYPE_MAP[raw.type ?? AccountTypeKey.CASH],
         targetGoal: raw.targetGoal ?? undefined,
-        color: raw.color || DEFAULT_ACCOUNT_COLOR,
         includeInTotal: raw.includeInTotal ?? true,
         pinToHome: raw.pinToHome ?? false,
         note: raw.note?.trim() || undefined,

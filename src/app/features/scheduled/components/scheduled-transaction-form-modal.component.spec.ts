@@ -1,8 +1,10 @@
 import {ComponentFixture, TestBed} from '@angular/core/testing';
+import {SCHEDULED_TRANSACTION_TYPE_MAP} from '@core/constants';
 import {provideAppIcons} from '@core/icons/app-icons.provider';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {ScheduledTransactionsStore} from '@core/stores/scheduled-transactions.store';
-import {defaultStopDate} from '@core/utils';
+import {ScheduledTransactionTypeKey} from '@core/types';
+import {defaultStopDate, todayIsoDate, tomorrowIsoDate} from '@core/utils';
 import {ScheduledTransactionFormModalComponent} from './scheduled-transaction-form-modal.component';
 
 describe('ScheduledTransactionFormModalComponent', () => {
@@ -93,7 +95,7 @@ describe('ScheduledTransactionFormModalComponent', () => {
     const created = scheduledStore.createScheduledTransaction({
       name: 'Alquiler',
       estimatedAmount: 500,
-      type: 'EXPENSE',
+      type: SCHEDULED_TRANSACTION_TYPE_MAP[ScheduledTransactionTypeKey.EXPENSE],
       categoryId: 'services',
       sourceAccountId: account.id,
       frequency: 'MONTHLY',
@@ -116,6 +118,29 @@ describe('ScheduledTransactionFormModalComponent', () => {
     const updated = scheduledStore.scheduleById(created.id);
     expect(updated?.frequency).toBe('MONTHLY');
     expect(updated?.interval).toBe(2);
+  });
+
+  it('defaults the next execution date to tomorrow and limits the picker', async () => {
+    await open();
+
+    const next = native().querySelector('#sch-next') as HTMLInputElement | null;
+    if (!next) throw new Error('next execution input must be rendered');
+
+    expect(next.value).toBe(tomorrowIsoDate());
+    expect(next.getAttribute('min')).toBe(tomorrowIsoDate());
+  });
+
+  it('blocks scheduling when the next execution date is today or in the past', async () => {
+    await open();
+
+    setControlValue('#sch-name', 'Internet fibra');
+    setControlValue('#sch-amount', '800');
+    setControlValue('#sch-next', todayIsoDate());
+
+    submit();
+
+    expect(scheduledStore.scheduledTransactions().length).toBe(0);
+    expect(native().textContent).toContain('Selecciona una fecha a partir de mañana.');
   });
 
   it('shows a chevron indicator on the date input', async () => {
@@ -143,6 +168,23 @@ describe('ScheduledTransactionFormModalComponent', () => {
     next.click();
 
     expect(opened).toBe(true);
+  });
+
+  it('renders the schedule type as a custom dropdown with icon badges', async () => {
+    await open();
+
+    const trigger = native().querySelector<HTMLButtonElement>('#sch-type');
+    if (!trigger) throw new Error('type dropdown must be rendered');
+
+    expect(trigger.getAttribute('role')).toBe('combobox');
+    expect(trigger.querySelector('span[style*="background-color"]')).not.toBeNull();
+
+    trigger.click();
+    fixture.detectChanges();
+
+    const listbox = native().querySelector('[role="listbox"]');
+    expect(listbox).not.toBeNull();
+    expect(listbox?.querySelectorAll('[role="option"]').length).toBe(3);
   });
 
   it('replaces the category control with an accessible custom dropdown', async () => {
@@ -210,7 +252,7 @@ describe('ScheduledTransactionFormModalComponent', () => {
     const created = scheduledStore.createScheduledTransaction({
       name: 'Alquiler',
       estimatedAmount: 500,
-      type: 'EXPENSE',
+      type: SCHEDULED_TRANSACTION_TYPE_MAP[ScheduledTransactionTypeKey.EXPENSE],
       categoryId: 'services',
       sourceAccountId: account.id,
       frequency: 'WEEKLY',

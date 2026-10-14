@@ -4,6 +4,7 @@ import {Account} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {MovementsStore} from '@core/stores/movements.store';
 import {formatCurrency} from '@core/utils';
+import {AccountTypeColorPipe} from '@shared/pipes/account-type-color.pipe';
 import {MovementListComponent, StatCardComponent} from '@shared/components';
 import {DragScrollDirective} from '@shared/directives/drag-scroll.directive';
 import {UpcomingPaymentsWidgetComponent} from './components/upcoming-payments-widget.component';
@@ -16,6 +17,7 @@ import {UpcomingPaymentsWidgetComponent} from './components/upcoming-payments-wi
     MovementListComponent,
     StatCardComponent,
     UpcomingPaymentsWidgetComponent,
+    AccountTypeColorPipe,
   ],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css',

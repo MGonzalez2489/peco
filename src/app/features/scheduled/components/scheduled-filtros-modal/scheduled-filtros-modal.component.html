@@ -1,21 +1,5 @@
 <app-modal [isOpen]="isOpen()" title="Filtros" (closed)="closed.emit()">
-  <div class="slide-up mt-5 space-y-5">
-    <div>
-      <label
-        for="filtros-scheduled-search"
-        class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
-      >
-        Buscar por nombre
-      </label>
-      <input
-        id="filtros-scheduled-search"
-        type="text"
-        [(ngModel)]="searchQuery"
-        placeholder="Ej. Renta, Netflix..."
-        class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-      />
-    </div>
-
+  <div class="slide-up md:mt-5 space-y-5">
     <div>
       <span
         id="filtros-tipo"
@@ -47,35 +31,38 @@
 
     <div>
       <label
+        for="filtros-scheduled-search"
+        class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
+      >
+        Buscar por nombre
+      </label>
+      <input
+        id="filtros-scheduled-search"
+        type="text"
+        [(ngModel)]="searchQuery"
+        placeholder="Ej. Renta, Netflix..."
+        class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+      />
+    </div>
+
+    <div>
+      <label
         for="filtros-scheduled-categoria"
         class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
       >
         Filtrar por categoría
       </label>
-      <div class="relative">
-        <select
-          id="filtros-scheduled-categoria"
-          (change)="categoryId.set($any($event.target).value || null)"
-          class="w-full appearance-none rounded-xl border border-slate-300 bg-white px-3 py-2.5 pr-10 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-        >
-          <option value="">Todas las categorías</option>
-          @for (category of categories(); track category.id) {
-            <option [value]="category.id" [selected]="category.id === categoryId()">
-              {{ category.displayName }}
-            </option>
-          }
-        </select>
-        <div class="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2">
-          <app-icon
-            name="chevron-down"
-            size="16"
-            class="h-4 w-4 text-slate-400 dark:text-slate-500"
-          />
-        </div>
-      </div>
+      <app-select
+        controlId="filtros-scheduled-categoria"
+        ariaLabel="Filtrar por categoría"
+        placeholder="Todas las categorías"
+        [options]="categoryOptions()"
+        [ngModel]="categoryId()"
+        (ngModelChange)="categoryId.set($event || null)"
+      />
     </div>
 
-    <div class="flex gap-2 pt-1">
+    <div class="modal-footer flex gap-2 pt-1">
       <button
         type="button"
         (click)="clear()"

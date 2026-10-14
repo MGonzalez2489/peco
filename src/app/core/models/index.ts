@@ -1,3 +1,4 @@
+export * from './account-type.model';
 export * from './account.model';
 export * from './backup-data.model';
 export * from './category.model';
@@ -10,6 +11,7 @@ export * from './movement-group.model';
 export * from './movement-totals.model';
 export * from './navigation-item.model';
 export * from './progression-point.model';
+export * from './scheduled-transaction-type.model';
 export * from './scheduled-transaction.model';
 export * from './select-option.model';
 export * from './settings-section.model';

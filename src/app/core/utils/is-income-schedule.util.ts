@@ -1,3 +1,4 @@
-import {ScheduledTransactionType} from '../types/scheduled-transaction-type.type';
+import {ScheduledTransactionTypeKey} from '../types/scheduled-transaction-type-key.enum';
 
-export const isIncomeSchedule = (type: ScheduledTransactionType): boolean => type === 'INCOME';
+export const isIncomeSchedule = (type: ScheduledTransactionTypeKey): boolean =>
+  type === ScheduledTransactionTypeKey.INCOME;

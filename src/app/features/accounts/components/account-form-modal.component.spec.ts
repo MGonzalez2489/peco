@@ -1,9 +1,12 @@
 import {ComponentFixture, TestBed} from '@angular/core/testing';
+import {FormGroup} from '@angular/forms';
 import {ADJUSTMENT_CATEGORY_ID} from '@core/constants';
+import {ACCOUNT_TYPE_MAP} from '@core/constants/account-type-map.constant';
 import {provideAppIcons} from '@core/icons/app-icons.provider';
 import {Account} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {MovementsStore} from '@core/stores/movements.store';
+import {AccountTypeKey} from '@core/types';
 import {AccountFormModalComponent} from './account-form-modal.component';
 
 describe('AccountFormModalComponent', () => {
@@ -31,6 +34,22 @@ describe('AccountFormModalComponent', () => {
     fixture.detectChanges();
   };
 
+  const selectType = (value: AccountTypeKey): void => {
+    const trigger = native().querySelector<HTMLButtonElement>('#cat-type');
+    if (!trigger) throw new Error('type select must be rendered');
+
+    trigger.click();
+    fixture.detectChanges();
+
+    const expectedLabel = ACCOUNT_TYPE_MAP[value].name;
+    const options = Array.from(native().querySelectorAll<HTMLLIElement>('[role="option"]'));
+    const option = options.find((item) => item.textContent?.includes(expectedLabel));
+    if (!option) throw new Error(`type option "${expectedLabel}" must be rendered`);
+
+    option.click();
+    fixture.detectChanges();
+  };
+
   const submit = (): void => {
     const button = native().querySelector<HTMLButtonElement>('button[type="submit"]');
     if (!button) throw new Error('submit button must be rendered');
@@ -43,6 +62,7 @@ describe('AccountFormModalComponent', () => {
     const created = accountsStore.createAccount({
       name: 'Ahorro',
       initialBalance: balance,
+      type: ACCOUNT_TYPE_MAP[AccountTypeKey.SAVINGS],
       includeInTotal: true,
     });
     if (!created) throw new Error('account must be created');
@@ -63,6 +83,49 @@ describe('AccountFormModalComponent', () => {
     movementsStore = TestBed.inject(MovementsStore);
     fixture = TestBed.createComponent(AccountFormModalComponent);
     fixture.detectChanges();
+  });
+
+  it('creates a credit account with a negative initial balance', async () => {
+    await open();
+    setText('#cat-name', 'Tarjeta de crédito');
+    selectType(AccountTypeKey.CREDIT);
+    setText('#cat-balance', '-1500');
+    submit();
+
+    const created = accountsStore
+      .accounts()
+      .find((account) => account.name === 'Tarjeta de crédito');
+    expect(created?.type.key).toBe(AccountTypeKey.CREDIT);
+    expect(created?.currentBalance).toBe(-1500);
+  });
+
+  it('sanitizes negative input for non-credit accounts', async () => {
+    await open();
+    setText('#cat-name', 'Cuenta de débito');
+    selectType(AccountTypeKey.DEBIT);
+    setText('#cat-balance', '-100');
+
+    const form = (fixture.componentInstance as unknown as {form: FormGroup}).form;
+    expect(form.controls['initialBalance'].value).toBe(100);
+  });
+
+  it('rejects a negative balance for non-credit accounts', async () => {
+    await open();
+    setText('#cat-name', 'Cuenta de débito');
+    selectType(AccountTypeKey.DEBIT);
+
+    const form = (fixture.componentInstance as unknown as {form: FormGroup}).form;
+    form.controls['initialBalance'].setValue(-100);
+    form.controls['initialBalance'].markAsTouched();
+    fixture.detectChanges();
+
+    expect(form.controls['initialBalance'].hasError('min')).toBe(true);
+
+    submit();
+
+    expect(accountsStore.accounts().some((account) => account.name === 'Cuenta de débito')).toBe(
+      false,
+    );
   });
 
   it('selects the whole amount when the balance input receives focus', async () => {

@@ -161,26 +161,14 @@
         >
           Cuenta destino para el traspaso
         </label>
-        <div class="relative">
-          <select
-            id="cat-transfer-destination"
-            (change)="transferDestination.set($any($event.target).value)"
-            class="w-full appearance-none rounded-xl border border-slate-300 bg-white px-3 py-2.5 pr-10 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-          >
-            @for (other of otherAccounts(); track other.id) {
-              <option [value]="other.id" [selected]="other.id === transferDestination()">
-                {{ other.name }} ({{ formatCurrency(other.currentBalance) }})
-              </option>
-            }
-          </select>
-          <div class="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2">
-            <app-icon
-              name="chevron-down"
-              size="16"
-              class="h-4 w-4 text-slate-400 dark:text-slate-500"
-            />
-          </div>
-        </div>
+        <app-select
+          controlId="cat-transfer-destination"
+          ariaLabel="Cuenta destino para el traspaso"
+          placeholder="Selecciona una cuenta"
+          [options]="transferDestinationOptions()"
+          [ngModel]="transferDestination()"
+          (ngModelChange)="transferDestination.set($event)"
+        />
       </div>
     }
   </app-confirm-modal>

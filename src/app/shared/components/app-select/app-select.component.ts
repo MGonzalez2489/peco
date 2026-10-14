@@ -11,14 +11,15 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
-import {DOCUMENT} from '@angular/common';
+import {DOCUMENT, NgTemplateOutlet} from '@angular/common';
 import {ControlValueAccessor, NG_VALUE_ACCESSOR} from '@angular/forms';
 import {SelectOption} from '@core/models';
+import {toSoftCategoryColor} from '@core/utils';
 import {AppIconComponent} from '../app-icon/app-icon.component';
 
 @Component({
   selector: 'app-select',
-  imports: [AppIconComponent],
+  imports: [AppIconComponent, NgTemplateOutlet],
   templateUrl: './app-select.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [{provide: NG_VALUE_ACCESSOR, useExisting: AppSelectComponent, multi: true}],
@@ -56,8 +57,16 @@ export class AppSelectComponent implements ControlValueAccessor {
   protected readonly panelMaxHeight = signal(0);
   protected readonly openUp = signal(false);
 
+  private readonly desktopMedia = window.matchMedia?.('(min-width: 640px)') ?? null;
+
+  /**
+   * Falls back to the desktop popover when `matchMedia` is unavailable (e.g. SSR),
+   * preserving the original desktop behavior as the safe default.
+   */
+  protected readonly isDesktop = signal(this.desktopMedia?.matches ?? true);
+
   protected readonly onViewportChange = (): void => {
-    if (this.isOpen()) this.updatePanelPosition();
+    if (this.isDesktop() && this.isOpen()) this.updatePanelPosition();
   };
 
   private static instanceSequence = 0;
@@ -81,6 +90,9 @@ export class AppSelectComponent implements ControlValueAccessor {
     return option ? `${label}: ${option.label}` : label;
   });
 
+  /** Title shown on the mobile bottom sheet header. */
+  readonly sheetTitle = computed(() => this.ariaLabel().trim());
+
   readonly activeDescendantId = computed<string | null>(() => {
     if (!this.isOpen()) return null;
 
@@ -89,6 +101,17 @@ export class AppSelectComponent implements ControlValueAccessor {
   });
 
   constructor() {
+    const media = this.desktopMedia;
+    if (media) {
+      const onChange = (event: MediaQueryListEvent): void => {
+        this.isDesktop.set(event.matches);
+        if (event.matches && this.isOpen()) this.updatePanelPosition();
+      };
+
+      media.addEventListener('change', onChange);
+      this.destroyRef.onDestroy(() => media.removeEventListener('change', onChange));
+    }
+
     this.document.addEventListener('scroll', this.onViewportChange, true);
     this.destroyRef.onDestroy(() =>
       this.document.removeEventListener('scroll', this.onViewportChange, true),
@@ -106,6 +129,8 @@ export class AppSelectComponent implements ControlValueAccessor {
   }
 
   private updatePanelPosition(): void {
+    if (!this.isDesktop()) return;
+
     const trigger = this.triggerRef()?.nativeElement;
     if (!trigger) return;
 
@@ -133,6 +158,14 @@ export class AppSelectComponent implements ControlValueAccessor {
 
   isSelected(value: string): boolean {
     return this.selectedValue() === value;
+  }
+
+  hasIconInsideCircle(option: SelectOption): boolean {
+    return Boolean(option.icon && option.color);
+  }
+
+  softColor(color: string): string {
+    return toSoftCategoryColor(color, '20');
   }
 
   toggleOpen(): void {

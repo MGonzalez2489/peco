@@ -2,6 +2,8 @@ export * from './app-icon/app-icon.component';
 export * from './app-select/app-select.component';
 export * from './color-select/color-select.component';
 export * from './confirm-modal/confirm-modal.component';
+export * from './date-picker/date-picker.component';
+export * from './date-picker-bottom-sheet/date-picker-bottom-sheet.component';
 export * from './icon-select/icon-select.component';
 export * from './movement-list/movement-list.component';
 export * from './modal/modal.component';
