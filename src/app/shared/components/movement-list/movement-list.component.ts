@@ -57,8 +57,10 @@ export class MovementListComponent {
 
   readonly accountName = (id: string): string => this.accountsById().get(id)?.name ?? 'Sin cuenta';
 
-  readonly accountDotColor = (id: string): string =>
-    accountColor(this.accountsById().get(id)?.color).chip;
+  readonly accountDotColor = (id: string): string => {
+    const account = this.accountsById().get(id);
+    return accountColor(account?.type.color).chip;
+  };
 
   readonly categoryName = (movement: Movement): string => {
     const category = this.categoriesById().get(movement.categoryId);

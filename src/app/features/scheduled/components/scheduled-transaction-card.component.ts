@@ -13,7 +13,7 @@ import {ScheduledTransaction} from '@core/models';
 import {CatalogStore} from '@core/stores/catalog.store';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {ScheduledTransactionsStore} from '@core/stores/scheduled-transactions.store';
-import {ScheduledTransactionType} from '@core/types';
+import {ScheduledTransactionTypeKey} from '@core/types';
 import {AppIconComponent, ConfirmModalComponent} from '@shared/components';
 
 const FALLBACK_CATEGORY_COLOR = '#94a3b8';
@@ -43,12 +43,14 @@ export class ScheduledTransactionCardComponent {
     recurrenceLabel(this.schedule().frequency, this.schedule().interval ?? 1),
   );
 
-  protected readonly isIncome = computed(() => this.schedule().type === 'INCOME');
+  protected readonly isIncome = computed(
+    () => this.schedule().type.key === ScheduledTransactionTypeKey.INCOME,
+  );
 
   protected readonly amountPalette = computed(() =>
     this.isIncome()
       ? 'text-emerald-600 dark:text-emerald-400'
-      : this.schedule().type === 'TRANSFER'
+      : this.schedule().type.key === ScheduledTransactionTypeKey.TRANSFER
         ? 'text-sky-600 dark:text-sky-400'
         : 'text-rose-600 dark:text-rose-400',
   );
@@ -91,9 +93,6 @@ export class ScheduledTransactionCardComponent {
   protected readonly categoryBadgeBackground = computed(() =>
     toSoftCategoryColor(this.categoryColor(), '20'),
   );
-
-  protected readonly typeLabel = (type: ScheduledTransactionType): string =>
-    type === 'INCOME' ? 'Ingreso' : type === 'EXPENSE' ? 'Egreso' : 'Transferencia';
 
   protected readonly isOverdue = computed(
     () => this.schedule().active && this.schedule().nextExecutionDate < this.scheduledStore.today(),

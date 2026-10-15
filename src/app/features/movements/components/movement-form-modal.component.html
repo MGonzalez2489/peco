@@ -4,7 +4,7 @@
       Primero crea una cuenta desde la sección Cuentas.
     </p>
   } @else {
-    <form [formGroup]="form" (ngSubmit)="save()" class="mt-5 space-y-4" novalidate>
+    <form [formGroup]="form" (ngSubmit)="save()" class="md:mt-5 space-y-4" novalidate>
       <div>
         <label
           for="mov-type"
@@ -12,24 +12,17 @@
         >
           Tipo
         </label>
-        <div class="relative">
-          <select
-            id="mov-type"
-            formControlName="type"
-            class="w-full appearance-none rounded-xl border border-slate-300 bg-white px-3 py-2.5 pr-10 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-          >
-            @for (option of typeOptions; track option.value) {
-              <option [value]="option.value">{{ option.label }}</option>
-            }
-          </select>
-          <div class="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2">
-            <app-icon
-              name="chevron-down"
-              size="16"
-              class="h-4 w-4 text-slate-400 dark:text-slate-500"
-            />
-          </div>
-        </div>
+        <app-select
+          formControlName="type"
+          controlId="mov-type"
+          ariaLabel="Tipo de movimiento"
+          placeholder="Selecciona un tipo"
+          [options]="typeOptions"
+          [invalid]="form.controls.type.touched && form.controls.type.invalid"
+        />
+        @if (errorFor(form.controls.type); as error) {
+          <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ error }}</p>
+        }
       </div>
 
       <div>
@@ -270,21 +263,12 @@
                 >
                   Fecha límite
                 </label>
-                <div class="relative">
-                  <input
-                    id="mov-end-date"
-                    formControlName="endDate"
-                    type="date"
-                    class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 pr-10 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white [&::-webkit-calendar-picker-indicator]:opacity-0"
-                  />
-                  <div class="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2">
-                    <app-icon
-                      name="chevron-down"
-                      size="16"
-                      class="h-4 w-4 text-slate-400 dark:text-slate-500"
-                    />
-                  </div>
-                </div>
+                <app-date-picker
+                  controlId="mov-end-date"
+                  formControlName="endDate"
+                  ariaLabel="Fecha límite"
+                  [invalid]="form.controls.endDate.touched && form.controls.endDate.invalid"
+                />
                 @if (errorFor(form.controls.endDate); as error) {
                   <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ error }}</p>
                 }
@@ -298,7 +282,7 @@
         }
       </div>
 
-      <div class="flex justify-end gap-2 pt-2">
+      <div class="modal-footer flex justify-end gap-2 pt-2">
         <button
           type="button"
           (click)="closed.emit()"

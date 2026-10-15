@@ -47,7 +47,8 @@ export class AccountProgressionChartComponent {
 
   protected readonly chartColor = computed(() => {
     const account = this.account();
-    if (account.color) return accountColor(account.color).chip;
+    const typeColor = account.type.color;
+    if (typeColor) return accountColor(typeColor).chip;
     return account.currentBalance < 0 ? '#ef4444' : '#10b981';
   });
 

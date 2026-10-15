@@ -17,4 +17,7 @@ export const COLOR_PALETTE: readonly CategoryColorOption[] = [
   {hex: '#A855F7', label: 'Púrpura'},
   {hex: '#D946EF', label: 'Fucsia'},
   {hex: '#EC4899', label: 'Rosa'},
+  {hex: '#9CA3AF', label: 'Gris claro'},
+  {hex: '#6B7280', label: 'Gris'},
+  {hex: '#1F2937', label: 'Negro'},
 ];

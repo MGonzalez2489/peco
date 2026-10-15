@@ -6,7 +6,14 @@ import {ScheduledTransaction} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {CatalogStore} from '@core/stores/catalog.store';
 import {ScheduledTransactionsStore} from '@core/stores/scheduled-transactions.store';
-import {formatLocalDate, isScheduleDue, recurrenceLabel, toSoftCategoryColor} from '@core/utils';
+import {ScheduledTransactionTypeKey} from '@core/types';
+import {
+  formatLocalDate,
+  isScheduleDue,
+  recurrenceLabel,
+  toMovementType,
+  toSoftCategoryColor,
+} from '@core/utils';
 import {ExecuteScheduleModalComponent} from '@features/scheduled/components';
 import {AppIconComponent} from '@shared/components';
 
@@ -55,10 +62,10 @@ export class UpcomingPaymentsWidgetComponent {
     recurrenceLabel(schedule.frequency, schedule.interval ?? 1);
 
   protected readonly amountSign = (schedule: ScheduledTransaction): string =>
-    this.amountPalette[schedule.type].sign;
+    this.amountPalette[toMovementType(schedule.type.key)].sign;
 
   protected readonly amountText = (schedule: ScheduledTransaction): string =>
-    this.amountPalette[schedule.type].text;
+    this.amountPalette[toMovementType(schedule.type.key)].text;
 
   protected readonly category = (schedule: ScheduledTransaction) =>
     this.catalogStore.categories().find((item) => item.id === schedule.categoryId) ?? null;
@@ -104,7 +111,7 @@ export class UpcomingPaymentsWidgetComponent {
 
   protected readonly nextDueAmount = computed(() =>
     this.upcoming().reduce((total, schedule) => {
-      if (schedule.type === 'INCOME') return total;
+      if (schedule.type.key === ScheduledTransactionTypeKey.INCOME) return total;
       return total + schedule.estimatedAmount;
     }, 0),
   );

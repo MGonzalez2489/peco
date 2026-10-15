@@ -3,6 +3,7 @@ import {ChangeDetectionStrategy, Component, computed, inject, signal} from '@ang
 import {DistributionChartItem, ScheduledTransaction} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {ScheduledTransactionsStore} from '@core/stores/scheduled-transactions.store';
+import {MovementFilterType} from '@core/types';
 import {toSoftCategoryColor} from '@core/utils';
 import {AppIconComponent} from '@shared/components/app-icon/app-icon.component';
 import {ExecuteScheduleModalComponent} from './components/execute-schedule-modal.component';
@@ -163,7 +164,7 @@ export class ScheduledTransactionsComponent {
     this.mobileSection.set(section);
   }
 
-  onTypeFilterChange(type: 'ALL' | 'INCOME' | 'EXPENSE'): void {
+  onTypeFilterChange(type: MovementFilterType): void {
     this.scheduledStore.setTypeFilter(type);
   }
 

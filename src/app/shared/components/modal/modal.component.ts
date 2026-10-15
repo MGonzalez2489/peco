@@ -14,7 +14,6 @@ import {AppIconComponent} from '../app-icon/app-icon.component';
   selector: 'app-modal',
   imports: [AppIconComponent],
   templateUrl: './modal.component.html',
-  standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     :host {
@@ -25,8 +24,16 @@ import {AppIconComponent} from '../app-icon/app-icon.component';
       animation: modal-backdrop 200ms ease-out;
     }
 
+    /* Mobile: the modal slides up as a full-screen stacked view. */
     .modal-panel {
-      animation: modal-panel 240ms cubic-bezier(0.16, 1, 0.3, 1);
+      animation: modal-panel-mobile 280ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* Desktop keeps the original centered pop-in animation. */
+    @media (min-width: 640px) {
+      .modal-panel {
+        animation: modal-panel 240ms cubic-bezier(0.16, 1, 0.3, 1);
+      }
     }
 
     @keyframes modal-backdrop {
@@ -35,6 +42,15 @@ import {AppIconComponent} from '../app-icon/app-icon.component';
       }
       to {
         opacity: 1;
+      }
+    }
+
+    @keyframes modal-panel-mobile {
+      from {
+        transform: translateY(100%);
+      }
+      to {
+        transform: none;
       }
     }
 

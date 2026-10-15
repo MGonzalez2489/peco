@@ -11,19 +11,31 @@ import {
 import {FormBuilder, FormControl, ReactiveFormsModule, Validators} from '@angular/forms';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {
-  MOVEMENT_TYPE_LABEL,
+  MOVEMENT_TYPES,
   RECURRENCE_FREQUENCY_LABEL,
   SCHEDULED_TRANSACTION_STOP_CONDITION_LABEL,
 } from '@core/constants';
-import {Account, Category, SelectOption} from '@core/models';
+import {Category, SelectOption} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {CatalogStore} from '@core/stores/catalog.store';
 import {MovementsStore} from '@core/stores/movements.store';
 import {ScheduledTransactionsStore} from '@core/stores/scheduled-transactions.store';
 import {MovementType, RecurrenceFrequency, ScheduledTransactionStopCondition} from '@core/types';
-import {accountColor, defaultStopDate, toIconName, todayIsoDate} from '@core/utils';
-import {AppIconComponent, AppSelectComponent, ModalComponent} from '@shared/components';
-import {CurrencyInputDirective, DateInputDirective} from '@shared/directives';
+import {
+  accountColor,
+  defaultStopDate,
+  resolveScheduledTransactionType,
+  toAccountOption,
+  toCategoryOption,
+  todayIsoDate,
+} from '@core/utils';
+import {
+  AppIconComponent,
+  AppSelectComponent,
+  DatePickerComponent,
+  ModalComponent,
+} from '@shared/components';
+import {CurrencyInputDirective} from '@shared/directives';
 
 interface MovementFormValue {
   amount: number | null;
@@ -47,9 +59,9 @@ interface MovementFormValue {
     ReactiveFormsModule,
     ModalComponent,
     CurrencyInputDirective,
-    DateInputDirective,
     AppSelectComponent,
     AppIconComponent,
+    DatePickerComponent,
   ],
   templateUrl: './movement-form-modal.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -107,27 +119,23 @@ export class MovementFormModalComponent {
   );
 
   readonly categoryOptions = computed<SelectOption[]>(() =>
-    this.availableCategories().map((category) => ({
-      value: category.id,
-      label: category.displayName,
-      icon: category.icon,
-      color: category.color,
-    })),
+    this.availableCategories().map((category) => toCategoryOption(category)),
   );
 
   readonly accountOptions = computed<SelectOption[]>(() =>
-    this.accounts().map((account) => this.toAccountOption(account)),
+    this.accounts().map((account) => toAccountOption(account)),
   );
 
   readonly destinationAccountOptions = computed<SelectOption[]>(() =>
-    this.destinationAccounts().map((account) => this.toAccountOption(account)),
+    this.destinationAccounts().map((account) => toAccountOption(account)),
   );
 
-  readonly typeOptions: Array<{value: MovementType; label: string}> = [
-    {value: 'INCOME', label: MOVEMENT_TYPE_LABEL.INCOME},
-    {value: 'EXPENSE', label: MOVEMENT_TYPE_LABEL.EXPENSE},
-    {value: 'TRANSFER', label: MOVEMENT_TYPE_LABEL.TRANSFER},
-  ];
+  readonly typeOptions: SelectOption[] = MOVEMENT_TYPES.map((type) => ({
+    value: type.key,
+    label: type.name,
+    icon: type.icon,
+    color: accountColor(type.color).chip,
+  }));
 
   protected readonly frequencyOptions: Array<{value: RecurrenceFrequency; label: string}> = (
     Object.keys(RECURRENCE_FREQUENCY_LABEL) as RecurrenceFrequency[]
@@ -279,7 +287,7 @@ export class MovementFormModalComponent {
     this.scheduledStore.createScheduledTransaction({
       name,
       estimatedAmount: raw.amount ?? 0,
-      type: raw.type ?? 'EXPENSE',
+      type: resolveScheduledTransactionType(raw.type),
       categoryId: raw.categoryId ?? '',
       sourceAccountId: raw.accountId ?? '',
       destinationAccountId: destinationId,
@@ -310,15 +318,6 @@ export class MovementFormModalComponent {
       destination.clearValidators();
     }
     destination.updateValueAndValidity();
-  }
-
-  private toAccountOption(account: Account): SelectOption {
-    return {
-      value: account.id,
-      label: account.name,
-      icon: toIconName(account.icon, 'wallet'),
-      color: accountColor(account.color).chip,
-    };
   }
 
   private syncStopCondition(condition: ScheduledTransactionStopCondition): void {

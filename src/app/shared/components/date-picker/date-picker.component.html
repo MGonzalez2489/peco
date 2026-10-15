@@ -1,0 +1,67 @@
+@if (isDesktop()) {
+  <div class="relative">
+    <input
+      [id]="controlId() || null"
+      type="date"
+      appDateInput
+      [value]="value() ?? ''"
+      [attr.min]="min()"
+      [attr.max]="max()"
+      [attr.aria-label]="ariaLabel() || null"
+      [attr.aria-invalid]="invalid() ? 'true' : null"
+      [disabled]="disabled()"
+      (input)="onInput($event)"
+      (blur)="onBlur()"
+      class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 pr-10 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-white [&::-webkit-calendar-picker-indicator]:opacity-0"
+      [class.border-rose-400]="invalid()"
+      [class.dark:border-rose-500]="invalid()"
+    />
+    <div class="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2">
+      <app-icon name="chevron-down" size="16" class="h-4 w-4 text-slate-400 dark:text-slate-500" />
+    </div>
+  </div>
+} @else {
+  <button
+    #sheetTrigger
+    type="button"
+    [id]="controlId() || null"
+    aria-haspopup="dialog"
+    [attr.aria-label]="ariaLabel() || null"
+    [attr.aria-invalid]="invalid() ? 'true' : null"
+    [attr.aria-expanded]="sheetOpen()"
+    [disabled]="disabled()"
+    (click)="openSheet()"
+    class="flex w-full items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-left shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800"
+    [class.border-rose-400]="invalid()"
+    [class.dark:border-rose-500]="invalid()"
+  >
+    <app-icon
+      name="calendar"
+      size="16"
+      class="h-4 w-4 shrink-0 text-slate-400 dark:text-slate-500"
+    />
+    <span
+      class="min-w-0 flex-1 truncate text-sm"
+      [class.text-slate-400]="!value()"
+      [class.dark:text-slate-500]="!value()"
+      [class.text-slate-900]="value()"
+      [class.dark:text-white]="value()"
+    >
+      {{ displayValue() }}
+    </span>
+    <app-icon
+      name="chevron-down"
+      size="16"
+      class="h-4 w-4 shrink-0 text-slate-400 dark:text-slate-500"
+    />
+  </button>
+
+  <app-date-picker-bottom-sheet
+    [isOpen]="sheetOpen()"
+    [value]="value()"
+    [min]="min()"
+    [max]="max()"
+    (dateSelect)="onDateSelect($event)"
+    (close)="closeSheet()"
+  />
+}

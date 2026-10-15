@@ -49,7 +49,7 @@ export class AccountDistributionChartComponent {
   protected readonly labels = computed(() => this.chartAccounts().map((account) => account.name));
 
   protected readonly colors = computed(() =>
-    this.chartAccounts().map((account) => accountColor(account.color).chip),
+    this.chartAccounts().map((account) => accountColor(account.type.color).chip),
   );
 
   protected readonly chart = computed<ApexChart>(() => ({

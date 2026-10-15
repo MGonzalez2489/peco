@@ -1,6 +1,6 @@
 @if (isOpen()) {
   <div
-    class="backdrop-anim fixed inset-0 z-50 flex items-end justify-center bg-slate-900/60 p-0 backdrop-blur-sm sm:items-center sm:p-4"
+    class="backdrop-anim fixed inset-0 z-50 flex items-stretch justify-center bg-slate-900/60 p-0 backdrop-blur-sm sm:items-center sm:p-4"
     (click)="closed.emit()"
   >
     <div
@@ -9,10 +9,12 @@
       aria-modal="true"
       aria-labelledby="modal-title"
       tabindex="-1"
-      class="modal-panel max-h-[90dvh] w-full overflow-y-auto rounded-t-2xl bg-white p-6 shadow-xl dark:bg-slate-900 sm:max-w-lg sm:rounded-2xl"
+      class="modal-panel flex h-full w-full flex-col overflow-hidden bg-white shadow-xl dark:bg-slate-900 sm:block sm:h-auto sm:max-h-[90dvh] sm:max-w-lg sm:overflow-y-auto sm:rounded-2xl sm:p-6"
       (click)="$event.stopPropagation()"
     >
-      <div class="flex items-center justify-between gap-4">
+      <div
+        class="flex shrink-0 items-center justify-between gap-4 border-b border-slate-200 px-6 py-4 dark:border-slate-800 sm:border-0 sm:p-0"
+      >
         <h2
           id="modal-title"
           class="text-lg font-semibold leading-none text-slate-900 dark:text-white"
@@ -28,7 +30,10 @@
           <app-icon name="x" size="20" class="h-5 w-5 text-slate-500 dark:text-slate-400" />
         </button>
       </div>
-      <ng-content></ng-content>
+
+      <div class="modal-scroll min-h-0 flex-1 overflow-y-auto px-6 pt-5 pb-0 sm:contents">
+        <ng-content></ng-content>
+      </div>
     </div>
   </div>
 }

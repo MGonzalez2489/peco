@@ -27,6 +27,21 @@ describe('MovementFormModalComponent', () => {
     fixture.detectChanges();
   };
 
+  const selectTypeOption = (label: string): void => {
+    const trigger = native().querySelector<HTMLButtonElement>('#mov-type');
+    if (!trigger) throw new Error('type dropdown must be rendered');
+
+    trigger.click();
+    fixture.detectChanges();
+
+    const options = Array.from(native().querySelectorAll<HTMLElement>('[role="option"]'));
+    const option = options.find((item) => item.textContent?.trim() === label);
+    if (!option) throw new Error(`type option ${label} must exist`);
+
+    option.click();
+    fixture.detectChanges();
+  };
+
   const fillAmountAndRepeat = async (interval?: string): Promise<void> => {
     await open();
 
@@ -81,6 +96,24 @@ describe('MovementFormModalComponent', () => {
     expect(category?.querySelector('span[style*="background-color"]')).not.toBeNull();
   });
 
+  it('renders the movement type as a custom dropdown with icon badges', async () => {
+    await open();
+
+    const trigger = native().querySelector<HTMLButtonElement>('#mov-type');
+    if (!trigger) throw new Error('type dropdown must be rendered');
+
+    expect(trigger.getAttribute('role')).toBe('combobox');
+    expect(trigger.textContent).toContain('Egreso');
+    expect(trigger.querySelector('span[style*="background-color"]')).not.toBeNull();
+
+    trigger.click();
+    fixture.detectChanges();
+
+    const listbox = native().querySelector('[role="listbox"]');
+    expect(listbox).not.toBeNull();
+    expect(listbox?.querySelectorAll('[role="option"]').length).toBe(3);
+  });
+
   it('updates the category control when an option is picked', async () => {
     await open();
 
@@ -109,7 +142,7 @@ describe('MovementFormModalComponent', () => {
 
     expect(native().querySelector('#mov-destino')).toBeNull();
 
-    changeNativeSelect('#mov-type', 'TRANSFER');
+    selectTypeOption('Transferencia');
 
     expect(native().querySelector('#mov-category')).toBeNull();
 

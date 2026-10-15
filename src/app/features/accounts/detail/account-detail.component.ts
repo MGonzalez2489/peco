@@ -8,13 +8,15 @@ import {
 } from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {toSignal} from '@angular/core/rxjs-interop';
+import {FormsModule} from '@angular/forms';
 import {map} from 'rxjs';
-import {Account} from '@core/models';
+import {Account, SelectOption} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {MovementsStore} from '@core/stores/movements.store';
-import {formatCurrency, isSameMonthAndYear} from '@core/utils';
+import {formatCurrency, isSameMonthAndYear, toAccountOption} from '@core/utils';
 import {
   AppIconComponent,
+  AppSelectComponent,
   ConfirmModalComponent,
   MonthPickerBottomSheetComponent,
   MonthPickerSelection,
@@ -32,7 +34,9 @@ interface Period {
   selector: 'app-account-detail',
   imports: [
     RouterLink,
+    FormsModule,
     ConfirmModalComponent,
+    AppSelectComponent,
     MovementListComponent,
     MonthPickerBottomSheetComponent,
     AccountFormModalComponent,
@@ -93,6 +97,13 @@ export class AccountDetailComponent {
 
   readonly otherAccounts = computed(() =>
     this.accountsStore.accounts().filter((account) => account.id !== this.id()),
+  );
+
+  readonly transferDestinationOptions = computed<SelectOption[]>(() =>
+    this.otherAccounts().map((account) => ({
+      ...toAccountOption(account),
+      label: `${account.name} (${formatCurrency(account.currentBalance)})`,
+    })),
   );
 
   readonly accountMovements = computed(() =>

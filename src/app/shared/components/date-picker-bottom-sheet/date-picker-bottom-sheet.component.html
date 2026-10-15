@@ -1,0 +1,68 @@
+@if (isOpen()) {
+  <!-- OVERLAY BACKDROP: Mobile only -->
+  <div
+    class="fixed inset-0 z-[60] bg-slate-900/40 backdrop-blur-sm sm:hidden"
+    (click)="dismiss()"
+    aria-hidden="true"
+  ></div>
+
+  <!-- MAIN PICKER: Bottom sheet (mirrors the month picker) -->
+  <div
+    class="fixed inset-x-0 bottom-0 z-[70] max-h-[90dvh] overflow-y-auto rounded-t-3xl bg-white p-5 shadow-2xl sm:hidden dark:bg-slate-900"
+    role="dialog"
+    aria-label="Seleccionar fecha"
+  >
+    <!-- DRAG HANDLE -->
+    <div class="mx-auto mb-4 h-1.5 w-12 rounded-full bg-slate-300 dark:bg-slate-700"></div>
+
+    <!-- MONTH NAVIGATION HEADER -->
+    <div class="mb-4 flex items-center justify-between">
+      <button
+        type="button"
+        (click)="previousMonth()"
+        [disabled]="!canGoToPreviousMonth()"
+        aria-label="Mes anterior"
+        class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-30 dark:text-slate-300 dark:hover:bg-slate-800"
+      >
+        <app-icon name="chevron-left" size="16" />
+      </button>
+
+      <span class="text-sm font-bold text-slate-900 dark:text-white">{{ monthLabel() }}</span>
+
+      <button
+        type="button"
+        (click)="nextMonth()"
+        [disabled]="!canGoToNextMonth()"
+        aria-label="Mes siguiente"
+        class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-30 dark:text-slate-300 dark:hover:bg-slate-800"
+      >
+        <app-icon name="chevron-right" size="16" />
+      </button>
+    </div>
+
+    <!-- WEEKDAYS -->
+    <div class="mb-1 grid grid-cols-7 gap-1" aria-hidden="true">
+      @for (weekday of weekdays; track $index) {
+        <span class="py-1 text-center text-[11px] font-semibold text-slate-400 dark:text-slate-500">
+          {{ weekday }}
+        </span>
+      }
+    </div>
+
+    <!-- DAYS GRID -->
+    <div class="grid grid-cols-7 gap-1">
+      @for (cell of cells(); track cell.isoDate) {
+        <button
+          type="button"
+          (click)="select(cell)"
+          [disabled]="cell.disabled"
+          [class]="cellClass(cell)"
+          [attr.aria-label]="cellAriaLabel(cell)"
+          [attr.aria-current]="cell.isToday ? 'date' : null"
+        >
+          {{ cell.day }}
+        </button>
+      }
+    </div>
+  </div>
+}

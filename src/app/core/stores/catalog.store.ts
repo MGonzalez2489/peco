@@ -48,6 +48,9 @@ export const CatalogStore = signalStore(
     transferCategory: computed(() =>
       categories().find((category) => category.applyType === 'TRANSFER'),
     ),
+    filterableCategories: computed(() =>
+      categories().filter((category) => category.isSystem !== true),
+    ),
   })),
   withMethods((store) => {
     const storage = inject(CatalogStorageService);

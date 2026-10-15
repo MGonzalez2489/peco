@@ -1,4 +1,5 @@
 export * from './account-color.type';
+export * from './account-type-key.enum';
 export * from './backup-import-selection.type';
 export * from './balance-operation.type';
 export * from './category-apply-type.type';
@@ -9,5 +10,5 @@ export * from './movement-type.type';
 export * from './pwa-install-prompt.type';
 export * from './recurrence-frequency.type';
 export * from './scheduled-transaction-stop-condition.type';
-export * from './scheduled-transaction-type.type';
+export * from './scheduled-transaction-type-key.enum';
 export * from './settings-section-group.type';

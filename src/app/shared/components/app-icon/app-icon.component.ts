@@ -9,6 +9,7 @@ export type IconName =
   | 'arrow-down-left'
   | 'plus'
   | 'chevron-down'
+  | 'chevron-up'
   | 'pie-chart'
   | 'tag'
   | 'x'

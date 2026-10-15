@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   effect,
   inject,
   input,
@@ -8,13 +9,17 @@ import {
   signal,
 } from '@angular/core';
 import {FormsModule} from '@angular/forms';
+import {MOVEMENT_TYPE_LABEL} from '@core/constants';
+import {SelectOption} from '@core/models';
 import {CatalogStore} from '@core/stores/catalog.store';
 import {ScheduledTransactionsStore} from '@core/stores/scheduled-transactions.store';
-import {AppIconComponent, ModalComponent} from '@shared/components';
+import {MovementFilterType} from '@core/types';
+import {toCategoryOption} from '@core/utils';
+import {AppSelectComponent, ModalComponent} from '@shared/components';
 
 @Component({
   selector: 'app-scheduled-filtros-modal',
-  imports: [ModalComponent, FormsModule, AppIconComponent],
+  imports: [ModalComponent, FormsModule, AppSelectComponent],
   templateUrl: './scheduled-filtros-modal.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
@@ -46,15 +51,21 @@ export class ScheduledFiltrosModalComponent {
   readonly catalogStore = inject(CatalogStore);
   readonly scheduledStore = inject(ScheduledTransactionsStore);
 
-  readonly categories = this.catalogStore.categories;
+  readonly categories = this.catalogStore.filterableCategories;
 
-  readonly typeOptions: Array<{value: 'ALL' | 'INCOME' | 'EXPENSE'; label: string}> = [
+  readonly categoryOptions = computed<SelectOption[]>(() => [
+    {value: '', label: 'Todas las categorías'},
+    ...this.categories().map((category) => toCategoryOption(category)),
+  ]);
+
+  readonly typeOptions: Array<{value: MovementFilterType; label: string}> = [
     {value: 'ALL', label: 'Todos'},
     {value: 'INCOME', label: 'Ingresos'},
     {value: 'EXPENSE', label: 'Egresos'},
+    {value: 'TRANSFER', label: MOVEMENT_TYPE_LABEL.TRANSFER},
   ];
 
-  readonly type = signal<'ALL' | 'INCOME' | 'EXPENSE'>('ALL');
+  readonly type = signal<MovementFilterType>('ALL');
   readonly categoryId = signal<string | null>(null);
   readonly searchQuery = signal('');
 

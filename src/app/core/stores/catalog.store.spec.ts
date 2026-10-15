@@ -1,6 +1,8 @@
 import {TestBed} from '@angular/core/testing';
 import {LOCAL_STORAGE_KEYS} from '../constants/local-storage-keys.constant';
+import {SCHEDULED_TRANSACTION_TYPE_MAP} from '../constants/scheduled-transaction-type-map.constant';
 import {Category} from '../models/category.model';
+import {ScheduledTransactionTypeKey} from '../types/scheduled-transaction-type-key.enum';
 import {AccountsStore} from './accounts.store';
 import {CatalogStore} from './catalog.store';
 import {MovementsStore} from './movements.store';
@@ -40,6 +42,15 @@ describe('CatalogStore categories management', () => {
     expect(catalogStore.rootCategory()?.isRoot).toBe(true);
     expect(categories.every((category) => category.icon.length > 0)).toBe(true);
     expect(categories.every((category) => /^#[0-9A-Fa-f]{6}$/.test(category.color))).toBe(true);
+  });
+
+  it('excludes system categories from the filterable list', () => {
+    const filterable = catalogStore.filterableCategories();
+
+    expect(filterable.some((category) => category.id === 'transfer')).toBe(false);
+    expect(filterable.some((category) => category.id === 'adjustment')).toBe(false);
+    expect(filterable.some((category) => category.isSystem === true)).toBe(false);
+    expect(filterable.some((category) => category.id === 'unknown')).toBe(true);
   });
 
   it('persists categories to local storage', () => {
@@ -105,7 +116,7 @@ describe('CatalogStore categories management', () => {
     scheduledStore.createScheduledTransaction({
       name: 'Vacunas',
       estimatedAmount: 40,
-      type: 'EXPENSE',
+      type: SCHEDULED_TRANSACTION_TYPE_MAP[ScheduledTransactionTypeKey.EXPENSE],
       categoryId: created.id,
       sourceAccountId: account.id,
       frequency: 'MONTHLY',
