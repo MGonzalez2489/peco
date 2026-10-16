@@ -39,4 +39,35 @@ describe('DashboardComponent', () => {
     const position = accountsHeading!.compareDocumentPosition(widget!);
     expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
+
+  it('opens the read-only movement detail sheet when a recent movement is tapped', async () => {
+    const movementsStore = TestBed.inject(MovementsStore);
+    movementsStore.registerMovement({
+      accountId: 'c-cash',
+      categoryId: 'services',
+      type: 'EXPENSE',
+      amount: 250,
+    });
+
+    const fixture = TestBed.createComponent(DashboardComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.querySelector('[role="dialog"]')).toBeNull();
+
+    const row = compiled.querySelector<HTMLElement>('app-movement-list [role="button"]');
+    expect(row).not.toBeNull();
+    row!.click();
+
+    TestBed.flushEffects();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const dialog = compiled.querySelector('[role="dialog"]');
+    expect(dialog).not.toBeNull();
+    expect(dialog?.textContent).toContain('250.00');
+  });
 });

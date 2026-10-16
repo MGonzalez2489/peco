@@ -74,8 +74,19 @@
         Ver todas
       </a>
     </div>
-    <app-movement-list [movements]="recentMovements()" emptyMessage="Todavía no hay movimientos." />
+    <app-movement-list
+      [movements]="recentMovements()"
+      [selectable]="true"
+      emptyMessage="Todavía no hay movimientos."
+      (movementSelected)="openMovementDetail($event)"
+    />
   </div>
 
   <app-upcoming-payments-widget />
 </section>
+
+<app-movement-detail-modal
+  [movement]="selectedMovement()"
+  [isOpen]="isMovementDetailOpen()"
+  (close)="closeMovementDetail()"
+/>

@@ -1,11 +1,12 @@
-import {ChangeDetectionStrategy, Component, computed, inject} from '@angular/core';
+import {ChangeDetectionStrategy, Component, computed, inject, signal} from '@angular/core';
 import {RouterLink} from '@angular/router';
-import {Account} from '@core/models';
+import {Account, Movement} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {MovementsStore} from '@core/stores/movements.store';
 import {formatCurrency} from '@core/utils';
 import {AccountTypeColorPipe} from '@shared/pipes/account-type-color.pipe';
 import {MovementListComponent, StatCardComponent} from '@shared/components';
+import {MovementDetailModalComponent} from '@features/movements/components/movement-detail-modal/movement-detail-modal.component';
 import {DragScrollDirective} from '@shared/directives/drag-scroll.directive';
 import {UpcomingPaymentsWidgetComponent} from './components/upcoming-payments-widget.component';
 
@@ -15,6 +16,7 @@ import {UpcomingPaymentsWidgetComponent} from './components/upcoming-payments-wi
     RouterLink,
     DragScrollDirective,
     MovementListComponent,
+    MovementDetailModalComponent,
     StatCardComponent,
     UpcomingPaymentsWidgetComponent,
     AccountTypeColorPipe,
@@ -31,10 +33,22 @@ export class DashboardComponent {
 
   readonly pinnedAccounts = this.accountsStore.pinnedAccounts;
 
+  readonly selectedMovement = signal<Movement | null>(null);
+
+  readonly isMovementDetailOpen = computed(() => this.selectedMovement() !== null);
+
   readonly recentMovements = computed(() => this.movementsStore.recentMovements(5));
 
   readonly accountSubtext = (account: Account): string =>
     account.targetGoal !== undefined
       ? `Meta ${formatCurrency(account.targetGoal)}`
       : 'Sin meta asignada';
+
+  openMovementDetail(movement: Movement): void {
+    this.selectedMovement.set(movement);
+  }
+
+  closeMovementDetail(): void {
+    this.selectedMovement.set(null);
+  }
 }

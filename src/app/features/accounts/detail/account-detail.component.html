@@ -133,10 +133,18 @@
       ></h2>
       <app-movement-list
         [movements]="filteredTransactions()"
+        [selectable]="true"
         emptyMessage="No hay movimientos asociados a esta cuenta."
+        (movementSelected)="openMovementDetail($event)"
       />
     </div>
   </section>
+
+  <app-movement-detail-modal
+    [movement]="selectedMovement()"
+    [isOpen]="isMovementDetailOpen()"
+    (close)="closeMovementDetail()"
+  />
 
   <app-account-form-modal
     [isOpen]="editOpen()"

@@ -10,7 +10,7 @@ import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {toSignal} from '@angular/core/rxjs-interop';
 import {FormsModule} from '@angular/forms';
 import {map} from 'rxjs';
-import {Account, SelectOption} from '@core/models';
+import {Account, Movement, SelectOption} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {MovementsStore} from '@core/stores/movements.store';
 import {formatCurrency, isSameMonthAndYear, toAccountOption} from '@core/utils';
@@ -22,6 +22,7 @@ import {
   MonthPickerSelection,
   MovementListComponent,
 } from '@shared/components';
+import {MovementDetailModalComponent} from '@features/movements/components/movement-detail-modal/movement-detail-modal.component';
 import {AccountFormModalComponent} from '../components/account-form-modal.component';
 import {AccountProgressionChartComponent} from '../components/account-progression-chart/account-progression-chart.component';
 
@@ -38,6 +39,7 @@ interface Period {
     ConfirmModalComponent,
     AppSelectComponent,
     MovementListComponent,
+    MovementDetailModalComponent,
     MonthPickerBottomSheetComponent,
     AccountFormModalComponent,
     AppIconComponent,
@@ -65,6 +67,10 @@ export class AccountDetailComponent {
   });
 
   readonly isMonthPickerOpen = signal(false);
+
+  readonly selectedMovement = signal<Movement | null>(null);
+
+  readonly isMovementDetailOpen = computed(() => this.selectedMovement() !== null);
 
   readonly minDate = computed(() => this.account()?.createdAt ?? new Date().toISOString());
 
@@ -146,6 +152,14 @@ export class AccountDetailComponent {
   onMonthSelected(selection: MonthPickerSelection): void {
     this.selectedPeriod.set({month: selection.month, year: selection.year});
     this.isMonthPickerOpen.set(false);
+  }
+
+  openMovementDetail(movement: Movement): void {
+    this.selectedMovement.set(movement);
+  }
+
+  closeMovementDetail(): void {
+    this.selectedMovement.set(null);
   }
 
   proceedToDeleteAccount(): void {
