@@ -1,9 +1,9 @@
 import {ChangeDetectionStrategy, Component, computed, inject, signal} from '@angular/core';
 import {Account} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
-import {accountColor, formatCurrency} from '@core/utils';
+import {accountColor, formatCurrency, toSoftCategoryColor} from '@core/utils';
 import {MovementFormModalComponent} from '@features/movements/components';
-import {AppIconComponent} from '@shared/components/app-icon/app-icon.component';
+import {AppIconComponent, IconName} from '@shared/components/app-icon/app-icon.component';
 import {AccountDistributionChartComponent} from './components/account-distribution-chart/account-distribution-chart.component';
 import {AccountFormModalComponent} from './components/account-form-modal.component';
 import {RouterLink} from '@angular/router';
@@ -37,7 +37,12 @@ export class AccountsComponent {
 
   readonly accountColor = accountColor;
 
-  readonly accountDotColor = (account: Account): string => accountColor(account.type.color).chip;
+  readonly accountTypeIcon = (account: Account): IconName => account.type.icon;
+
+  readonly accountTypeColor = (account: Account): string => accountColor(account.type.color).chip;
+
+  readonly accountTypeBackground = (account: Account): string =>
+    toSoftCategoryColor(this.accountTypeColor(account), '20');
 
   readonly formatCurrency = formatCurrency;
 

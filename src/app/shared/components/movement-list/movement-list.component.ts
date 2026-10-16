@@ -1,6 +1,6 @@
 import {CurrencyPipe} from '@angular/common';
 import {ChangeDetectionStrategy, Component, computed, inject, input, signal} from '@angular/core';
-import {MOVEMENT_TYPE_LABEL, MOVEMENT_TYPE_PALETTE} from '@core/constants';
+import {MOVEMENT_TYPE_LABEL, MOVEMENT_TYPE_PALETTE, MOVEMENT_TYPES} from '@core/constants';
 import {Movement} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {CatalogStore} from '@core/stores/catalog.store';
@@ -55,12 +55,20 @@ export class MovementListComponent {
   readonly movementSign = (type: MovementType) => MOVEMENT_TYPE_PALETTE[type].sign;
   readonly movementPalette = (type: MovementType) => MOVEMENT_TYPE_PALETTE[type];
 
+  private readonly movementTypesByKey = computed(
+    () => new Map(MOVEMENT_TYPES.map((type) => [type.key, type])),
+  );
+
   readonly accountName = (id: string): string => this.accountsById().get(id)?.name ?? 'Sin cuenta';
 
-  readonly accountDotColor = (id: string): string => {
-    const account = this.accountsById().get(id);
-    return accountColor(account?.type.color).chip;
-  };
+  readonly movementTypeIcon = (type: MovementType): IconName =>
+    this.movementTypesByKey().get(type)?.icon ?? 'arrow-left-right';
+
+  readonly movementTypeColor = (type: MovementType): string =>
+    accountColor(this.movementTypesByKey().get(type)?.color).chip;
+
+  readonly movementTypeBackground = (type: MovementType): string =>
+    toSoftCategoryColor(this.movementTypeColor(type), '20');
 
   readonly categoryName = (movement: Movement): string => {
     const category = this.categoriesById().get(movement.categoryId);
