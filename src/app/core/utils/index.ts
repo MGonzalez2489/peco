@@ -11,6 +11,7 @@ export * from './ensure-root-category.util';
 export * from './format-currency.util';
 export * from './format-local-date.util';
 export * from './format-local-time.util';
+export * from './format-long-date.util';
 export * from './format-short-date.util';
 export * from './group-movements-by-date.util';
 export * from './group-settings-sections.util';

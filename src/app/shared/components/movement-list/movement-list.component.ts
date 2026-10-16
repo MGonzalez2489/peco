@@ -1,12 +1,26 @@
 import {CurrencyPipe} from '@angular/common';
-import {ChangeDetectionStrategy, Component, computed, inject, input, signal} from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import {MOVEMENT_TYPE_LABEL, MOVEMENT_TYPE_PALETTE, MOVEMENT_TYPES} from '@core/constants';
 import {Movement} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {CatalogStore} from '@core/stores/catalog.store';
 import {MovementsStore} from '@core/stores/movements.store';
 import {MovementType} from '@core/types';
-import {accountColor, formatLocalTime, groupMovementsByDate, reversalImpact, toSoftCategoryColor} from '@core/utils';
+import {
+  accountColor,
+  formatLocalTime,
+  groupMovementsByDate,
+  reversalImpact,
+  toSoftCategoryColor,
+} from '@core/utils';
 import {ConfirmModalComponent} from '../confirm-modal/confirm-modal.component';
 
 import {AppIconComponent, IconName} from '../app-icon/app-icon.component';
@@ -22,6 +36,9 @@ const FALLBACK_CATEGORY_COLOR = '#94a3b8';
 export class MovementListComponent {
   readonly movements = input<readonly Movement[]>([]);
   readonly emptyMessage = input('No hay movimientos para mostrar.');
+  readonly selectable = input(false);
+
+  readonly movementSelected = output<Movement>();
 
   readonly accountsStore = inject(AccountsStore);
   readonly catalogStore = inject(CatalogStore);
@@ -82,6 +99,12 @@ export class MovementListComponent {
     this.categoriesById().get(movement.categoryId)?.color ?? FALLBACK_CATEGORY_COLOR;
 
   readonly movementTime = (movement: Movement): string => formatLocalTime(movement.date);
+
+  selectMovement(movement: Movement): void {
+    if (this.selectable()) {
+      this.movementSelected.emit(movement);
+    }
+  }
 
   proceedToRevert(): void {
     const movement = this.movementToRevert();

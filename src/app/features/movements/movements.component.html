@@ -108,8 +108,16 @@
 
   <app-movement-list
     [movements]="filteredMovements()"
+    [selectable]="true"
     emptyMessage="No hay movimientos con los filtros seleccionados."
+    (movementSelected)="openMovementDetail($event)"
   />
 </section>
+
+<app-movement-detail-modal
+  [movement]="selectedMovement()"
+  [isOpen]="isMovementDetailOpen()"
+  (close)="closeMovementDetail()"
+/>
 
 <app-filtro-movimientos-modal [isOpen]="filtersOpen()" (closed)="filtersOpen.set(false)" />

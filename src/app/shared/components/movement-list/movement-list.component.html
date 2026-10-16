@@ -12,9 +12,22 @@
         class="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900"
       >
         @for (movement of group.movements; track movement.id) {
-          <div class="p-4 transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/60">
+          <div
+            class="flex items-stretch transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/60"
+          >
             <div
-              class="flex items-center justify-between gap-3 lg:grid lg:grid-cols-12 lg:items-center lg:gap-4"
+              [attr.role]="selectable() ? 'button' : null"
+              [attr.tabindex]="selectable() ? 0 : null"
+              [attr.aria-label]="
+                selectable()
+                  ? 'Ver detalle del movimiento de ' + accountName(movement.accountId)
+                  : null
+              "
+              (click)="selectMovement(movement)"
+              (keydown.enter)="selectMovement(movement)"
+              (keydown.space)="selectMovement(movement); $event.preventDefault()"
+              [class.cursor-pointer]="selectable()"
+              class="flex min-w-0 flex-1 items-center gap-3 p-4 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500 lg:grid lg:grid-cols-12 lg:items-center lg:gap-4"
             >
               <!-- COLUMNS 1-5: IDENTITY & BADGES -->
               <div class="flex min-w-0 items-center gap-3 lg:col-span-5">
@@ -70,8 +83,8 @@
               <!-- COLUMNS 6-9: METADATA (DESKTOP ONLY) - KEEPS GRID ALIGNMENT -->
               <div class="hidden lg:col-span-4 lg:block"></div>
 
-              <!-- COLUMNS 10-12: AMOUNT & ACTION -->
-              <div class="flex shrink-0 items-center justify-end gap-3 lg:col-span-3">
+              <!-- COLUMNS 10-12: AMOUNT -->
+              <div class="ml-auto flex shrink-0 items-center justify-end gap-3 lg:col-span-3">
                 <div class="text-right">
                   <span
                     class="block text-sm font-bold tabular-nums {{
@@ -88,18 +101,28 @@
                   }
                 </div>
 
-                @if (!movement.isReversal) {
-                  <button
-                    type="button"
-                    (click)="movementToRevert.set(movement)"
-                    class="rounded-lg p-1.5 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
-                    [attr.aria-label]="'Reversar movimiento de ' + accountName(movement.accountId)"
-                  >
-                    <app-icon name="refresh-cw" size="16" class="h-4 w-4" />
-                  </button>
+                @if (selectable()) {
+                  <app-icon
+                    name="chevron-right"
+                    size="16"
+                    class="h-4 w-4 shrink-0 text-slate-300 lg:hidden dark:text-slate-600"
+                  />
                 }
               </div>
             </div>
+
+            @if (!movement.isReversal) {
+              <div class="flex shrink-0 items-center pr-3">
+                <button
+                  type="button"
+                  (click)="movementToRevert.set(movement)"
+                  class="rounded-lg p-1.5 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
+                  [attr.aria-label]="'Reversar movimiento de ' + accountName(movement.accountId)"
+                >
+                  <app-icon name="refresh-cw" size="16" class="h-4 w-4" />
+                </button>
+              </div>
+            }
           </div>
         }
       </div>
