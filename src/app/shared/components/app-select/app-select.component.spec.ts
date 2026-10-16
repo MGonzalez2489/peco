@@ -92,4 +92,22 @@ describe('AppSelectComponent', () => {
     expect(changes).toEqual(['bank']);
     expect(fixture.nativeElement.querySelector('[role="dialog"]')).toBeNull();
   });
+
+  it('closes the bottom sheet from its close link on mobile', () => {
+    create(false);
+    open();
+
+    const dialog = fixture.nativeElement.querySelector('[role="dialog"]') as HTMLElement | null;
+    if (!dialog) throw new Error('select bottom sheet must open');
+
+    const closeButton = Array.from(dialog.querySelectorAll<HTMLButtonElement>('button')).find(
+      (button) => button.textContent?.includes('Cerrar'),
+    );
+    if (!closeButton) throw new Error('close button must exist');
+
+    closeButton.click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[role="dialog"]')).toBeNull();
+  });
 });
