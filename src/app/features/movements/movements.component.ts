@@ -1,5 +1,6 @@
 import {ChangeDetectionStrategy, Component, computed, inject, signal} from '@angular/core';
 import {CurrencyPipe} from '@angular/common';
+import {Movement} from '@core/models';
 import {MovementsStore} from '@core/stores/movements.store';
 import {calculateMovementTotals, isSameMonthAndYear} from '@core/utils';
 import {
@@ -9,6 +10,7 @@ import {
   MovementListComponent,
 } from '@shared/components';
 import {FiltroMovimientosModalComponent} from './components/filtro-movimientos-modal/filtro-movimientos-modal.component';
+import {MovementDetailModalComponent} from './components/movement-detail-modal/movement-detail-modal.component';
 import {MovementsProgressionChartComponent} from './components/movements-progression-chart/movements-progression-chart.component';
 
 @Component({
@@ -16,6 +18,7 @@ import {MovementsProgressionChartComponent} from './components/movements-progres
   imports: [
     CurrencyPipe,
     MovementListComponent,
+    MovementDetailModalComponent,
     FiltroMovimientosModalComponent,
     MovementsProgressionChartComponent,
     AppIconComponent,
@@ -28,6 +31,10 @@ export class MovementsComponent {
   readonly movementsStore = inject(MovementsStore);
 
   readonly filtersOpen = signal(false);
+
+  readonly selectedMovement = signal<Movement | null>(null);
+
+  readonly isMovementDetailOpen = computed(() => this.selectedMovement() !== null);
 
   readonly selectedPeriod = signal<MonthPickerSelection>({
     month: new Date().getMonth() + 1,
@@ -77,5 +84,13 @@ export class MovementsComponent {
   onMonthSelected(selection: MonthPickerSelection): void {
     this.selectedPeriod.set({month: selection.month, year: selection.year});
     this.isMonthPickerOpen.set(false);
+  }
+
+  openMovementDetail(movement: Movement): void {
+    this.selectedMovement.set(movement);
+  }
+
+  closeMovementDetail(): void {
+    this.selectedMovement.set(null);
   }
 }
