@@ -13,15 +13,17 @@ import {toSignal} from '@angular/core/rxjs-interop';
 import {FormBuilder, FormControl, ReactiveFormsModule, Validators} from '@angular/forms';
 import {
   CATEGORY_APPLY_TYPE_LABEL,
+  CATEGORY_APPLY_TYPE_VISUALS,
   CATEGORY_COLOR_PALETTE,
   CATEGORY_ICON_OPTIONS,
   DEFAULT_CATEGORY_COLOR,
 } from '@core/constants';
-import {Category} from '@core/models';
+import {Category, SelectOption} from '@core/models';
 import {CategoryApplyType} from '@core/types';
 import {pickRandom, toCategorySlug, toSoftCategoryColor} from '@core/utils';
 import {
   AppIconComponent,
+  AppSelectComponent,
   ColorSelectComponent,
   IconSelectComponent,
   ModalComponent,
@@ -33,6 +35,7 @@ import {
     ReactiveFormsModule,
     ModalComponent,
     AppIconComponent,
+    AppSelectComponent,
     ColorSelectComponent,
     IconSelectComponent,
   ],
@@ -54,9 +57,15 @@ export class CategoryFormModalComponent {
   protected readonly iconOptions = CATEGORY_ICON_OPTIONS;
   protected readonly toSoftCategoryColor = toSoftCategoryColor;
   // 'TRANSFER' is reserved for the system transfer category and must not be selectable by users.
-  protected readonly applyTypeOptions = (
+  protected readonly applyTypeOptions: SelectOption[] = (
     Object.entries(CATEGORY_APPLY_TYPE_LABEL) as ReadonlyArray<[CategoryApplyType, string]>
-  ).filter(([applyType]) => applyType !== 'TRANSFER');
+  )
+    .filter(([applyType]) => applyType !== 'TRANSFER')
+    .map(([applyType, label]) => ({
+      value: applyType,
+      label,
+      ...CATEGORY_APPLY_TYPE_VISUALS[applyType],
+    }));
 
   protected readonly form = this.fb.group({
     displayName: this.fb.control<string>('', {

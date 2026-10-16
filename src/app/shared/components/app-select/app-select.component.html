@@ -98,24 +98,37 @@
     ></div>
 
     <div
-      class="fixed inset-x-0 bottom-0 z-[70] max-h-[80dvh] overflow-y-auto rounded-t-3xl bg-white p-5 shadow-2xl sm:hidden dark:bg-slate-900"
+      class="fixed inset-x-0 bottom-0 z-[70] max-h-[80dvh] overflow-y-auto rounded-t-3xl bg-white shadow-2xl sm:hidden dark:bg-slate-900"
       role="dialog"
       aria-modal="true"
       [attr.aria-label]="sheetTitle() || accessibleLabel()"
       (click)="$event.stopPropagation()"
     >
-      <!-- DRAG HANDLE -->
-      <div class="mx-auto mb-4 h-1.5 w-12 rounded-full bg-slate-300 dark:bg-slate-700"></div>
+      <!-- STICKY HEADER -->
+      <div class="sticky top-0 z-10 bg-white px-5 pt-5 pb-3 dark:bg-slate-900">
+        <!-- DRAG HANDLE -->
+        <div class="mx-auto mb-4 h-1.5 w-12 rounded-full bg-slate-300 dark:bg-slate-700"></div>
 
-      @if (sheetTitle(); as sheetLabel) {
-        <p class="mb-3 text-sm font-bold text-slate-900 dark:text-white">{{ sheetLabel }}</p>
-      }
+        <div class="flex items-center justify-between gap-3">
+          <button
+            type="button"
+            (click)="closeList(true)"
+            class="inline-flex items-center gap-1 rounded-lg text-sm font-semibold text-indigo-600 transition-colors hover:text-indigo-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:text-indigo-400 dark:hover:text-indigo-300 dark:focus-visible:ring-offset-slate-900"
+          >
+            Cerrar
+          </button>
+
+          @if (sheetTitle(); as sheetLabel) {
+            <p class="text-sm font-bold text-slate-900 dark:text-white">{{ sheetLabel }}</p>
+          }
+        </div>
+      </div>
 
       <ul
         [id]="listboxId"
         role="listbox"
         [attr.aria-label]="accessibleLabel()"
-        class="flex flex-col gap-1"
+        class="flex flex-col gap-1 px-5 pb-5"
       >
         @for (option of options(); track option.value; let i = $index) {
           <ng-container
