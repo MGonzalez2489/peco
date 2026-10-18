@@ -57,6 +57,7 @@ export class AccountFormModalComponent {
       validators: [Validators.required, Validators.min(0)],
     }),
     targetGoal: this.fb.control<number | null>(null, Validators.min(0)),
+    creditLimit: this.fb.control<number | null>(null),
     includeInTotal: this.fb.control<boolean>(true),
     pinToHome: this.fb.control<boolean>(false),
     note: this.fb.control<string>(''),
@@ -71,7 +72,7 @@ export class AccountFormModalComponent {
       this.focusNameField();
     });
     this.form.controls.type.valueChanges.pipe(takeUntilDestroyed()).subscribe((type) => {
-      if (type) this.applyBalanceValidators(type);
+      if (type) this.applyTypeValidators(type);
     });
   }
 
@@ -91,28 +92,35 @@ export class AccountFormModalComponent {
     if (!this.isOpen()) return;
 
     if (editing) {
-      this.applyBalanceValidators(editing.type.key);
+      this.applyTypeValidators(editing.type.key);
       this.form.reset({
         name: editing.name,
         type: editing.type.key,
         initialBalance: editing.currentBalance,
         targetGoal: editing.targetGoal ?? null,
+        creditLimit: editing.creditLimit ?? null,
         includeInTotal: editing.includeInTotal ?? true,
         pinToHome: editing.pinToHome ?? false,
         note: editing.note ?? '',
       });
     } else {
-      this.applyBalanceValidators(AccountTypeKey.CASH);
+      this.applyTypeValidators(AccountTypeKey.CASH);
       this.form.reset({
         name: '',
         type: AccountTypeKey.CASH,
         initialBalance: 0,
         targetGoal: null,
+        creditLimit: null,
         includeInTotal: true,
         pinToHome: false,
         note: '',
       });
     }
+  }
+
+  private applyTypeValidators(type: AccountTypeKey): void {
+    this.applyBalanceValidators(type);
+    this.updateAccountTypeValidators(type);
   }
 
   private applyBalanceValidators(type: AccountTypeKey): void {
@@ -123,6 +131,26 @@ export class AccountFormModalComponent {
       balance.setValidators([Validators.required, Validators.min(0)]);
     }
     balance.updateValueAndValidity();
+  }
+
+  private updateAccountTypeValidators(type: AccountTypeKey): void {
+    const creditLimit = this.form.controls.creditLimit;
+    const targetGoal = this.form.controls.targetGoal;
+
+    if (type === AccountTypeKey.CREDIT) {
+      targetGoal.setValue(null);
+      targetGoal.clearValidators();
+
+      creditLimit.setValidators([Validators.required, Validators.min(0.01)]);
+    } else {
+      creditLimit.setValue(null);
+      creditLimit.clearValidators();
+
+      targetGoal.setValidators([Validators.min(0)]);
+    }
+
+    creditLimit.updateValueAndValidity();
+    targetGoal.updateValueAndValidity();
   }
 
   onAmountInputFocus(event: FocusEvent): void {
@@ -141,6 +169,9 @@ export class AccountFormModalComponent {
 
     const raw = this.form.getRawValue();
     const editing = this.account();
+    const isCredit = raw.type === AccountTypeKey.CREDIT;
+    const targetGoal = isCredit ? undefined : (raw.targetGoal ?? undefined);
+    const creditLimit = isCredit ? (raw.creditLimit ?? undefined) : undefined;
 
     if (editing) {
       const newBalance = raw.initialBalance ?? 0;
@@ -160,7 +191,8 @@ export class AccountFormModalComponent {
         name: raw.name?.trim() ?? '',
         currentBalance: newBalance,
         type: ACCOUNT_TYPE_MAP[raw.type ?? editing.type.key],
-        targetGoal: raw.targetGoal ?? undefined,
+        targetGoal,
+        creditLimit,
         includeInTotal: raw.includeInTotal ?? true,
         pinToHome: raw.pinToHome ?? false,
         note: raw.note?.trim() || undefined,
@@ -170,7 +202,8 @@ export class AccountFormModalComponent {
         name: raw.name?.trim() ?? '',
         initialBalance: raw.initialBalance ?? 0,
         type: ACCOUNT_TYPE_MAP[raw.type ?? AccountTypeKey.CASH],
-        targetGoal: raw.targetGoal ?? undefined,
+        targetGoal,
+        creditLimit,
         includeInTotal: raw.includeInTotal ?? true,
         pinToHome: raw.pinToHome ?? false,
         note: raw.note?.trim() || undefined,

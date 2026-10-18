@@ -108,8 +108,41 @@
         ></app-account-progression-chart>
       </div>
 
-      <!-- FOOTER TOTALS: GOAL PROGRESS -->
-      @if (account.targetGoal && account.targetGoal > 0) {
+      <!-- FOOTER TOTALS: CREDIT USAGE / GOAL PROGRESS -->
+      @if (creditUsage(); as credit) {
+        <div class="space-y-3">
+          <dl class="grid grid-cols-2 gap-3">
+            <div class="rounded-xl bg-indigo-50 px-3 py-2 dark:bg-indigo-950/40">
+              <dt class="text-xs font-medium text-indigo-700 dark:text-indigo-300">
+                Crédito disponible
+              </dt>
+              <dd class="text-sm font-bold text-indigo-900 dark:text-indigo-200">
+                {{ formatCurrency(credit.available) }} ({{ credit.availablePercentage }}%)
+              </dd>
+            </div>
+            <div class="rounded-xl bg-slate-50 px-3 py-2 dark:bg-slate-900/40">
+              <dt class="text-xs font-medium text-slate-700 dark:text-slate-300">
+                Límite de crédito
+              </dt>
+              <dd class="text-sm font-bold text-slate-900 dark:text-slate-200">
+                {{ formatCurrency(credit.limit) }}
+              </dd>
+            </div>
+          </dl>
+          <div
+            class="h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"
+            [attr.aria-label]="'Crédito disponible de ' + account.name"
+          >
+            <div
+              class="h-full rounded-full bg-rose-500 transition-all duration-300"
+              [style.width.%]="credit.availablePercentage"
+            ></div>
+          </div>
+          <p class="text-xs text-slate-500 dark:text-slate-400">
+            De tu crédito total, has usado {{ formatCurrency(credit.used) }}.
+          </p>
+        </div>
+      } @else if (account.targetGoal && account.targetGoal > 0) {
         <dl class="grid grid-cols-2 gap-3">
           <div class="rounded-xl bg-indigo-50 px-3 py-2 dark:bg-indigo-950/40">
             <dt class="text-xs font-medium text-indigo-700 dark:text-indigo-300">Acumulado</dt>

@@ -8,6 +8,7 @@ export interface Account {
   includeInTotal: boolean;
   createdAt: string; // Mandatory ISO string timestamp (e.g., '2026-01-15T08:00:00.000Z')
   targetGoal?: number;
+  creditLimit?: number; // Optional credit limit for CREDIT type accounts
   pinToHome?: boolean;
   isRoot?: boolean;
   note?: string;

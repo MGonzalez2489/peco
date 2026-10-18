@@ -13,6 +13,7 @@ export class StatCardComponent {
   readonly amount = input<number>(0);
   readonly color = input<string>('indigo');
   readonly goal = input<number | undefined>();
+  readonly creditLimit = input<number | undefined>();
   readonly subtext = input<string | undefined>();
   readonly note = input<string | undefined>();
 
@@ -23,5 +24,20 @@ export class StatCardComponent {
     const amount = this.amount();
     if (goal === undefined || goal <= 0) return 0;
     return Math.min(100, Math.max(0, Math.round((amount / goal) * 100)));
+  });
+
+  readonly creditUsage = computed(() => {
+    const limit = this.creditLimit() ?? 0;
+    if (limit <= 0) return null;
+
+    const used = Math.min(limit, Math.max(0, -this.amount()));
+    const available = Math.max(0, limit - used);
+
+    return {
+      limit,
+      used,
+      available,
+      availablePercentage: Math.min(100, Math.max(0, Math.round((available / limit) * 100))),
+    };
   });
 }

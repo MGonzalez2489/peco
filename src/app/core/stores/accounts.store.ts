@@ -76,6 +76,7 @@ export const AccountsStore = signalStore(
             includeInTotal: dto.includeInTotal ?? true,
             createdAt: dto.createdAt ?? new Date().toISOString(),
             targetGoal: dto.targetGoal,
+            creditLimit: dto.creditLimit,
             pinToHome: dto.pinToHome ?? false,
             note: dto.note,
             isRoot: accounts.length === 0 ? true : undefined,

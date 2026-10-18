@@ -90,6 +90,7 @@ describe('AccountFormModalComponent', () => {
     setText('#cat-name', 'Tarjeta de crédito');
     selectType(AccountTypeKey.CREDIT);
     setText('#cat-balance', '-1500');
+    setText('#cat-credit-limit', '15000');
     submit();
 
     const created = accountsStore
@@ -97,6 +98,63 @@ describe('AccountFormModalComponent', () => {
       .find((account) => account.name === 'Tarjeta de crédito');
     expect(created?.type.key).toBe(AccountTypeKey.CREDIT);
     expect(created?.currentBalance).toBe(-1500);
+    expect(created?.creditLimit).toBe(15000);
+    expect(created?.targetGoal).toBeUndefined();
+  });
+
+  it('requires a credit limit and hides the savings goal for credit accounts', async () => {
+    await open();
+    setText('#cat-name', 'Tarjeta de crédito');
+    selectType(AccountTypeKey.CREDIT);
+    setText('#cat-balance', '-1500');
+
+    expect(native().querySelector('#cat-credit-limit')).not.toBeNull();
+    expect(native().querySelector('#cat-goal')).toBeNull();
+
+    submit();
+
+    expect(
+      accountsStore.accounts().some((account) => account.name === 'Tarjeta de crédito'),
+    ).toBe(false);
+    expect(native().querySelector('#cat-credit-limit')?.classList).toContain('border-rose-400');
+  });
+
+  it('shows the savings goal and clears the credit limit for non-credit accounts', async () => {
+    await open();
+    setText('#cat-name', 'Cuenta de ahorro');
+    selectType(AccountTypeKey.SAVINGS);
+    setText('#cat-balance', '500');
+    setText('#cat-goal', '2000');
+
+    expect(native().querySelector('#cat-credit-limit')).toBeNull();
+    expect(native().querySelector('#cat-goal')).not.toBeNull();
+
+    submit();
+
+    const created = accountsStore
+      .accounts()
+      .find((account) => account.name === 'Cuenta de ahorro');
+    expect(created?.targetGoal).toBe(2000);
+    expect(created?.creditLimit).toBeUndefined();
+  });
+
+  it('populates the credit limit when editing a credit account', async () => {
+    const created = accountsStore.createAccount({
+      name: 'Tarjeta de crédito',
+      initialBalance: -500,
+      type: ACCOUNT_TYPE_MAP[AccountTypeKey.CREDIT],
+      creditLimit: 12000,
+      includeInTotal: true,
+    });
+    if (!created) throw new Error('account must be created');
+
+    await open(created);
+
+    const input = native().querySelector<HTMLInputElement>('#cat-credit-limit');
+    expect(input?.value).toContain('12,000.00');
+
+    const form = (fixture.componentInstance as unknown as {form: FormGroup}).form;
+    expect(form.controls['creditLimit'].value).toBe(12000);
   });
 
   it('sanitizes negative input for non-credit accounts', async () => {

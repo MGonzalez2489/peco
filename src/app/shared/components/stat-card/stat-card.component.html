@@ -28,7 +28,23 @@
     <p class="mt-1 text-xs italic text-slate-400 dark:text-slate-500">{{ noteText }}</p>
   }
 
-  @if (goal(); as target) {
+  @if (creditUsage(); as credit) {
+    <div class="mt-4" [attr.aria-label]="'Crédito disponible de ' + title()">
+      <div
+        class="flex items-center justify-between text-xs font-medium text-slate-500 dark:text-slate-400"
+      >
+        <span>Disponible</span>
+        <span>{{ credit.availablePercentage }}%</span>
+      </div>
+      <div class="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+        <div
+          class="h-full rounded-full transition-all"
+          [style.background-color]="palette().bar"
+          [style.width.%]="credit.availablePercentage"
+        ></div>
+      </div>
+    </div>
+  } @else if (goal(); as target) {
     <div class="mt-4" [attr.aria-label]="'Progreso hacia la meta de ' + title()">
       <div
         class="flex items-center justify-between text-xs font-medium text-slate-500 dark:text-slate-400"
