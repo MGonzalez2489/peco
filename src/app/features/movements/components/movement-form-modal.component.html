@@ -122,14 +122,14 @@
         >
           Nota <span class="font-normal text-slate-400 dark:text-slate-500">(opcional)</span>
         </label>
-        <input
+        <textarea
           id="mov-note"
           formControlName="note"
-          type="text"
+          rows="3"
           autocomplete="off"
           placeholder="P. ej. Nómina de mayo"
-          class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-        />
+          class="w-full resize-none rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+        ></textarea>
       </div>
 
       <div class="modal-footer flex justify-end gap-2 pt-2">
