@@ -43,6 +43,6 @@ export class ThemeService {
 
   private readSavedPreference(): ThemeMode {
     const saved = localStorage.getItem(THEME_STORAGE_KEY);
-    return saved === 'light' || saved === 'dark' || saved === 'system' ? saved : 'system';
+    return saved === 'light' || saved === 'dark' || saved === 'system' ? saved : 'light';
   }
 }
