@@ -3,7 +3,7 @@ import {RouterLink} from '@angular/router';
 import {Account, Movement} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {MovementsStore} from '@core/stores/movements.store';
-import {formatCurrency} from '@core/utils';
+import {formatCurrency, getCreditUsage} from '@core/utils';
 import {AccountTypeColorPipe} from '@shared/pipes/account-type-color.pipe';
 import {MovementListComponent, StatCardComponent} from '@shared/components';
 import {MovementDetailModalComponent} from '@features/movements/components/movement-detail-modal/movement-detail-modal.component';
@@ -39,10 +39,15 @@ export class DashboardComponent {
 
   readonly recentMovements = computed(() => this.movementsStore.recentMovements(5));
 
-  readonly accountSubtext = (account: Account): string =>
-    account.targetGoal !== undefined
+  readonly accountSubtext = (account: Account): string => {
+    const credit = getCreditUsage(account);
+    if (credit) {
+      return `De ${formatCurrency(credit.limit)} has usado ${formatCurrency(credit.used)}`;
+    }
+    return account.targetGoal !== undefined
       ? `Meta ${formatCurrency(account.targetGoal)}`
       : 'Sin meta asignada';
+  };
 
   openMovementDetail(movement: Movement): void {
     this.selectedMovement.set(movement);

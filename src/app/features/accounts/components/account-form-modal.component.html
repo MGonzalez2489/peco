@@ -75,25 +75,55 @@
         }
       </div>
       <div>
-        <label
-          for="cat-goal"
-          class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
-        >
-          Meta <span class="font-normal text-slate-400 dark:text-slate-500">(opcional)</span>
-        </label>
-        <input
-          id="cat-goal"
-          formControlName="targetGoal"
-          appCurrencyInput
-          type="text"
-          inputmode="decimal"
-          autocomplete="off"
-          placeholder="0.00"
-          class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-          [attr.aria-invalid]="form.controls.targetGoal.touched && form.controls.targetGoal.invalid"
-        />
-        @if (errorFor(form.controls.targetGoal); as error) {
-          <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ error }}</p>
+        @if (form.controls.type.value === accountTypeKeys.CREDIT) {
+          <label
+            for="cat-credit-limit"
+            class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
+          >
+            Límite de crédito <span class="text-rose-500">*</span>
+          </label>
+          <input
+            id="cat-credit-limit"
+            formControlName="creditLimit"
+            appCurrencyInput
+            type="text"
+            inputmode="decimal"
+            autocomplete="off"
+            placeholder="P. ej. 15,000.00"
+            class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+            [class.border-rose-400]="
+              form.controls.creditLimit.touched && form.controls.creditLimit.invalid
+            "
+            [attr.aria-invalid]="
+              form.controls.creditLimit.touched && form.controls.creditLimit.invalid
+            "
+          />
+          @if (errorFor(form.controls.creditLimit); as error) {
+            <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ error }}</p>
+          }
+        } @else {
+          <label
+            for="cat-goal"
+            class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
+          >
+            Meta <span class="font-normal text-slate-400 dark:text-slate-500">(opcional)</span>
+          </label>
+          <input
+            id="cat-goal"
+            formControlName="targetGoal"
+            appCurrencyInput
+            type="text"
+            inputmode="decimal"
+            autocomplete="off"
+            placeholder="0.00"
+            class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+            [attr.aria-invalid]="
+              form.controls.targetGoal.touched && form.controls.targetGoal.invalid
+            "
+          />
+          @if (errorFor(form.controls.targetGoal); as error) {
+            <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ error }}</p>
+          }
         }
       </div>
     </div>

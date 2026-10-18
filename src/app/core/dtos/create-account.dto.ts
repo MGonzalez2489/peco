@@ -6,6 +6,7 @@ export interface CreateAccountDto {
   type: AccountType;
   includeInTotal?: boolean;
   targetGoal?: number;
+  creditLimit?: number;
   pinToHome?: boolean;
   note?: string;
   createdAt?: string;

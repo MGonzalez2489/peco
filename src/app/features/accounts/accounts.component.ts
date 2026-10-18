@@ -1,7 +1,7 @@
 import {ChangeDetectionStrategy, Component, computed, inject, signal} from '@angular/core';
 import {Account} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
-import {accountColor, formatCurrency, toSoftCategoryColor} from '@core/utils';
+import {accountColor, formatCurrency, getCreditUsage, toSoftCategoryColor} from '@core/utils';
 import {MovementFormModalComponent} from '@features/movements/components';
 import {AppIconComponent, IconName} from '@shared/components/app-icon/app-icon.component';
 import {AccountDistributionChartComponent} from './components/account-distribution-chart/account-distribution-chart.component';
@@ -45,6 +45,8 @@ export class AccountsComponent {
     toSoftCategoryColor(this.accountTypeColor(account), '20');
 
   readonly formatCurrency = formatCurrency;
+
+  readonly creditUsage = getCreditUsage;
 
   openCreateModal(): void {
     this.createModalOpen.set(true);

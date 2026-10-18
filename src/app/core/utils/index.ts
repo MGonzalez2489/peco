@@ -5,6 +5,7 @@ export * from './backfill-movement-category.util';
 export * from './build-reversal-movement.util';
 export * from './calculate-movement-totals.util';
 export * from './chart-progression.util';
+export * from './credit-usage.util';
 export * from './default-stop-date.util';
 export * from './ensure-root-account.util';
 export * from './ensure-root-category.util';

@@ -13,7 +13,7 @@ import {map} from 'rxjs';
 import {Account, Movement, SelectOption} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {MovementsStore} from '@core/stores/movements.store';
-import {formatCurrency, isSameMonthAndYear, toAccountOption} from '@core/utils';
+import {formatCurrency, getCreditUsage, isSameMonthAndYear, toAccountOption} from '@core/utils';
 import {
   AppIconComponent,
   AppSelectComponent,
@@ -137,6 +137,11 @@ export class AccountDetailComponent {
     const goal = account.targetGoal ?? 0;
     if (goal <= 0) return 0;
     return Math.min(100, Math.max(0, Math.round((account.currentBalance / goal) * 100)));
+  });
+
+  readonly creditUsage = computed(() => {
+    const account = this.account();
+    return account ? getCreditUsage(account) : null;
   });
 
   readonly formatCurrency = formatCurrency;

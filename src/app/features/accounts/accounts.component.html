@@ -133,9 +133,29 @@
                   </div>
                 </div>
 
-                <!-- TARGET GOAL PROGRESS (Cols 6-9, desktop only) -->
+                <!-- TARGET GOAL / CREDIT USAGE PROGRESS (Cols 6-9, desktop only) -->
                 <div class="hidden lg:col-span-4 lg:block">
-                  @if (account.targetGoal && account.targetGoal > 0) {
+                  @if (creditUsage(account); as credit) {
+                    <div class="max-w-[200px] space-y-1">
+                      <div
+                        class="flex items-center justify-between text-[11px] font-medium text-slate-500 dark:text-slate-400"
+                      >
+                        <span class="truncate">Usado: {{ formatCurrency(credit.used) }}</span>
+                        <span class="font-bold text-slate-700 dark:text-slate-200">
+                          {{ credit.availablePercentage }}% disp.
+                        </span>
+                      </div>
+                      <div
+                        class="h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"
+                      >
+                        <div
+                          class="h-full rounded-full transition-all duration-300"
+                          [style.width.%]="credit.availablePercentage"
+                          [style.backgroundColor]="accountTypeColor(account)"
+                        ></div>
+                      </div>
+                    </div>
+                  } @else if (account.targetGoal && account.targetGoal > 0) {
                     @let progress = getGoalProgress(account);
                     <div class="max-w-[200px] space-y-1">
                       <div
