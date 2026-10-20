@@ -93,6 +93,40 @@ describe('AppSelectComponent', () => {
     expect(fixture.nativeElement.querySelector('[role="dialog"]')).toBeNull();
   });
 
+  it('reflects the signal `value` input and emits `valueChange` on selection', () => {
+    create(true);
+
+    const emitted: string[] = [];
+    fixture.componentInstance.valueChange.subscribe((value) => emitted.push(value));
+
+    // Parent-controlled value: the trigger follows the input.
+    fixture.componentRef.setInput('value', 'bank');
+    fixture.detectChanges();
+    expect(fixture.componentInstance.selectedOption()?.label).toBe('Banco');
+
+    open();
+
+    const listbox = fixture.nativeElement.querySelector('[role="listbox"]') as HTMLElement | null;
+    if (!listbox) throw new Error('listbox must be open');
+
+    const cash = Array.from(listbox.querySelectorAll('[role="option"]')).find(
+      (option) => option.textContent?.trim() === 'Efectivo',
+    );
+    if (!cash) throw new Error('cash option must exist');
+
+    (cash as HTMLElement).click();
+    fixture.detectChanges();
+
+    expect(emitted).toEqual(['cash']);
+
+    // The parent writes the emitted value back, closing the reactive loop.
+    fixture.componentRef.setInput('value', 'cash');
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.selectedOption()?.label).toBe('Efectivo');
+    expect(fixture.nativeElement.querySelector('button')?.textContent).toContain('Efectivo');
+  });
+
   it('closes the bottom sheet from its close link on mobile', () => {
     create(false);
     open();

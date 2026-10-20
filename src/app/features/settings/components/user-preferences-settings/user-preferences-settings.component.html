@@ -1,0 +1,38 @@
+<section aria-labelledby="user-preferences-title" class="space-y-4">
+  <div>
+    <h2
+      id="user-preferences-title"
+      class="hidden text-lg font-bold tracking-tight text-slate-900 md:block dark:text-white"
+    >
+      Preferencias
+    </h2>
+    <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+      Elige cómo se ve la aplicación en este dispositivo.
+    </p>
+  </div>
+
+  <div
+    class="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900"
+  >
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4">
+      <div class="flex min-w-0 items-center gap-3">
+        <div class="min-w-0">
+          <p class="text-sm font-semibold text-slate-900 dark:text-white">Apariencia</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400">
+            Elige cómo se ve la aplicación en este dispositivo.
+          </p>
+        </div>
+      </div>
+
+      <div class="w-full shrink-0 md:w-44">
+        <app-select
+          controlId="pref-theme"
+          ariaLabel="Tema"
+          [options]="themeOptions"
+          [value]="theme()"
+          (valueChange)="onThemeChange($event)"
+        />
+      </div>
+    </div>
+  </div>
+</section>

@@ -26,3 +26,4 @@ export * from './scheduled-transaction-types.constant';
 export * from './seed-accounts.constant';
 export * from './seed-categories.constant';
 export * from './settings-sections.constant';
+export * from './theme-options.constant';
