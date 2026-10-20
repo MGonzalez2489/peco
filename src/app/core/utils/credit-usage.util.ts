@@ -17,7 +17,7 @@ export function getCreditUsage(account: Account): {
   availablePercentage: number;
 } | null {
   const limit = account.creditLimit ?? 0;
-  if (!isLiability(account.type.key) || limit <= 0) return null;
+  if (!isLiability(account.type) || limit <= 0) return null;
 
   const used = Math.min(limit, Math.max(0, -account.currentBalance));
   const available = Math.max(0, limit - used);

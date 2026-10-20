@@ -54,7 +54,7 @@
           id="cat-balance"
           formControlName="initialBalance"
           appCurrencyInput
-          [appCurrencyAllowNegative]="form.controls.type.value === accountTypeKeys.CREDIT"
+          [appCurrencyAllowNegative]="form.controls.type.value === 'CREDIT'"
           type="text"
           inputmode="decimal"
           autocomplete="off"
@@ -75,7 +75,7 @@
         }
       </div>
       <div>
-        @if (form.controls.type.value === accountTypeKeys.CREDIT) {
+        @if (form.controls.type.value === 'CREDIT') {
           <label
             for="cat-credit-limit"
             class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"

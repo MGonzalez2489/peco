@@ -1,13 +1,11 @@
-import {ACCOUNT_TYPE_MAP} from '../constants/account-type-map.constant';
 import {Account} from '../models/account.model';
-import {AccountTypeKey} from '../types/account-type-key.enum';
 import {getCreditUsage} from './credit-usage.util';
 
 const buildAccount = (overrides: Partial<Account>): Account => ({
   id: 'account-1',
   name: 'Cuenta',
   currentBalance: 0,
-  type: ACCOUNT_TYPE_MAP[AccountTypeKey.CASH],
+  type: 'CASH',
   includeInTotal: true,
   createdAt: '2026-01-01T00:00:00.000Z',
   ...overrides,
@@ -17,7 +15,7 @@ describe('getCreditUsage', () => {
   it('returns null for non-credit accounts', () => {
     const usage = getCreditUsage(
       buildAccount({
-        type: ACCOUNT_TYPE_MAP[AccountTypeKey.SAVINGS],
+        type: 'SAVINGS',
         creditLimit: 10000,
       }),
     );
@@ -26,9 +24,7 @@ describe('getCreditUsage', () => {
   });
 
   it('returns null when the credit limit is not set', () => {
-    const usage = getCreditUsage(
-      buildAccount({type: ACCOUNT_TYPE_MAP[AccountTypeKey.CREDIT], currentBalance: -500}),
-    );
+    const usage = getCreditUsage(buildAccount({type: 'CREDIT', currentBalance: -500}));
 
     expect(usage).toBeNull();
   });
@@ -36,7 +32,7 @@ describe('getCreditUsage', () => {
   it('computes the used amount and a decreasing available percentage', () => {
     const usage = getCreditUsage(
       buildAccount({
-        type: ACCOUNT_TYPE_MAP[AccountTypeKey.CREDIT],
+        type: 'CREDIT',
         currentBalance: -2500,
         creditLimit: 10000,
       }),
@@ -53,7 +49,7 @@ describe('getCreditUsage', () => {
   it('clamps the usage to the credit limit', () => {
     const usage = getCreditUsage(
       buildAccount({
-        type: ACCOUNT_TYPE_MAP[AccountTypeKey.CREDIT],
+        type: 'CREDIT',
         currentBalance: -15000,
         creditLimit: 10000,
       }),
@@ -70,7 +66,7 @@ describe('getCreditUsage', () => {
   it('treats a positive balance as no credit usage', () => {
     const usage = getCreditUsage(
       buildAccount({
-        type: ACCOUNT_TYPE_MAP[AccountTypeKey.CREDIT],
+        type: 'CREDIT',
         currentBalance: 500,
         creditLimit: 10000,
       }),

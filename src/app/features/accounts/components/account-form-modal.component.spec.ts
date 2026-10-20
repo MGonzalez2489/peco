@@ -6,7 +6,7 @@ import {provideAppIcons} from '@core/icons/app-icons.provider';
 import {Account} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {MovementsStore} from '@core/stores/movements.store';
-import {AccountTypeKey} from '@core/types';
+import {AccountType} from '@core/types';
 import {AccountFormModalComponent} from './account-form-modal.component';
 
 describe('AccountFormModalComponent', () => {
@@ -34,7 +34,7 @@ describe('AccountFormModalComponent', () => {
     fixture.detectChanges();
   };
 
-  const selectType = (value: AccountTypeKey): void => {
+  const selectType = (value: AccountType): void => {
     const trigger = native().querySelector<HTMLButtonElement>('#cat-type');
     if (!trigger) throw new Error('type select must be rendered');
 
@@ -62,7 +62,7 @@ describe('AccountFormModalComponent', () => {
     const created = accountsStore.createAccount({
       name: 'Ahorro',
       initialBalance: balance,
-      type: ACCOUNT_TYPE_MAP[AccountTypeKey.SAVINGS],
+      type: 'SAVINGS',
       includeInTotal: true,
     });
     if (!created) throw new Error('account must be created');
@@ -88,7 +88,7 @@ describe('AccountFormModalComponent', () => {
   it('creates a credit account with a negative initial balance', async () => {
     await open();
     setText('#cat-name', 'Tarjeta de crédito');
-    selectType(AccountTypeKey.CREDIT);
+    selectType('CREDIT');
     setText('#cat-balance', '-1500');
     setText('#cat-credit-limit', '15000');
     submit();
@@ -96,7 +96,7 @@ describe('AccountFormModalComponent', () => {
     const created = accountsStore
       .accounts()
       .find((account) => account.name === 'Tarjeta de crédito');
-    expect(created?.type.key).toBe(AccountTypeKey.CREDIT);
+    expect(created?.type).toBe('CREDIT');
     expect(created?.currentBalance).toBe(-1500);
     expect(created?.creditLimit).toBe(15000);
     expect(created?.targetGoal).toBeUndefined();
@@ -105,7 +105,7 @@ describe('AccountFormModalComponent', () => {
   it('requires a credit limit and hides the savings goal for credit accounts', async () => {
     await open();
     setText('#cat-name', 'Tarjeta de crédito');
-    selectType(AccountTypeKey.CREDIT);
+    selectType('CREDIT');
     setText('#cat-balance', '-1500');
 
     expect(native().querySelector('#cat-credit-limit')).not.toBeNull();
@@ -113,16 +113,16 @@ describe('AccountFormModalComponent', () => {
 
     submit();
 
-    expect(
-      accountsStore.accounts().some((account) => account.name === 'Tarjeta de crédito'),
-    ).toBe(false);
+    expect(accountsStore.accounts().some((account) => account.name === 'Tarjeta de crédito')).toBe(
+      false,
+    );
     expect(native().querySelector('#cat-credit-limit')?.classList).toContain('border-rose-400');
   });
 
   it('shows the savings goal and clears the credit limit for non-credit accounts', async () => {
     await open();
     setText('#cat-name', 'Cuenta de ahorro');
-    selectType(AccountTypeKey.SAVINGS);
+    selectType('SAVINGS');
     setText('#cat-balance', '500');
     setText('#cat-goal', '2000');
 
@@ -131,9 +131,7 @@ describe('AccountFormModalComponent', () => {
 
     submit();
 
-    const created = accountsStore
-      .accounts()
-      .find((account) => account.name === 'Cuenta de ahorro');
+    const created = accountsStore.accounts().find((account) => account.name === 'Cuenta de ahorro');
     expect(created?.targetGoal).toBe(2000);
     expect(created?.creditLimit).toBeUndefined();
   });
@@ -142,7 +140,7 @@ describe('AccountFormModalComponent', () => {
     const created = accountsStore.createAccount({
       name: 'Tarjeta de crédito',
       initialBalance: -500,
-      type: ACCOUNT_TYPE_MAP[AccountTypeKey.CREDIT],
+      type: 'CREDIT',
       creditLimit: 12000,
       includeInTotal: true,
     });
@@ -160,7 +158,7 @@ describe('AccountFormModalComponent', () => {
   it('sanitizes negative input for non-credit accounts', async () => {
     await open();
     setText('#cat-name', 'Cuenta de débito');
-    selectType(AccountTypeKey.DEBIT);
+    selectType('DEBIT');
     setText('#cat-balance', '-100');
 
     const form = (fixture.componentInstance as unknown as {form: FormGroup}).form;
@@ -170,7 +168,7 @@ describe('AccountFormModalComponent', () => {
   it('rejects a negative balance for non-credit accounts', async () => {
     await open();
     setText('#cat-name', 'Cuenta de débito');
-    selectType(AccountTypeKey.DEBIT);
+    selectType('DEBIT');
 
     const form = (fixture.componentInstance as unknown as {form: FormGroup}).form;
     form.controls['initialBalance'].setValue(-100);
@@ -210,6 +208,20 @@ describe('AccountFormModalComponent', () => {
     nameInput.focus();
 
     expect(input.value).toBe('0.00');
+  });
+
+  it('starts with a zero balance and focuses the name field when opened', async () => {
+    await open();
+
+    const form = (fixture.componentInstance as unknown as {form: FormGroup}).form;
+    expect(form.controls['initialBalance'].value).toBe(0);
+
+    const nameInput = native().querySelector<HTMLInputElement>('#cat-name');
+    if (!nameInput) throw new Error('name input must be rendered');
+
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    expect(document.activeElement).toBe(nameInput);
   });
 
   it('registers an income adjustment when the balance increases', async () => {

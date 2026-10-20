@@ -10,11 +10,11 @@ import {
 } from '@angular/core';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {FormBuilder, FormControl, ReactiveFormsModule, Validators} from '@angular/forms';
-import {ADJUSTMENT_CATEGORY_ID, ACCOUNT_TYPES, ACCOUNT_TYPE_MAP} from '@core/constants';
+import {ADJUSTMENT_CATEGORY_ID, ACCOUNT_TYPES} from '@core/constants';
 import {Account, SelectOption} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {MovementsStore} from '@core/stores/movements.store';
-import {AccountTypeKey} from '@core/types';
+import {AccountType} from '@core/types';
 import {accountColor} from '@core/utils';
 import {AppSelectComponent, ModalComponent} from '@shared/components';
 import {CurrencyInputDirective} from '@shared/directives';
@@ -48,11 +48,9 @@ export class AccountFormModalComponent {
     color: accountColor(type.color).chip,
   }));
 
-  protected readonly accountTypeKeys = AccountTypeKey;
-
   protected readonly form = this.fb.group({
     name: this.fb.control<string>('', Validators.required),
-    type: this.fb.control<AccountTypeKey>(AccountTypeKey.CASH, Validators.required),
+    type: this.fb.control<AccountType>('CASH', Validators.required),
     initialBalance: this.fb.control<number | null>(0, {
       validators: [Validators.required, Validators.min(0)],
     }),
@@ -92,10 +90,10 @@ export class AccountFormModalComponent {
     if (!this.isOpen()) return;
 
     if (editing) {
-      this.applyTypeValidators(editing.type.key);
+      this.applyTypeValidators(editing.type);
       this.form.reset({
         name: editing.name,
-        type: editing.type.key,
+        type: editing.type,
         initialBalance: editing.currentBalance,
         targetGoal: editing.targetGoal ?? null,
         creditLimit: editing.creditLimit ?? null,
@@ -104,10 +102,10 @@ export class AccountFormModalComponent {
         note: editing.note ?? '',
       });
     } else {
-      this.applyTypeValidators(AccountTypeKey.CASH);
+      this.applyTypeValidators('CASH');
       this.form.reset({
         name: '',
-        type: AccountTypeKey.CASH,
+        type: 'CASH',
         initialBalance: 0,
         targetGoal: null,
         creditLimit: null,
@@ -118,14 +116,14 @@ export class AccountFormModalComponent {
     }
   }
 
-  private applyTypeValidators(type: AccountTypeKey): void {
+  private applyTypeValidators(type: AccountType): void {
     this.applyBalanceValidators(type);
     this.updateAccountTypeValidators(type);
   }
 
-  private applyBalanceValidators(type: AccountTypeKey): void {
+  private applyBalanceValidators(type: AccountType): void {
     const balance = this.form.controls.initialBalance;
-    if (type === AccountTypeKey.CREDIT) {
+    if (type === 'CREDIT') {
       balance.setValidators([Validators.required]);
     } else {
       balance.setValidators([Validators.required, Validators.min(0)]);
@@ -133,11 +131,11 @@ export class AccountFormModalComponent {
     balance.updateValueAndValidity();
   }
 
-  private updateAccountTypeValidators(type: AccountTypeKey): void {
+  private updateAccountTypeValidators(type: AccountType): void {
     const creditLimit = this.form.controls.creditLimit;
     const targetGoal = this.form.controls.targetGoal;
 
-    if (type === AccountTypeKey.CREDIT) {
+    if (type === 'CREDIT') {
       targetGoal.setValue(null);
       targetGoal.clearValidators();
 
@@ -169,7 +167,7 @@ export class AccountFormModalComponent {
 
     const raw = this.form.getRawValue();
     const editing = this.account();
-    const isCredit = raw.type === AccountTypeKey.CREDIT;
+    const isCredit = raw.type === 'CREDIT';
     const targetGoal = isCredit ? undefined : (raw.targetGoal ?? undefined);
     const creditLimit = isCredit ? (raw.creditLimit ?? undefined) : undefined;
 
@@ -190,7 +188,7 @@ export class AccountFormModalComponent {
       this.accountsStore.updateAccount(editing.id, {
         name: raw.name?.trim() ?? '',
         currentBalance: newBalance,
-        type: ACCOUNT_TYPE_MAP[raw.type ?? editing.type.key],
+        type: raw.type ?? editing.type,
         targetGoal,
         creditLimit,
         includeInTotal: raw.includeInTotal ?? true,
@@ -201,7 +199,7 @@ export class AccountFormModalComponent {
       this.accountsStore.createAccount({
         name: raw.name?.trim() ?? '',
         initialBalance: raw.initialBalance ?? 0,
-        type: ACCOUNT_TYPE_MAP[raw.type ?? AccountTypeKey.CASH],
+        type: raw.type ?? 'CASH',
         targetGoal,
         creditLimit,
         includeInTotal: raw.includeInTotal ?? true,

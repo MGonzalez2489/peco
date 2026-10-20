@@ -10,7 +10,12 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import {MOVEMENT_TYPES, MOVEMENT_TYPE_LABEL, MOVEMENT_TYPE_PALETTE} from '@core/constants';
+import {
+  ACCOUNT_TYPE_MAP,
+  MOVEMENT_TYPES,
+  MOVEMENT_TYPE_LABEL,
+  MOVEMENT_TYPE_PALETTE,
+} from '@core/constants';
 import {Account, Movement} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {CatalogStore} from '@core/stores/catalog.store';
@@ -21,6 +26,8 @@ import {
   formatCurrency,
   formatLongDate,
   recurrenceLabel,
+  resolveAccountColor,
+  resolveAccountIcon,
   toSoftCategoryColor,
 } from '@core/utils';
 import {AppIconComponent, IconName} from '@shared/components';
@@ -336,9 +343,9 @@ export class MovementDetailModalComponent {
     return {
       name: account?.name ?? 'Sin cuenta',
       isRoot: account?.isRoot === true,
-      typeName: account?.type?.name ?? '',
-      icon: account?.type?.icon ?? FALLBACK_ACCOUNT_ICON,
-      color: accountColor(account?.type?.color).chip,
+      typeName: account ? (ACCOUNT_TYPE_MAP[account.type]?.name ?? '') : '',
+      icon: account ? resolveAccountIcon(account) : FALLBACK_ACCOUNT_ICON,
+      color: accountColor(account ? resolveAccountColor(account) : undefined).chip,
     };
   }
 }

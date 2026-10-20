@@ -1,4 +1,4 @@
-import {AccountType} from '../models/account-type.model';
+import {AccountType} from '../types/account-type.type';
 
 export interface CreateAccountDto {
   name: string;

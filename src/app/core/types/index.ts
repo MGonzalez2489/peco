@@ -1,5 +1,5 @@
 export * from './account-color.type';
-export * from './account-type-key.enum';
+export * from './account-type.type';
 export * from './backup-import-selection.type';
 export * from './balance-operation.type';
 export * from './category-apply-type.type';

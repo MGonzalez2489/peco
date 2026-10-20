@@ -1,11 +1,12 @@
 import {Account} from '../models/account.model';
 import {SelectOption} from '../models/select-option.model';
 import {accountColor} from './account-color.util';
-import {toIconName} from './to-icon-name.util';
+import {resolveAccountColor} from './resolve-account-color.util';
+import {resolveAccountIcon} from './resolve-account-icon.util';
 
 export const toAccountOption = (account: Account): SelectOption => ({
   value: account.id,
   label: account.name,
-  icon: toIconName(account.type.icon, 'wallet'),
-  color: accountColor(account.type.color).chip,
+  icon: resolveAccountIcon(account),
+  color: accountColor(resolveAccountColor(account)).chip,
 });
