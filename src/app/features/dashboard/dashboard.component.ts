@@ -42,7 +42,7 @@ export class DashboardComponent {
   readonly accountSubtext = (account: Account): string => {
     const credit = getCreditUsage(account);
     if (credit) {
-      return `De ${formatCurrency(credit.limit)} has usado ${formatCurrency(credit.used)}`;
+      return `De ${formatCurrency(credit.limit)} te queda ${formatCurrency(credit.available)}`;
     }
     return account.targetGoal !== undefined
       ? `Meta ${formatCurrency(account.targetGoal)}`
