@@ -2,7 +2,14 @@ import {ChangeDetectionStrategy, Component, input, output} from '@angular/core';
 import {RouterLink} from '@angular/router';
 import {ACCOUNT_TYPE_MAP} from '@core/constants';
 import {Account} from '@core/models';
-import {accountColor, formatCurrency, getCreditUsage, resolveAccountColor} from '@core/utils';
+import {
+  accountColor,
+  formatCurrency,
+  getCreditUsage,
+  resolveAccountColor,
+  resolveAccountIcon,
+  toSoftCategoryColor,
+} from '@core/utils';
 import {AppIconComponent} from '@shared/components/app-icon/app-icon.component';
 
 @Component({
@@ -22,6 +29,14 @@ export class AccountListComponent {
 
   readonly accountAccent = (account: Account): string =>
     accountColor(resolveAccountColor(account)).chip;
+
+  readonly accountIcon = resolveAccountIcon;
+
+  readonly accountIconColor = (account: Account): string =>
+    accountColor(resolveAccountColor(account)).chip;
+
+  readonly accountIconBackground = (account: Account): string =>
+    toSoftCategoryColor(this.accountIconColor(account), '20');
 
   readonly accountTypeName = (account: Account): string =>
     ACCOUNT_TYPE_MAP[account.type]?.name ?? '';

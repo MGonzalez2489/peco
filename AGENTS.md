@@ -102,6 +102,30 @@ Use the Angular CLI to generate the code, then augment the code to meet the need
    <app-icon name="search" size="18" class="text-gray-400" />
    ```
 
+### Entity Icon Tile (Soft Rounded Container)
+
+**MANDATORY POLICY:** Every entity indicator (account, movement, category, etc.) MUST use the
+**soft icon tile** pattern instead of a plain colored dot. The tile is a rounded container with a
+soft (alpha `20`) background and the entity-colored icon in the center:
+
+```html
+<span
+  aria-hidden="true"
+  class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+  [style.background-color]="toSoftCategoryColor(color, '20')"
+>
+  <app-icon [name]="icon" size="16" class="h-4 w-4" [style.color]="color" />
+</span>
+```
+
+1. **Background:** the soft variant of the entity color, computed with `toSoftCategoryColor(color, '20')`.
+2. **Icon color:** the entity palette color (for accounts and movements use `accountColor(color).chip`).
+3. **Icon & color source per entity (never hardcoded in templates):**
+   - **Accounts:** from `account.type`. Use `resolveAccountIcon(account)` and `resolveAccountColor(account)` (they honor the optional `account.icon` / `account.color` overrides).
+   - **Movements:** from `movement.type`. Look up the icon and color in `MOVEMENT_TYPES` (`@core/constants`).
+   - **Categories:** from `category.icon` and `category.color`.
+4. A plain color dot (`w-3.5 h-3.5 rounded-full`) is only acceptable when the entity has NO icon at all.
+
 # UI Standard Rule: Unified Inset Grouped List Pattern
 
 ## 1. Core UX Rule & Scope
@@ -146,7 +170,7 @@ Each row item inside the list MUST be formatted as an interactive container with
 On mobile devices, each row MUST be a clean 2-side flex row:
 
 - **Left Side:**
-- 1. Color / Status Dot (`w-3.5h-3.5 rounded-full shrink-0`).
+- 1. Entity Icon Tile (soft rounded container with the entity icon; see the *Entity Icon Tile* rule under *Iconography & UI Standards*). A plain color dot is only allowed when the entity has NO icon.
 - 2. Item Title (`text-sm font-semibold text-slate-900`).
 - 3. Optional Badges (`Base, Excluida,` 📌) placed inline with subtle borders/colors.
 
@@ -160,7 +184,7 @@ On desktop screens, the row transforms into a 12-column alignment grid (`lg:grid
 lg:gap-4`):
 
 - 1. **Columns 1 to 5 (Identity & Badges):
-  - Color indicator dot.
+  - Entity Icon Tile (soft rounded container with the entity icon).
   - Title + Inline Status Badges (`Base,` 📌, Excluida del total).
 
 - 2. **Columns 6 to 9 (Optional Metadata / Goal Progress Bar):
@@ -189,9 +213,16 @@ lg:gap-4`):
       <!-- COLUMNS 1-5: IDENTITY & BADGES -->
       <div class="flex items-center gap-3 lg:col-span-5 min-w-0">
         <span
-          class="w-3.5 h-3.5 rounded-full shrink-0"
-          [style.backgroundColor]="item.color || '#6366f1'"
+          aria-hidden="true"
+          class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+          [style.backgroundColor]="toSoftCategoryColor(item.color || '#6366f1', '20')"
         >
+          <app-icon
+            [name]="item.icon"
+            size="16"
+            class="h-4 w-4"
+            [style.color]="item.color || '#6366f1'"
+          />
         </span>
 
         <div class="min-w-0">
