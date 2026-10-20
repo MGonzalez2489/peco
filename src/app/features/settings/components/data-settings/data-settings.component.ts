@@ -174,6 +174,22 @@ import {ConfirmModalComponent} from '@shared/components/confirm-modal/confirm-mo
             Movimientos programados
           </span>
         </label>
+
+        <label
+          for="import-preferences"
+          class="flex cursor-pointer items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900"
+        >
+          <input
+            id="import-preferences"
+            type="checkbox"
+            [checked]="importPreferences()"
+            (change)="togglePreferences($any($event.target).checked)"
+            class="size-4 shrink-0 rounded border-slate-300 text-indigo-600 focus:ring-2 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-700"
+          />
+          <span class="text-sm font-medium text-slate-700 dark:text-slate-200">
+            Preferencias
+          </span>
+        </label>
       </fieldset>
     </app-confirm-modal>
 
@@ -204,11 +220,16 @@ export class DataSettingsComponent {
   protected readonly importAccounts = signal(true);
   protected readonly importMovements = signal(true);
   protected readonly importScheduledTransactions = signal(true);
+  protected readonly importPreferences = signal(true);
 
   protected readonly canImportMovements = computed(() => this.importAccounts());
 
   protected readonly hasImportSelection = computed(
-    () => this.importAccounts() || this.importMovements() || this.importScheduledTransactions(),
+    () =>
+      this.importAccounts() ||
+      this.importMovements() ||
+      this.importScheduledTransactions() ||
+      this.importPreferences(),
   );
 
   protected exportBackup(): void {
@@ -230,6 +251,7 @@ export class DataSettingsComponent {
     this.importAccounts.set(true);
     this.importMovements.set(true);
     this.importScheduledTransactions.set(true);
+    this.importPreferences.set(true);
     this.showConfirm.set(true);
   }
 
@@ -252,6 +274,10 @@ export class DataSettingsComponent {
 
   protected toggleScheduledTransactions(checked: boolean): void {
     this.importScheduledTransactions.set(checked);
+  }
+
+  protected togglePreferences(checked: boolean): void {
+    this.importPreferences.set(checked);
   }
 
   protected requestReset(): void {
@@ -279,6 +305,7 @@ export class DataSettingsComponent {
         accounts: this.importAccounts(),
         movements: this.importMovements(),
         scheduledTransactions: this.importScheduledTransactions(),
+        preferences: this.importPreferences(),
       });
       if (!restored) {
         this.errorMessage.set(

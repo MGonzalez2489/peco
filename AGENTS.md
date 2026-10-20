@@ -525,7 +525,32 @@ pattern (a single rounded container per section with `divide-y` rows):
   template binds them. Do not call store methods directly from arbitrary templates.
 - Section headers and row copy are **Spanish**; inputs/handlers/types are **English**.
 
-## 7. New User Preference — Step-by-Step Checklist
+## 7. Backup & Restore (`DataBackupService`)
+
+**MANDATORY POLICY:** Preferences are ALWAYS part of a backup, and MUST be exported from the
+store — never read straight from `localStorage`. New preference fields are included automatically
+because the whole `UserPreferences` object is serialized.
+
+- **Export:** `exportData()` writes every `peco.` app key, skips the raw
+  `peco.user-preferences` entry, and re-adds `data[LOCAL_STORAGE_KEYS.userPreferences]` from
+  `userPreferencesStore.preferences()`. This guarantees the payload is complete and normalized
+  (with all sections) even if the cached localStorage value is stale or missing.
+- **Import:** `importData(file, selection)` restores preferences ONLY when
+  `selection.preferences` is `true`; importing business data must never silently overwrite the
+  device's settings. `BackupImportSelection` therefore includes a `preferences: boolean` flag, and
+  the import modal renders a **Preferencias** checkbox wired to it.
+- **Forward/backward compatibility:**
+  - `normalizeImportedPreferences()` merges the imported payload with the current preferences, so
+    older backups missing newer sections fall back to the current device values instead of breaking.
+  - Backups created before the consolidated key existed stored the legacy
+    `peco.theme` / `peco.pwa-banner-dismissed-at` keys; `importPreferences()` restores those when the
+    consolidated key is absent (they get consolidated on next startup).
+- `resetAllData()` writes `DEFAULT_USER_PREFERENCES`, restoring a clean preference state.
+
+Whenever a new preference is added, no change to `DataBackupService` is required — verify only that
+the export/import specs still pass and that the new field round-trips.
+
+## 8. New User Preference — Step-by-Step Checklist
 
 1. Add the field to the correct section interface in `src/app/core/models/` (create a new
    `name-preferences.model.ts` for a new domain) and export it from `models/index.ts`.
@@ -537,7 +562,9 @@ pattern (a single rounded container per section with `divide-y` rows):
 5. Render the row in the settings view using `SettingToggleRowComponent` (boolean) or `AppSelectComponent` (selection).
 6. If the preference hides/obscures values, add or reuse a single global pipe and apply it to every
    affected display.
-7. Cover it with specs: storage (round-trip + fallback when the field is missing), store
+7. Confirm it round-trips through the backup: export/import reads the whole `UserPreferences`
+   object (see section 7), so no service change is needed — just keep the specs green.
+8. Cover it with specs: storage (round-trip + fallback when the field is missing), store
    (signal + persistence), and the settings view (render + interaction).
 
 ### Language Standards:

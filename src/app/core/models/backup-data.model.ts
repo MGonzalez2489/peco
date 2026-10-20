@@ -1,3 +1,5 @@
+import {UserPreferences} from './user-preferences.model';
+
 export interface BackupData {
   version: string;
   exportedAt: string;
@@ -6,6 +8,7 @@ export interface BackupData {
     transactions?: unknown[];
     scheduledTransactions?: unknown[];
     categories?: unknown[];
+    preferences?: UserPreferences;
     theme?: string;
     [key: string]: unknown;
   };
