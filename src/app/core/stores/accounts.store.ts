@@ -11,6 +11,9 @@ import {CreateAccountDto} from '../dtos/create-account.dto';
 import {Account} from '../models/account.model';
 import {AccountsStorageService} from '../services/accounts-storage.service';
 import {BalanceOperation} from '../types/balance-operation.type';
+import {calculateNetLiquidBalance} from '../utils/calculate-net-liquid-balance.util';
+import {calculateTotalLiabilities} from '../utils/calculate-total-liabilities.util';
+import {groupAccountsByType} from '../utils/group-accounts-by-type.util';
 
 interface AccountsState {
   accounts: Account[];
@@ -29,20 +32,14 @@ export const AccountsStore = signalStore(
   withComputed(({accounts, selectedAccountId}) => ({
     rootAccount: computed(() => accounts().find((account) => account.isRoot === true)),
     pinnedAccounts: computed(() => accounts().filter((account) => account.pinToHome === true)),
-    featuredAccounts: computed(() =>
-      accounts().filter((account) => account.isRoot === true || (account.targetGoal ?? 0) > 0),
-    ),
-    secondaryAccounts: computed(() =>
-      accounts().filter((account) => account.isRoot !== true && (account.targetGoal ?? 0) <= 0),
-    ),
+    // Net worth: every balance with its sign, so credit debt subtracts.
     totalBalance: computed(() =>
       accounts().reduce((total, account) => total + account.currentBalance, 0),
     ),
-    availableBalance: computed(() =>
-      accounts()
-        .filter((account) => account.includeInTotal !== false)
-        .reduce((total, account) => total + account.currentBalance, 0),
-    ),
+    // Liquid money: liabilities are reported separately and never reduce it.
+    availableBalance: computed(() => calculateNetLiquidBalance(accounts())),
+    liabilitiesBalance: computed(() => calculateTotalLiabilities(accounts())),
+    accountTypeSummaries: computed(() => groupAccountsByType(accounts())),
     selectedAccount: computed(() =>
       accounts().find((account) => account.id === selectedAccountId()),
     ),

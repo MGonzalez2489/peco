@@ -1,4 +1,5 @@
-export * from './account-type.model';
+export * from './account-type-definition.model';
+export * from './account-type-summary.model';
 export * from './account.model';
 export * from './backup-data.model';
 export * from './category.model';

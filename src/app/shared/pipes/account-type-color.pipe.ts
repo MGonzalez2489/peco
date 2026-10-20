@@ -1,5 +1,6 @@
 import {Pipe, PipeTransform} from '@angular/core';
-import {AccountType} from '@core/models';
+import {ACCOUNT_TYPE_MAP} from '@core/constants/account-type-map.constant';
+import {AccountType} from '@core/types';
 
 @Pipe({
   name: 'accountTypeColor',
@@ -7,6 +8,6 @@ import {AccountType} from '@core/models';
 })
 export class AccountTypeColorPipe implements PipeTransform {
   transform(type: AccountType): string {
-    return type?.color ?? 'indigo';
+    return ACCOUNT_TYPE_MAP[type]?.color ?? 'indigo';
   }
 }

@@ -1,9 +1,32 @@
-import {AccountType} from '../models/account-type.model';
-import {AccountTypeKey} from '../types/account-type-key.enum';
+import {AccountTypeDefinition} from '../models/account-type-definition.model';
 
-export const ACCOUNT_TYPES: AccountType[] = [
-  {key: AccountTypeKey.CASH, name: 'Efectivo', color: 'emerald', icon: 'banknote'},
-  {key: AccountTypeKey.DEBIT, name: 'Débito', color: 'blue', icon: 'credit-card'},
-  {key: AccountTypeKey.CREDIT, name: 'Crédito', color: 'rose', icon: 'credit-card'},
-  {key: AccountTypeKey.SAVINGS, name: 'Ahorros', color: 'amber', icon: 'piggy-bank'},
+export const ACCOUNT_TYPES: AccountTypeDefinition[] = [
+  {
+    key: 'CASH',
+    name: 'Efectivo',
+    pluralName: 'Efectivo',
+    color: 'emerald',
+    icon: 'banknote',
+  },
+  {
+    key: 'DEBIT',
+    name: 'Débito',
+    pluralName: 'Débito',
+    color: 'blue',
+    icon: 'credit-card',
+  },
+  {
+    key: 'CREDIT',
+    name: 'Crédito',
+    pluralName: 'Crédito',
+    color: 'rose',
+    icon: 'credit-card',
+  },
+  {
+    key: 'SAVINGS',
+    name: 'Ahorros',
+    pluralName: 'Ahorro',
+    color: 'amber',
+    icon: 'piggy-bank',
+  },
 ];

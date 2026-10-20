@@ -1,0 +1,62 @@
+<div>
+  <div class="mb-4 flex items-baseline justify-between gap-3">
+    <h2 class="text-xs font-bold tracking-wider text-slate-400 uppercase dark:text-slate-500">
+      Distribución
+    </h2>
+    <span class="shrink-0 text-xs font-medium text-slate-400 dark:text-slate-500">
+      {{ accountCountLabel() }}
+    </span>
+  </div>
+
+  @if (summaries().length === 0) {
+    <div
+      class="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-200 p-6 text-center dark:border-slate-700"
+    >
+      <app-icon name="pie-chart" size="24" class="h-6 w-6 text-slate-300 dark:text-slate-600" />
+      <p class="text-sm text-slate-500 dark:text-slate-400">Aún no hay cuentas para distribuir.</p>
+    </div>
+  } @else {
+    <ul
+      class="divide-y divide-slate-100 dark:divide-slate-800"
+      aria-label="Distribución por tipo de cuenta"
+    >
+      @for (summary of summaries(); track summary.type) {
+        <li class="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
+          <div class="flex min-w-0 items-center gap-3">
+            <span
+              aria-hidden="true"
+              class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+              [style.background-color]="typeIconBackground(summary)"
+            >
+              <app-icon
+                [name]="summary.icon"
+                size="16"
+                class="h-4 w-4"
+                [style.color]="typeIconColor(summary)"
+              />
+            </span>
+            <div class="min-w-0">
+              <p class="truncate text-sm font-semibold text-slate-900 dark:text-white">
+                {{ summary.label }}
+              </p>
+              <p class="text-xs text-slate-400 dark:text-slate-400">
+                {{ summary.count === 1 ? '1 cuenta' : summary.count + ' cuentas' }}
+              </p>
+            </div>
+          </div>
+
+          <span
+            class="shrink-0 text-sm font-bold tabular-nums"
+            [class]="
+              summary.total < 0
+                ? 'text-rose-600 dark:text-rose-400'
+                : 'text-slate-900 dark:text-white'
+            "
+          >
+            {{ formatCurrency(summary.total) }}
+          </span>
+        </li>
+      }
+    </ul>
+  }
+</div>

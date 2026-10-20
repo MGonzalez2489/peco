@@ -8,6 +8,7 @@ import {
   formatCurrency,
   isSameMonthAndYear,
   movementBalanceImpact,
+  resolveAccountColor,
 } from '@core/utils';
 import {
   ApexAxisChartSeries,
@@ -48,7 +49,7 @@ export class AccountProgressionChartComponent {
 
   protected readonly chartColor = computed(() => {
     const account = this.account();
-    const typeColor = account.type.color;
+    const typeColor = resolveAccountColor(account);
     if (typeColor) return accountColor(typeColor).chip;
     return account.currentBalance < 0 ? '#ef4444' : '#10b981';
   });

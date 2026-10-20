@@ -1,8 +1,6 @@
 import {TestBed} from '@angular/core/testing';
-import {ACCOUNT_TYPE_MAP} from '../constants/account-type-map.constant';
 import {LOCAL_STORAGE_KEYS} from '../constants/local-storage-keys.constant';
 import {Account} from '../models/account.model';
-import {AccountTypeKey} from '../types/account-type-key.enum';
 import {AccountsStore} from './accounts.store';
 import {CatalogStore} from './catalog.store';
 import {MovementsStore} from './movements.store';
@@ -41,33 +39,31 @@ describe('Finance stores', () => {
     const account = accountsStore.createAccount({
       name: 'Tarjeta',
       initialBalance: 0,
-      type: ACCOUNT_TYPE_MAP[AccountTypeKey.CREDIT],
+      type: 'CREDIT',
     });
     if (!account) throw new Error('account must be created');
 
-    expect(account.type.key).toBe(AccountTypeKey.CREDIT);
-    expect(accountsStore.accounts().find((item) => item.id === account.id)?.type.key).toBe(
-      AccountTypeKey.CREDIT,
-    );
+    expect(account.type).toBe('CREDIT');
+    expect(accountsStore.accounts().find((item) => item.id === account.id)?.type).toBe('CREDIT');
   });
 
   it('allows a credit account to start with a negative balance (debt)', () => {
     const account = accountsStore.createAccount({
       name: 'Tarjeta',
       initialBalance: -1500,
-      type: ACCOUNT_TYPE_MAP[AccountTypeKey.CREDIT],
+      type: 'CREDIT',
     });
     if (!account) throw new Error('account must be created');
 
     expect(account.currentBalance).toBe(-1500);
-    expect(account.type.key).toBe(AccountTypeKey.CREDIT);
+    expect(account.type).toBe('CREDIT');
   });
 
   it('increases credit debt on expenses and reduces it on payments', () => {
     const card = accountsStore.createAccount({
       name: 'Tarjeta',
       initialBalance: 0,
-      type: ACCOUNT_TYPE_MAP[AccountTypeKey.CREDIT],
+      type: 'CREDIT',
     });
     if (!card) throw new Error('account must be created');
 
@@ -99,7 +95,7 @@ describe('Finance stores', () => {
     const account = accountsStore.createAccount({
       name: 'Tarjeta',
       initialBalance: 0,
-      type: ACCOUNT_TYPE_MAP[AccountTypeKey.CREDIT],
+      type: 'CREDIT',
       note: 'Día de corte: 5',
     });
     if (!account) throw new Error('account must be created');
@@ -117,7 +113,7 @@ describe('Finance stores', () => {
     const target = accountsStore.createAccount({
       name: 'Ahorro',
       initialBalance: 0,
-      type: ACCOUNT_TYPE_MAP[AccountTypeKey.SAVINGS],
+      type: 'SAVINGS',
     });
     if (!target) throw new Error('account must be created');
 
@@ -139,7 +135,7 @@ describe('Finance stores', () => {
     const destination = accountsStore.createAccount({
       name: 'Ahorro',
       initialBalance: 200,
-      type: ACCOUNT_TYPE_MAP[AccountTypeKey.SAVINGS],
+      type: 'SAVINGS',
     });
     if (!source || !destination) throw new Error('accounts must exist');
 
@@ -164,7 +160,7 @@ describe('Finance stores', () => {
     const target = accountsStore.createAccount({
       name: 'Ahorro',
       initialBalance: 0,
-      type: ACCOUNT_TYPE_MAP[AccountTypeKey.SAVINGS],
+      type: 'SAVINGS',
     });
     if (!target) throw new Error('account must be created');
 
@@ -208,7 +204,7 @@ describe('Finance stores', () => {
         accountsStore.createAccount({
           name: 'Fallback',
           initialBalance: 0,
-          type: ACCOUNT_TYPE_MAP[AccountTypeKey.CASH],
+          type: 'CASH',
         }),
       ).toBeNull();
       expect(accountsStore.error()).toBe('crypto unavailable');
@@ -225,7 +221,7 @@ describe('Finance stores', () => {
     const account = accountsStore.createAccount({
       name: 'Ahorro',
       initialBalance: 0,
-      type: ACCOUNT_TYPE_MAP[AccountTypeKey.SAVINGS],
+      type: 'SAVINGS',
     });
     if (!account) throw new Error('account must be created');
 
@@ -278,7 +274,7 @@ describe('Finance stores', () => {
     const account = accountsStore.createAccount({
       name: 'Ahorro',
       initialBalance: 0,
-      type: ACCOUNT_TYPE_MAP[AccountTypeKey.SAVINGS],
+      type: 'SAVINGS',
     });
     if (!account) throw new Error('account must be created');
 

@@ -1,5 +1,5 @@
-import {AccountTypeKey} from '../types/account-type-key.enum';
+import {AccountType} from '../types/account-type.type';
 
-export function isLiability(type: AccountTypeKey): boolean {
-  return type === AccountTypeKey.CREDIT;
+export function isLiability(type: AccountType): boolean {
+  return type === 'CREDIT';
 }

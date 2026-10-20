@@ -1,6 +1,6 @@
 import {ACCOUNT_TYPE_MAP} from '../constants/account-type-map.constant';
 import {Account} from '../models/account.model';
-import {AccountTypeKey} from '../types/account-type-key.enum';
+import {AccountType} from '../types/account-type.type';
 
 const withIncludeInTotal = (account: Account): Account => ({
   ...account,
@@ -12,15 +12,18 @@ const withCreatedAt = (account: Account): Account => ({
   createdAt: account.createdAt ?? new Date().toISOString(),
 });
 
-// Accounts persisted before the semantic type refactor stored the type as a
-// plain key (e.g. 'CASH'). Resolve those legacy values into the account type
-// object so every consumer can read `account.type.color` / `.icon` / `.name`.
-const withType = (account: Account): Account => {
-  const current: unknown = account.type;
-  if (current && typeof current === 'object') return account;
+const isAccountType = (value: unknown): value is AccountType =>
+  typeof value === 'string' && Object.hasOwn(ACCOUNT_TYPE_MAP, value);
 
-  const key = (typeof current === 'string' ? current : AccountTypeKey.CASH) as AccountTypeKey;
-  return {...account, type: ACCOUNT_TYPE_MAP[key] ?? ACCOUNT_TYPE_MAP[AccountTypeKey.CASH]};
+// Accounts persisted before the semantic type refactor stored the type as an
+// object (e.g. `{key: 'CASH', color: 'emerald'}`). Normalize both legacy shapes
+// into the canonical account type key used across the application.
+const withType = (account: Account): Account => {
+  const current: unknown = (account as {type?: unknown}).type;
+  if (isAccountType(current)) return account;
+
+  const legacyKey = (current as {key?: unknown} | null | undefined)?.key;
+  return {...account, type: isAccountType(legacyKey) ? legacyKey : 'CASH'};
 };
 
 export const ensureRootAccount = (accounts: Account[]): Account[] => {

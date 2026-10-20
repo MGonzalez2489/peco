@@ -40,19 +40,14 @@
       </button>
     </div>
   } @else {
-    <!-- RESPONSIVE GRID: chart on top (mobile) / right (desktop), list on bottom (mobile) / left (desktop) -->
+    <!-- RESPONSIVE GRID: distribution card on top (mobile) / right (desktop), list on bottom (mobile) / left (desktop) -->
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8">
-      <!-- CHART COLUMN -->
+      <!-- DISTRIBUTION SUMMARY COLUMN -->
       <div class="space-y-6 lg:order-2 lg:col-span-1">
         <div
           class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900"
         >
-          <h2
-            class="mb-4 text-xs font-bold tracking-wider text-slate-400 uppercase dark:text-slate-500"
-          >
-            Distribución
-          </h2>
-          <app-account-distribution-chart [accounts]="accounts()" [totalBalance]="totalBalance()" />
+          <app-account-type-distribution [summaries]="accountTypeSummaries()" />
         </div>
 
         <button
@@ -67,142 +62,7 @@
 
       <!-- UNIFIED ACCOUNTS LIST -->
       <div class="lg:order-1 lg:col-span-2">
-        <div
-          class="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900"
-        >
-          @for (account of accounts(); track account.id) {
-            <button
-              type="button"
-              [routerLink]="['/accounts', account.id]"
-              [attr.aria-label]="'Editar cuenta ' + account.name"
-              class="group block w-full cursor-pointer p-4 text-left transition-colors hover:bg-slate-50/80 focus:outline-none focus-visible:bg-slate-50 dark:hover:bg-slate-800/60 dark:focus-visible:bg-slate-800/60"
-            >
-              <div
-                class="flex items-center justify-between gap-3 lg:grid lg:grid-cols-12 lg:items-center lg:gap-4"
-              >
-                <!-- ACCOUNT INFO & STATUS FLAGS (Cols 1-5) -->
-                <div class="flex min-w-0 items-center gap-3 lg:col-span-5">
-                  <span
-                    aria-hidden="true"
-                    class="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full md:size-8"
-                    [style.background-color]="accountTypeBackground(account)"
-                  >
-                    <app-icon
-                      [name]="accountTypeIcon(account)"
-                      size="15"
-                      class="h-4 w-4"
-                      [style.color]="accountTypeColor(account)"
-                    />
-                  </span>
-                  <div class="min-w-0">
-                    <div class="flex flex-wrap items-center gap-2">
-                      <span class="truncate text-sm font-semibold text-slate-900 dark:text-white">
-                        {{ account.name }}
-                      </span>
-                      @if (account.isRoot) {
-                        <span
-                          class="shrink-0 rounded-md border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                        >
-                          Base
-                        </span>
-                      }
-                      @if (account.pinToHome) {
-                        <span
-                          role="img"
-                          aria-label="Fijada en Inicio"
-                          title="Fijada en Inicio"
-                          class="shrink-0 text-slate-400 dark:text-slate-500"
-                        >
-                          <app-icon name="pin" size="14" class="h-3.5 w-3.5" />
-                        </span>
-                      }
-                      <!-- @if (!account.includeInTotal) { -->
-                      <!--   <span -->
-                      <!--     title="Excluida del total" -->
-                      <!--     class="shrink-0 rounded border border-amber-200/80 bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400" -->
-                      <!--   > -->
-                      <!--     Excluida del total -->
-                      <!--   </span> -->
-                      <!-- } -->
-                    </div>
-                    @if (account.note) {
-                      <p class="truncate text-xs text-slate-400 dark:text-slate-500">
-                        {{ account.note }}
-                      </p>
-                    }
-                  </div>
-                </div>
-
-                <!-- TARGET GOAL / CREDIT USAGE PROGRESS (Cols 6-9, desktop only) -->
-                <div class="hidden lg:col-span-4 lg:block">
-                  @if (creditUsage(account); as credit) {
-                    <div class="max-w-[200px] space-y-1">
-                      <div
-                        class="flex items-center justify-between text-[11px] font-medium text-slate-500 dark:text-slate-400"
-                      >
-                        <span class="truncate">
-                          Queda: {{ formatCurrency(credit.available) }}
-                        </span>
-                        <span class="font-bold text-slate-700 dark:text-slate-200">
-                          {{ credit.availablePercentage }}% disp.
-                        </span>
-                      </div>
-                      <div
-                        class="h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"
-                      >
-                        <div
-                          class="h-full rounded-full transition-all duration-300"
-                          [style.width.%]="credit.availablePercentage"
-                          [style.backgroundColor]="accountTypeColor(account)"
-                        ></div>
-                      </div>
-                    </div>
-                  } @else if (account.targetGoal && account.targetGoal > 0) {
-                    @let progress = getGoalProgress(account);
-                    <div class="max-w-[200px] space-y-1">
-                      <div
-                        class="flex items-center justify-between text-[11px] font-medium text-slate-500 dark:text-slate-400"
-                      >
-                        <span class="truncate">Meta: {{ formatCurrency(account.targetGoal) }}</span>
-                        <span class="font-bold text-slate-700 dark:text-slate-200">
-                          {{ progress }}%
-                        </span>
-                      </div>
-                      <div
-                        class="h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"
-                      >
-                        <div
-                          class="h-full rounded-full transition-all duration-300"
-                          [style.width.%]="progress"
-                          [style.backgroundColor]="accountTypeColor(account)"
-                        ></div>
-                      </div>
-                    </div>
-                  }
-                </div>
-
-                <!-- BALANCE & EDIT ACTION (Cols 10-12) -->
-                <div class="flex shrink-0 items-center justify-end gap-3 lg:col-span-3">
-                  <span
-                    class="text-sm font-bold tabular-nums"
-                    [class]="
-                      account.currentBalance < 0
-                        ? 'text-rose-600 dark:text-rose-400'
-                        : 'text-slate-900 dark:text-white'
-                    "
-                  >
-                    {{ formatCurrency(account.currentBalance) }}
-                  </span>
-                  <app-icon
-                    name="chevron-right"
-                    size="16"
-                    class="h-4 w-4 shrink-0 text-slate-300 transition-colors group-hover:text-slate-400 lg:hidden dark:text-slate-600"
-                  />
-                </div>
-              </div>
-            </button>
-          }
-        </div>
+        <app-account-list [accounts]="accounts()" (editAccount)="openEditModal($event)" />
       </div>
     </div>
   }
