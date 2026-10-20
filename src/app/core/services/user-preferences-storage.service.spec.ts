@@ -18,7 +18,11 @@ describe('UserPreferencesStorageService', () => {
   });
 
   it('round trips the preferences object under the standardized key', () => {
-    const preferences: UserPreferences = {theme: 'dark', pwaBannerDismissedAt: null};
+    const preferences: UserPreferences = {
+      theme: 'dark',
+      pwaBannerDismissedAt: null,
+      accounts: {hideBalance: false},
+    };
 
     service.save(preferences);
 
@@ -45,7 +49,11 @@ describe('UserPreferencesStorageService', () => {
   it('keeps consolidated values for fields without a legacy counterpart', () => {
     localStorage.setItem(
       LOCAL_STORAGE_KEYS.userPreferences,
-      JSON.stringify({theme: 'system', pwaBannerDismissedAt: null} satisfies UserPreferences),
+      JSON.stringify({
+        theme: 'system',
+        pwaBannerDismissedAt: null,
+        accounts: {hideBalance: false},
+      } satisfies UserPreferences),
     );
     localStorage.setItem(LOCAL_STORAGE_KEYS.themeLegacy, 'dark');
 
@@ -72,5 +80,42 @@ describe('UserPreferencesStorageService', () => {
 
     expect(loaded.theme).toBe(DEFAULT_USER_PREFERENCES.theme);
     expect(loaded.pwaBannerDismissedAt).toBe(null);
+  });
+
+  it('falls back to default account preferences when the accounts section is missing', () => {
+    localStorage.setItem(
+      LOCAL_STORAGE_KEYS.userPreferences,
+      JSON.stringify({theme: 'dark', pwaBannerDismissedAt: null}),
+    );
+
+    const loaded = service.load();
+
+    expect(loaded.accounts).toEqual(DEFAULT_USER_PREFERENCES.accounts);
+    expect(loaded.theme).toBe('dark');
+  });
+
+  it('falls back to the default hideBalance when it is missing or invalid', () => {
+    localStorage.setItem(
+      LOCAL_STORAGE_KEYS.userPreferences,
+      JSON.stringify({theme: 'dark', pwaBannerDismissedAt: null, accounts: {}}),
+    );
+
+    expect(service.load().accounts.hideBalance).toBe(false);
+
+    localStorage.setItem(
+      LOCAL_STORAGE_KEYS.userPreferences,
+      JSON.stringify({theme: 'dark', pwaBannerDismissedAt: null, accounts: {hideBalance: 'yes'}}),
+    );
+
+    expect(service.load().accounts.hideBalance).toBe(false);
+  });
+
+  it('preserves a stored hideBalance of true', () => {
+    localStorage.setItem(
+      LOCAL_STORAGE_KEYS.userPreferences,
+      JSON.stringify({theme: 'light', pwaBannerDismissedAt: null, accounts: {hideBalance: true}}),
+    );
+
+    expect(service.load().accounts.hideBalance).toBe(true);
   });
 });

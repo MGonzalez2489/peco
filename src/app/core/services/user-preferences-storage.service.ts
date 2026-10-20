@@ -1,6 +1,7 @@
 import {Injectable} from '@angular/core';
 import {DEFAULT_USER_PREFERENCES} from '../constants/default-user-preferences.constant';
 import {LOCAL_STORAGE_KEYS} from '../constants/local-storage-keys.constant';
+import {AccountPreferences} from '../models/account-preferences.model';
 import {UserPreferences} from '../models/user-preferences.model';
 import {AppTheme} from '../types/app-theme.type';
 
@@ -16,6 +17,7 @@ export class UserPreferencesStorageService {
     return {
       theme: stored.theme,
       pwaBannerDismissedAt: stored.pwaBannerDismissedAt,
+      accounts: stored.accounts,
     };
   }
 
@@ -42,6 +44,7 @@ export class UserPreferencesStorageService {
         legacyDismissedAt !== null
           ? normalizeDismissedAt(legacyDismissedAt)
           : current.pwaBannerDismissedAt,
+      accounts: current.accounts,
     };
 
     this.save(migrated);
@@ -88,7 +91,7 @@ const mergeWithDefaults = (value: unknown): UserPreferences => {
     return {...DEFAULT_USER_PREFERENCES};
   }
 
-  const candidate = value as Partial<UserPreferences>;
+  const candidate = value as Partial<UserPreferences> & {accounts?: unknown};
 
   return {
     theme: typeof candidate.theme === 'string' ? normalizeTheme(candidate.theme) : DEFAULT_USER_PREFERENCES.theme,
@@ -96,5 +99,25 @@ const mergeWithDefaults = (value: unknown): UserPreferences => {
       typeof candidate.pwaBannerDismissedAt === 'string'
         ? normalizeDismissedAt(candidate.pwaBannerDismissedAt)
         : null,
+    accounts: mergeAccountsWithDefaults(candidate.accounts),
+  };
+};
+
+/**
+ * Backward compatibility: payloads persisted before the `accounts` section
+ * existed are merged with the default account preferences instead of throwing.
+ */
+const mergeAccountsWithDefaults = (value: unknown): AccountPreferences => {
+  if (typeof value !== 'object' || value === null) {
+    return {...DEFAULT_USER_PREFERENCES.accounts};
+  }
+
+  const candidate = value as Partial<AccountPreferences>;
+
+  return {
+    hideBalance:
+      typeof candidate.hideBalance === 'boolean'
+        ? candidate.hideBalance
+        : DEFAULT_USER_PREFERENCES.accounts.hideBalance,
   };
 };

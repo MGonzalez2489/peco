@@ -3,6 +3,7 @@ import {RouterLink} from '@angular/router';
 import {Account, Movement} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {MovementsStore} from '@core/stores/movements.store';
+import {UserPreferencesStore} from '@core/stores/user-preferences.store';
 import {formatCurrency, getCreditUsage} from '@core/utils';
 import {AccountTypeColorPipe} from '@shared/pipes/account-type-color.pipe';
 import {MovementListComponent, StatCardComponent} from '@shared/components';
@@ -28,6 +29,7 @@ import {UpcomingPaymentsWidgetComponent} from './components/upcoming-payments-wi
 export class DashboardComponent {
   readonly accountsStore = inject(AccountsStore);
   readonly movementsStore = inject(MovementsStore);
+  private readonly userPreferencesStore = inject(UserPreferencesStore);
 
   readonly availableBalance = this.accountsStore.availableBalance;
 
@@ -40,12 +42,15 @@ export class DashboardComponent {
   readonly recentMovements = computed(() => this.movementsStore.recentMovements(5));
 
   readonly accountSubtext = (account: Account): string => {
+    const format = (value: number): string =>
+      this.userPreferencesStore.hideBalance() ? '--.--' : formatCurrency(value);
+
     const credit = getCreditUsage(account);
     if (credit) {
-      return `De ${formatCurrency(credit.limit)} te queda ${formatCurrency(credit.available)}`;
+      return `De ${format(credit.limit)} te queda ${format(credit.available)}`;
     }
     return account.targetGoal !== undefined
-      ? `Meta ${formatCurrency(account.targetGoal)}`
+      ? `Meta ${format(account.targetGoal)}`
       : 'Sin meta asignada';
   };
 

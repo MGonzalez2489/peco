@@ -75,7 +75,7 @@
               <div
                 class="flex items-center justify-between text-[11px] font-medium text-slate-500 dark:text-slate-400"
               >
-                <span class="truncate">Queda: {{ formatCurrency(credit.available) }}</span>
+                <span class="truncate">Queda: {{ credit.available | privacyCurrency }}</span>
                 <span class="font-bold text-slate-700 dark:text-slate-200">
                   {{ credit.availablePercentage }}% disp.
                 </span>
@@ -94,7 +94,7 @@
               <div
                 class="flex items-center justify-between text-[11px] font-medium text-slate-500 dark:text-slate-400"
               >
-                <span class="truncate">Meta: {{ formatCurrency(account.targetGoal) }}</span>
+                <span class="truncate">Meta: {{ account.targetGoal | privacyCurrency }}</span>
                 <span class="font-bold text-slate-700 dark:text-slate-200">{{ progress }}%</span>
               </div>
               <div class="h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
@@ -118,7 +118,7 @@
                 : 'text-slate-900 dark:text-white'
             "
           >
-            {{ formatCurrency(account.currentBalance) }}
+            {{ account.currentBalance | privacyCurrency }}
           </span>
 
           <!-- Account detail navigation -->

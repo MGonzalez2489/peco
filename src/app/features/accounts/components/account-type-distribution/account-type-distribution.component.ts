@@ -1,18 +1,17 @@
 import {ChangeDetectionStrategy, Component, computed, input} from '@angular/core';
 import {AccountTypeSummary} from '@core/models';
-import {accountColor, formatCurrency, toSoftCategoryColor} from '@core/utils';
+import {accountColor, toSoftCategoryColor} from '@core/utils';
 import {AppIconComponent} from '@shared/components/app-icon/app-icon.component';
+import {PrivacyCurrencyPipe} from '@shared/pipes/privacy-currency.pipe';
 
 @Component({
   selector: 'app-account-type-distribution',
-  imports: [AppIconComponent],
+  imports: [AppIconComponent, PrivacyCurrencyPipe],
   templateUrl: './account-type-distribution.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AccountTypeDistributionComponent {
   readonly summaries = input.required<AccountTypeSummary[]>();
-
-  readonly formatCurrency = formatCurrency;
 
   protected readonly totalAccounts = computed(() =>
     this.summaries().reduce((total, summary) => total + summary.count, 0),

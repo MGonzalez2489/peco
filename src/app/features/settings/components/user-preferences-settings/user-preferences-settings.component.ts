@@ -4,10 +4,11 @@ import {SelectOption} from '@core/models';
 import {UserPreferencesStore} from '@core/stores/user-preferences.store';
 import {AppTheme} from '@core/types/app-theme.type';
 import {AppSelectComponent} from '@shared/components/app-select/app-select.component';
+import {SettingToggleRowComponent} from '@shared/components/setting-toggle-row/setting-toggle-row.component';
 
 @Component({
   selector: 'app-user-preferences-settings',
-  imports: [AppSelectComponent],
+  imports: [AppSelectComponent, SettingToggleRowComponent],
   templateUrl: './user-preferences-settings.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -17,6 +18,8 @@ export class UserPreferencesSettingsComponent {
   protected readonly themeOptions: SelectOption[] = [...THEME_OPTIONS];
 
   protected readonly theme = computed(() => this.userPreferencesStore.theme());
+
+  protected readonly hideBalance = computed(() => this.userPreferencesStore.hideBalance());
 
   protected readonly isPwaBannerDismissed = computed(() =>
     this.userPreferencesStore.isPwaBannerDismissed(),
@@ -32,5 +35,9 @@ export class UserPreferencesSettingsComponent {
 
   protected onThemeChange(theme: string): void {
     this.userPreferencesStore.setTheme(theme as AppTheme);
+  }
+
+  protected onHideBalanceChange(): void {
+    this.userPreferencesStore.toggleHideBalance();
   }
 }

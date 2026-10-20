@@ -92,7 +92,7 @@
                     }}"
                   >
                     {{ movementSign(movement.type)
-                    }}{{ movement.amount | currency: 'USD' : 'symbol' : '1.2-2' }}
+                    }}{{ movement.amount | privacyCurrency }}
                   </span>
                   @if (movementTime(movement); as time) {
                     <span class="block text-[11px] text-slate-400 dark:text-slate-500">

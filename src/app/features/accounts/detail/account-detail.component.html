@@ -94,7 +94,7 @@
             [class.text-slate-900]="account.currentBalance >= 0"
             [class.dark:text-white]="account.currentBalance >= 0"
           >
-            {{ formatCurrency(account.currentBalance) }}
+            {{ account.currentBalance | privacyCurrency }}
           </span>
         </div>
       </div>
@@ -117,7 +117,7 @@
                 Crédito disponible
               </dt>
               <dd class="text-sm font-bold text-indigo-900 dark:text-indigo-200">
-                {{ formatCurrency(credit.available) }} ({{ credit.availablePercentage }}%)
+                {{ credit.available | privacyCurrency }} ({{ credit.availablePercentage }}%)
               </dd>
             </div>
             <div class="rounded-xl bg-slate-50 px-3 py-2 dark:bg-slate-900/40">
@@ -125,7 +125,7 @@
                 Límite de crédito
               </dt>
               <dd class="text-sm font-bold text-slate-900 dark:text-slate-200">
-                {{ formatCurrency(credit.limit) }}
+                {{ credit.limit | privacyCurrency }}
               </dd>
             </div>
           </dl>
@@ -139,7 +139,7 @@
             ></div>
           </div>
           <p class="text-xs text-slate-500 dark:text-slate-400">
-            De {{ formatCurrency(credit.limit) }} te queda {{ formatCurrency(credit.available) }}.
+            De {{ credit.limit | privacyCurrency }} te queda {{ credit.available | privacyCurrency }}.
           </p>
         </div>
       } @else if (account.targetGoal && account.targetGoal > 0) {
@@ -147,13 +147,13 @@
           <div class="rounded-xl bg-indigo-50 px-3 py-2 dark:bg-indigo-950/40">
             <dt class="text-xs font-medium text-indigo-700 dark:text-indigo-300">Acumulado</dt>
             <dd class="text-sm font-bold text-indigo-900 dark:text-indigo-200">
-              {{ formatCurrency(account.currentBalance) }} ({{ accountGoalProgress() }}%)
+              {{ account.currentBalance | privacyCurrency }} ({{ accountGoalProgress() }}%)
             </dd>
           </div>
           <div class="rounded-xl bg-slate-50 px-3 py-2 dark:bg-slate-900/40">
             <dt class="text-xs font-medium text-slate-700 dark:text-slate-300">Meta</dt>
             <dd class="text-sm font-bold text-slate-900 dark:text-slate-200">
-              {{ formatCurrency(account.targetGoal) }}
+              {{ account.targetGoal | privacyCurrency }}
             </dd>
           </div>
         </dl>

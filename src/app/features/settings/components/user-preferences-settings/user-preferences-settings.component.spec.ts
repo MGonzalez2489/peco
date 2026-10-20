@@ -29,6 +29,12 @@ describe('UserPreferencesSettingsComponent', () => {
     fixture.detectChanges();
   };
 
+  const hideBalanceToggle = (): HTMLInputElement => {
+    const toggle = native().querySelector<HTMLInputElement>('input[role="switch"]');
+    if (!toggle) throw new Error('hide balance toggle must be rendered');
+    return toggle;
+  };
+
   beforeEach(() => {
     localStorage.clear();
     document.documentElement.classList.remove('dark');
@@ -82,5 +88,33 @@ describe('UserPreferencesSettingsComponent', () => {
     fixture.detectChanges();
 
     expect(themeTrigger().textContent).toContain('Sistema');
+  });
+
+  it('renders the accounts section with the hide balance toggle in Spanish', () => {
+    const text = native().textContent ?? '';
+    const toggle = hideBalanceToggle();
+
+    expect(text).toContain('Cuentas');
+    expect(text).toContain('Esconder balances');
+    expect(text).toContain('Muestra o esconde los balances de las cuentas en toda la aplicación.');
+    expect(toggle.checked).toBe(false);
+  });
+
+  it('toggles hideBalance in the store and persists it immediately', () => {
+    hideBalanceToggle().click();
+    fixture.detectChanges();
+
+    expect(store.hideBalance()).toBe(true);
+    expect(hideBalanceToggle().checked).toBe(true);
+
+    const stored = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.userPreferences) ?? '{}');
+    expect(stored.accounts.hideBalance).toBe(true);
+  });
+
+  it('reflects a hideBalance change made outside the view', () => {
+    store.toggleHideBalance();
+    fixture.detectChanges();
+
+    expect(hideBalanceToggle().checked).toBe(true);
   });
 });

@@ -4,17 +4,17 @@ import {ACCOUNT_TYPE_MAP} from '@core/constants';
 import {Account} from '@core/models';
 import {
   accountColor,
-  formatCurrency,
   getCreditUsage,
   resolveAccountColor,
   resolveAccountIcon,
   toSoftCategoryColor,
 } from '@core/utils';
 import {AppIconComponent} from '@shared/components/app-icon/app-icon.component';
+import {PrivacyCurrencyPipe} from '@shared/pipes/privacy-currency.pipe';
 
 @Component({
   selector: 'app-account-list',
-  imports: [AppIconComponent, RouterLink],
+  imports: [AppIconComponent, RouterLink, PrivacyCurrencyPipe],
   templateUrl: './account-list.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -22,8 +22,6 @@ export class AccountListComponent {
   readonly accounts = input.required<Account[]>();
 
   readonly editAccount = output<Account>();
-
-  readonly formatCurrency = formatCurrency;
 
   readonly creditUsage = getCreditUsage;
 

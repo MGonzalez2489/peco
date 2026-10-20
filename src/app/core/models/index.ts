@@ -1,3 +1,4 @@
+export * from './account-preferences.model';
 export * from './account-type-definition.model';
 export * from './account-type-summary.model';
 export * from './account.model';

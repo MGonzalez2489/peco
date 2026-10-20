@@ -75,4 +75,33 @@ describe('UserPreferencesStore', () => {
     expect(stored.theme).toBe('system');
     expect(stored.pwaBannerDismissedAt).toBe(null);
   });
+
+  it('exposes the default account preferences', () => {
+    expect(store.accountsPreferences()).toEqual(DEFAULT_USER_PREFERENCES.accounts);
+    expect(store.hideBalance()).toBe(false);
+  });
+
+  it('toggles hideBalance and persists the whole preferences object', () => {
+    store.toggleHideBalance();
+
+    expect(store.hideBalance()).toBe(true);
+    expect(store.accountsPreferences().hideBalance).toBe(true);
+
+    const stored = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.userPreferences) ?? '{}');
+    expect(stored.accounts.hideBalance).toBe(true);
+    expect(stored.theme).toBe(DEFAULT_USER_PREFERENCES.theme);
+
+    store.toggleHideBalance();
+
+    expect(store.hideBalance()).toBe(false);
+  });
+
+  it('merges partial account preferences through updateAccountPreferences', () => {
+    store.updateAccountPreferences({hideBalance: true});
+
+    expect(store.accountsPreferences()).toEqual({hideBalance: true});
+
+    const stored = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.userPreferences) ?? '{}');
+    expect(stored.accounts.hideBalance).toBe(true);
+  });
 });

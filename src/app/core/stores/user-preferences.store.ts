@@ -2,6 +2,7 @@ import {computed, inject} from '@angular/core';
 import {withDevtools} from '@angular-architects/ngrx-toolkit';
 import {patchState, signalStore, withComputed, withHooks, withMethods, withState} from '@ngrx/signals';
 import {DEFAULT_USER_PREFERENCES} from '../constants/default-user-preferences.constant';
+import {AccountPreferences} from '../models/account-preferences.model';
 import {UserPreferences} from '../models/user-preferences.model';
 import {UserPreferencesStorageService} from '../services/user-preferences-storage.service';
 import {AppTheme} from '../types/app-theme.type';
@@ -32,6 +33,8 @@ export const UserPreferencesStore = signalStore(
     theme: computed(() => preferences().theme),
     pwaBannerDismissedAt: computed(() => preferences().pwaBannerDismissedAt),
     isPwaBannerDismissed: computed(() => !!preferences().pwaBannerDismissedAt),
+    accountsPreferences: computed(() => preferences().accounts),
+    hideBalance: computed(() => preferences().accounts.hideBalance),
   })),
   withMethods((store) => {
     const storage = inject(UserPreferencesStorageService);
@@ -40,6 +43,11 @@ export const UserPreferencesStore = signalStore(
       const preferences: UserPreferences = {...store.preferences(), ...changes};
       patchState(store, {preferences});
       storage.save(preferences);
+    };
+
+    const updateAccountPreferences = (partial: Partial<AccountPreferences>): void => {
+      const accounts: AccountPreferences = {...store.accountsPreferences(), ...partial};
+      commit({accounts});
     };
 
     return {
@@ -59,6 +67,10 @@ export const UserPreferencesStore = signalStore(
       updatePreferences(changes: Partial<UserPreferences>): void {
         commit(changes);
         applyThemeToDocument(store.theme());
+      },
+      updateAccountPreferences,
+      toggleHideBalance(): void {
+        updateAccountPreferences({hideBalance: !store.hideBalance()});
       },
     };
   }),
