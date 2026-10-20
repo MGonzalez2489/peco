@@ -1,7 +1,7 @@
 import {ChangeDetectionStrategy, Component, computed, inject, input} from '@angular/core';
 import {Movement, ProgressionPoint} from '@core/models';
 import {ThemeService} from '@core/services/theme.service';
-import {calculateMovementProgression, formatCurrency} from '@core/utils';
+import {calculateChartAxisRange, calculateMovementProgression, formatCurrency} from '@core/utils';
 import {
   ApexAxisChartSeries,
   ApexChart,
@@ -121,24 +121,24 @@ export class MovementsProgressionChartComponent {
     axisTicks: {show: false},
     tooltip: {enabled: false},
     labels: {
+      offsetY: 6,
       style: {colors: '#94a3b8', fontSize: '11px'},
       hideOverlappingLabels: true,
     },
   }));
 
   protected readonly yaxis = computed<ApexYAxis>(() => {
-    const values = this.progression().map((point) => point.y);
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-    const span = max - min;
-    const padding = span === 0 ? Math.max(Math.abs(max) * 0.1, 1) : span * 0.1;
+    const {min, max} = calculateChartAxisRange(this.progression().map((point) => point.y));
 
     return {
       show: true,
       tickAmount: 2,
-      min: min - padding,
-      max: max + padding,
+      min,
+      max,
       labels: {
+        // Pull labels away from the plot so the edge marker never covers the
+        // extreme value (e.g. the initial $0 when the series starts at zero).
+        offsetX: -13,
         formatter: (value: number) => this.shortCurrency(value),
         style: {colors: '#94a3b8', fontSize: '11px'},
       },
