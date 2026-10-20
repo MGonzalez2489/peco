@@ -1,10 +1,10 @@
 import {ChangeDetectionStrategy, Component, computed, input} from '@angular/core';
-import {CurrencyPipe} from '@angular/common';
+import {PrivacyCurrencyPipe} from '@shared/pipes/privacy-currency.pipe';
 import {accountColor} from '../../../core/utils/account-color.util';
 
 @Component({
   selector: 'app-stat-card',
-  imports: [CurrencyPipe],
+  imports: [PrivacyCurrencyPipe],
   templateUrl: './stat-card.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

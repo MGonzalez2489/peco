@@ -7,6 +7,7 @@ import {
   effect,
   inject,
   input,
+  output,
   signal,
   untracked,
   viewChild,
@@ -39,14 +40,27 @@ export class AppSelectComponent implements ControlValueAccessor {
   readonly invalid = input(false);
   readonly showLabel = input(true);
 
+  /**
+   * Signal-based value binding for standalone usage (without Angular forms).
+   * Kept in sync with the internal `ControlValueAccessor` state.
+   */
+  readonly value = input<string | null>(null);
+
+  /** Emitted whenever the user picks an option in signal-based usage. */
+  readonly valueChange = output<string>();
+
   readonly isOpen = signal(false);
   readonly activeIndex = signal(-1);
   readonly disabled = signal(false);
 
   private readonly selectedValue = signal<string | null>(null);
+
   private readonly hostRef = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly triggerRef = viewChild<ElementRef<HTMLButtonElement>>('trigger');
   private readonly listRef = viewChild<ElementRef<HTMLUListElement>>('list');
+
+  /** Effective value: the signal input wins, falling back to the forms state. */
+  private readonly currentValue = computed(() => this.value() ?? this.selectedValue());
 
   private readonly document = inject(DOCUMENT);
   private readonly destroyRef = inject(DestroyRef);
@@ -78,7 +92,7 @@ export class AppSelectComponent implements ControlValueAccessor {
   private onTouched: () => void = () => {};
 
   readonly selectedOption = computed(() => {
-    const value = this.selectedValue();
+    const value = this.currentValue();
     return this.options().find((option) => option.value === value) ?? null;
   });
 
@@ -157,7 +171,7 @@ export class AppSelectComponent implements ControlValueAccessor {
   }
 
   isSelected(value: string): boolean {
-    return this.selectedValue() === value;
+    return this.currentValue() === value;
   }
 
   hasIconInsideCircle(option: SelectOption): boolean {
@@ -182,7 +196,7 @@ export class AppSelectComponent implements ControlValueAccessor {
     if (this.options().length === 0) return;
 
     const selectedIndex = this.options().findIndex(
-      (option) => option.value === this.selectedValue(),
+      (option) => option.value === this.currentValue(),
     );
 
     this.updatePanelPosition();
@@ -220,6 +234,7 @@ export class AppSelectComponent implements ControlValueAccessor {
   selectOption(option: SelectOption): void {
     this.selectedValue.set(option.value);
     this.onChange(option.value);
+    this.valueChange.emit(option.value);
     this.onTouched();
     this.closeList(true);
   }

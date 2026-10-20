@@ -3,8 +3,8 @@ import {SettingsSection} from '../models/settings-section.model';
 export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
   {
     path: 'theme',
-    title: 'Apariencia',
-    description: 'Tema claro, oscuro o del sistema',
+    title: 'Preferencias',
+    description: 'Tema y preferencias del dispositivo',
     icon: 'palette',
     categoryGroup: 'Preferencias',
   },

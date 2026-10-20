@@ -7,6 +7,10 @@ import {writeStorageArray} from '../utils/write-storage-array.util';
 
 @Injectable({providedIn: 'root'})
 export class ScheduledTransactionsStorageService {
+  constructor() {
+    this.migrateLegacyKey();
+  }
+
   getAll(): ScheduledTransaction[] {
     const items =
       readStorageArray<ScheduledTransaction>(LOCAL_STORAGE_KEYS.scheduledTransactions) ?? [];
@@ -28,6 +32,19 @@ export class ScheduledTransactionsStorageService {
 
   delete(id: string): void {
     this.saveAll(this.getAll().filter((entry) => entry.id !== id));
+  }
+
+  private migrateLegacyKey(): void {
+    const legacyRaw = localStorage.getItem(LOCAL_STORAGE_KEYS.scheduledTransactionsLegacy);
+    if (legacyRaw === null) return;
+
+    // The standardized key wins when both exist; otherwise copy the legacy payload over.
+    const currentRaw = localStorage.getItem(LOCAL_STORAGE_KEYS.scheduledTransactions);
+    if (currentRaw === null) {
+      localStorage.setItem(LOCAL_STORAGE_KEYS.scheduledTransactions, legacyRaw);
+    }
+
+    localStorage.removeItem(LOCAL_STORAGE_KEYS.scheduledTransactionsLegacy);
   }
 
   private normalize(item: ScheduledTransaction): ScheduledTransaction {

@@ -23,6 +23,7 @@ import {
   MovementListComponent,
 } from '@shared/components';
 import {MovementDetailModalComponent} from '@features/movements/components/movement-detail-modal/movement-detail-modal.component';
+import {PrivacyCurrencyPipe} from '@shared/pipes/privacy-currency.pipe';
 import {AccountFormModalComponent} from '../components/account-form-modal.component';
 import {AccountProgressionChartComponent} from '../components/account-progression-chart/account-progression-chart.component';
 
@@ -43,6 +44,7 @@ interface Period {
     MonthPickerBottomSheetComponent,
     AccountFormModalComponent,
     AppIconComponent,
+    PrivacyCurrencyPipe,
     AccountProgressionChartComponent,
   ],
   templateUrl: './account-detail.component.html',
@@ -143,8 +145,6 @@ export class AccountDetailComponent {
     const account = this.account();
     return account ? getCreditUsage(account) : null;
   });
-
-  readonly formatCurrency = formatCurrency;
 
   toggleMonthPicker(): void {
     this.isMonthPickerOpen.update((isOpen) => !isOpen);

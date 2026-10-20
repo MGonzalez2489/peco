@@ -17,7 +17,7 @@
     [style.--stat-fg]="palette().text"
     [style.--stat-fg-dark]="palette().textDark"
   >
-    {{ amount() | currency: 'USD' : 'symbol' : '1.2-2' }}
+    {{ amount() | privacyCurrency }}
   </p>
 
   @if (subtext(); as text) {

@@ -9,6 +9,7 @@ export * from './movement-list/movement-list.component';
 export * from './modal/modal.component';
 export * from './nav-icon/nav-icon.component';
 export * from './navbar/navbar.component';
+export * from './setting-toggle-row/setting-toggle-row.component';
 export * from './sidebar/sidebar.component';
 export * from './stat-card/stat-card.component';
 export * from './month-picker-bottom-sheet/month-picker-bottom-sheet.component';

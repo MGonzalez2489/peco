@@ -1,3 +1,4 @@
+export * from './account-preferences.model';
 export * from './account-type-definition.model';
 export * from './account-type-summary.model';
 export * from './account.model';
@@ -16,3 +17,4 @@ export * from './scheduled-transaction-type.model';
 export * from './scheduled-transaction.model';
 export * from './select-option.model';
 export * from './settings-section.model';
+export * from './user-preferences.model';

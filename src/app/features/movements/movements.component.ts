@@ -1,5 +1,4 @@
 import {ChangeDetectionStrategy, Component, computed, inject, signal} from '@angular/core';
-import {CurrencyPipe} from '@angular/common';
 import {Movement} from '@core/models';
 import {MovementsStore} from '@core/stores/movements.store';
 import {calculateMovementTotals, isSameMonthAndYear} from '@core/utils';
@@ -9,6 +8,7 @@ import {
   MonthPickerSelection,
   MovementListComponent,
 } from '@shared/components';
+import {PrivacyCurrencyPipe} from '@shared/pipes/privacy-currency.pipe';
 import {FiltroMovimientosModalComponent} from './components/filtro-movimientos-modal/filtro-movimientos-modal.component';
 import {MovementDetailModalComponent} from './components/movement-detail-modal/movement-detail-modal.component';
 import {MovementsProgressionChartComponent} from './components/movements-progression-chart/movements-progression-chart.component';
@@ -16,7 +16,7 @@ import {MovementsProgressionChartComponent} from './components/movements-progres
 @Component({
   selector: 'app-movements',
   imports: [
-    CurrencyPipe,
+    PrivacyCurrencyPipe,
     MovementListComponent,
     MovementDetailModalComponent,
     FiltroMovimientosModalComponent,

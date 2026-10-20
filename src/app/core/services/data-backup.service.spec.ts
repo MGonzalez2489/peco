@@ -2,6 +2,7 @@ import {TestBed} from '@angular/core/testing';
 import {LOCAL_STORAGE_KEYS} from '../constants/local-storage-keys.constant';
 import {BackupData} from '../models/backup-data.model';
 import {CatalogStore} from '../stores/catalog.store';
+import {UserPreferencesStore} from '../stores/user-preferences.store';
 import {DataBackupService} from './data-backup.service';
 
 interface CapturedBlob {
@@ -11,6 +12,7 @@ interface CapturedBlob {
 describe('DataBackupService categories round trip', () => {
   let service: DataBackupService;
   let catalogStore: InstanceType<typeof CatalogStore>;
+  let userPreferencesStore: InstanceType<typeof UserPreferencesStore>;
   let capturedBlob: CapturedBlob | null = null;
 
   const originalCreateObjectURL = URL.createObjectURL;
@@ -23,9 +25,12 @@ describe('DataBackupService categories round trip', () => {
     URL.createObjectURL = (() => 'blob:mock') as unknown as typeof URL.createObjectURL;
     URL.revokeObjectURL = (() => undefined) as unknown as typeof URL.revokeObjectURL;
 
-    TestBed.configureTestingModule({providers: [CatalogStore, DataBackupService]});
+    TestBed.configureTestingModule({
+      providers: [CatalogStore, UserPreferencesStore, DataBackupService],
+    });
     service = TestBed.inject(DataBackupService);
     catalogStore = TestBed.inject(CatalogStore);
+    userPreferencesStore = TestBed.inject(UserPreferencesStore);
   });
 
   afterEach(() => {
@@ -64,6 +69,29 @@ describe('DataBackupService categories round trip', () => {
     expect(Object.keys(backup.data)).toContain(LOCAL_STORAGE_KEYS.categories);
     expect(JSON.stringify(categories)).toContain('Alquiler');
     expect(JSON.stringify(categories)).toContain('#EC4899');
+  });
+
+  it('includes the full user preferences object in the exported backup', async () => {
+    userPreferencesStore.updateAccountPreferences({hideBalance: true});
+    userPreferencesStore.setTheme('dark');
+
+    const backup = await exportPayload();
+    const preferences = backup.data[LOCAL_STORAGE_KEYS.userPreferences] as unknown;
+
+    expect(Object.keys(backup.data)).toContain(LOCAL_STORAGE_KEYS.userPreferences);
+    expect(JSON.stringify(preferences)).toContain('"dark"');
+    expect(JSON.stringify(preferences)).toContain('"hideBalance":true');
+  });
+
+  it('exports preferences from the store even when localStorage has none', async () => {
+    expect(localStorage.getItem(LOCAL_STORAGE_KEYS.userPreferences)).toBe(null);
+
+    const backup = await exportPayload();
+    const preferences = backup.data[LOCAL_STORAGE_KEYS.userPreferences] as Record<string, unknown>;
+
+    expect(preferences).toBeDefined();
+    expect(preferences['theme']).toBeDefined();
+    expect(preferences['accounts']).toEqual({hideBalance: false});
   });
 
   it('omits the categories key when the user never customized categories', async () => {
@@ -112,6 +140,7 @@ describe('DataBackupService categories round trip', () => {
 
 describe('DataBackupService selective import', () => {
   let service: DataBackupService;
+  let userPreferencesStore: InstanceType<typeof UserPreferencesStore>;
 
   const buildFile = (data: Record<string, unknown>): File =>
     new File(
@@ -129,8 +158,9 @@ describe('DataBackupService selective import', () => {
   beforeEach(() => {
     localStorage.clear();
     TestBed.resetTestingModule();
-    TestBed.configureTestingModule({providers: [DataBackupService]});
+    TestBed.configureTestingModule({providers: [UserPreferencesStore, DataBackupService]});
     service = TestBed.inject(DataBackupService);
+    userPreferencesStore = TestBed.inject(UserPreferencesStore);
   });
 
   it('imports accounts, movements and categories together while leaving scheduled untouched', async () => {
@@ -143,7 +173,7 @@ describe('DataBackupService selective import', () => {
         [LOCAL_STORAGE_KEYS.categories]: [{id: 'cat'}],
         [LOCAL_STORAGE_KEYS.scheduledTransactions]: [{id: 'new'}],
       }),
-      {accounts: true, movements: true, scheduledTransactions: false},
+      {accounts: true, movements: true, scheduledTransactions: false, preferences: false},
     );
 
     expect(restored).toBe(true);
@@ -161,7 +191,7 @@ describe('DataBackupService selective import', () => {
         [LOCAL_STORAGE_KEYS.accounts]: [{id: 'a'}],
         [LOCAL_STORAGE_KEYS.movements]: [{id: 'new'}],
       }),
-      {accounts: true, movements: false, scheduledTransactions: false},
+      {accounts: true, movements: false, scheduledTransactions: false, preferences: false},
     );
 
     expect(localStorage.getItem(LOCAL_STORAGE_KEYS.accounts)).toContain('"a"');
@@ -173,7 +203,7 @@ describe('DataBackupService selective import', () => {
 
     await service.importData(
       buildFile({[LOCAL_STORAGE_KEYS.movements]: [{id: 'new'}]}),
-      {accounts: false, movements: true, scheduledTransactions: false},
+      {accounts: false, movements: true, scheduledTransactions: false, preferences: false},
     );
 
     expect(localStorage.getItem(LOCAL_STORAGE_KEYS.movements)).toBe('[{"id":"keep"}]');
@@ -189,7 +219,7 @@ describe('DataBackupService selective import', () => {
         [LOCAL_STORAGE_KEYS.categories]: [{id: 'new'}],
         [LOCAL_STORAGE_KEYS.scheduledTransactions]: [{id: 'new'}],
       }),
-      {accounts: false, movements: false, scheduledTransactions: true},
+      {accounts: false, movements: false, scheduledTransactions: true, preferences: false},
     );
 
     expect(localStorage.getItem(LOCAL_STORAGE_KEYS.accounts)).toBe('[{"id":"keep"}]');
@@ -202,10 +232,96 @@ describe('DataBackupService selective import', () => {
 
     const restored = await service.importData(
       buildFile({[LOCAL_STORAGE_KEYS.accounts]: [{id: 'new'}]}),
-      {accounts: false, movements: false, scheduledTransactions: false},
+      {accounts: false, movements: false, scheduledTransactions: false, preferences: false},
     );
 
     expect(restored).toBe(true);
     expect(localStorage.getItem(LOCAL_STORAGE_KEYS.accounts)).toBe('[{"id":"keep"}]');
+  });
+
+  it('restores preferences from the imported backup only when selected', async () => {
+    userPreferencesStore.setTheme('light');
+
+    await service.importData(
+      buildFile({
+        [LOCAL_STORAGE_KEYS.accounts]: [{id: 'a'}],
+        [LOCAL_STORAGE_KEYS.userPreferences]: {
+          theme: 'dark',
+          pwaBannerDismissedAt: null,
+          accounts: {hideBalance: true},
+        },
+      }),
+      {accounts: true, movements: false, scheduledTransactions: false, preferences: true},
+    );
+
+    const stored = localStorage.getItem(LOCAL_STORAGE_KEYS.userPreferences) ?? '';
+    expect(stored).toContain('"dark"');
+    expect(stored).toContain('"hideBalance":true');
+  });
+
+  it('never touches preferences when the preference selection is disabled', async () => {
+    userPreferencesStore.setTheme('light');
+    const before = localStorage.getItem(LOCAL_STORAGE_KEYS.userPreferences);
+
+    await service.importData(
+      buildFile({
+        [LOCAL_STORAGE_KEYS.accounts]: [{id: 'a'}],
+        [LOCAL_STORAGE_KEYS.userPreferences]: {
+          theme: 'dark',
+          pwaBannerDismissedAt: null,
+          accounts: {hideBalance: true},
+        },
+      }),
+      {accounts: true, movements: false, scheduledTransactions: false, preferences: false},
+    );
+
+    expect(localStorage.getItem(LOCAL_STORAGE_KEYS.userPreferences)).toBe(before);
+    expect(localStorage.getItem(LOCAL_STORAGE_KEYS.userPreferences)).toContain('"light"');
+  });
+
+  it('fills missing preference sections from the current device on import', async () => {
+    userPreferencesStore.updateAccountPreferences({hideBalance: true});
+
+    await service.importData(
+      buildFile({
+        [LOCAL_STORAGE_KEYS.userPreferences]: {theme: 'dark', pwaBannerDismissedAt: null},
+      }),
+      {accounts: false, movements: false, scheduledTransactions: false, preferences: true},
+    );
+
+    const stored = JSON.parse(
+      localStorage.getItem(LOCAL_STORAGE_KEYS.userPreferences) ?? '{}',
+    ) as Record<string, unknown>;
+
+    expect(stored['theme']).toBe('dark');
+    expect(stored['accounts']).toEqual({hideBalance: true});
+  });
+
+  it('restores the legacy preference keys from old backups when selected', async () => {
+    await service.importData(
+      buildFile({
+        [LOCAL_STORAGE_KEYS.themeLegacy]: 'dark',
+        [LOCAL_STORAGE_KEYS.pwaBannerDismissedAtLegacy]: '1700000000000',
+      }),
+      {accounts: false, movements: false, scheduledTransactions: false, preferences: true},
+    );
+
+    expect(localStorage.getItem(LOCAL_STORAGE_KEYS.themeLegacy)).toBe('dark');
+    expect(localStorage.getItem(LOCAL_STORAGE_KEYS.pwaBannerDismissedAtLegacy)).toBe(
+      '1700000000000',
+    );
+  });
+
+  it('restores the legacy scheduled transactions key from old backups', async () => {
+    await service.importData(
+      buildFile({
+        [LOCAL_STORAGE_KEYS.scheduledTransactionsLegacy]: [{id: 'legacy'}],
+      }),
+      {accounts: false, movements: false, scheduledTransactions: true, preferences: false},
+    );
+
+    expect(localStorage.getItem(LOCAL_STORAGE_KEYS.scheduledTransactionsLegacy)).toContain(
+      '"legacy"',
+    );
   });
 });

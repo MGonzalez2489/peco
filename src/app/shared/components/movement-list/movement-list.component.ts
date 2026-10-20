@@ -1,4 +1,3 @@
-import {CurrencyPipe} from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -7,8 +6,7 @@ import {
   input,
   output,
   signal,
-} from '@angular/core';
-import {MOVEMENT_TYPE_LABEL, MOVEMENT_TYPE_PALETTE, MOVEMENT_TYPES} from '@core/constants';
+} from '@angular/core';import {MOVEMENT_TYPE_LABEL, MOVEMENT_TYPE_PALETTE, MOVEMENT_TYPES} from '@core/constants';
 import {Movement} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {CatalogStore} from '@core/stores/catalog.store';
@@ -22,6 +20,7 @@ import {
   toSoftCategoryColor,
 } from '@core/utils';
 import {ConfirmModalComponent} from '../confirm-modal/confirm-modal.component';
+import {PrivacyCurrencyPipe} from '../../pipes/privacy-currency.pipe';
 
 import {AppIconComponent, IconName} from '../app-icon/app-icon.component';
 
@@ -29,7 +28,7 @@ const FALLBACK_CATEGORY_COLOR = '#94a3b8';
 
 @Component({
   selector: 'app-movement-list',
-  imports: [CurrencyPipe, ConfirmModalComponent, AppIconComponent],
+  imports: [PrivacyCurrencyPipe, ConfirmModalComponent, AppIconComponent],
   templateUrl: './movement-list.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

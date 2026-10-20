@@ -1,16 +1,16 @@
-import {Injectable, computed, effect, signal} from '@angular/core';
-
-export type ThemeMode = 'light' | 'dark' | 'system';
-
-const THEME_STORAGE_KEY = 'peco.theme';
+import {Injectable, computed, inject, signal} from '@angular/core';
+import {UserPreferencesStore} from '../stores/user-preferences.store';
+import {AppTheme} from '../types/app-theme.type';
 
 @Injectable({providedIn: 'root'})
 export class ThemeService {
-  readonly themeMode = signal<ThemeMode>(this.readSavedPreference());
+  private readonly store = inject(UserPreferencesStore);
 
   private readonly media = window.matchMedia('(prefers-color-scheme: dark)');
 
   private readonly systemDark = signal(this.media.matches);
+
+  readonly themeMode = computed(() => this.store.theme());
 
   readonly isDark = computed(() => {
     switch (this.themeMode()) {
@@ -27,22 +27,9 @@ export class ThemeService {
     this.media.addEventListener('change', (event) => {
       this.systemDark.set(event.matches);
     });
-
-    effect(() => {
-      document.documentElement.classList.toggle('dark', this.isDark());
-    });
-
-    effect(() => {
-      localStorage.setItem(THEME_STORAGE_KEY, this.themeMode());
-    });
   }
 
-  setThemeMode(mode: ThemeMode): void {
-    this.themeMode.set(mode);
-  }
-
-  private readSavedPreference(): ThemeMode {
-    const saved = localStorage.getItem(THEME_STORAGE_KEY);
-    return saved === 'light' || saved === 'dark' || saved === 'system' ? saved : 'light';
+  setThemeMode(mode: AppTheme): void {
+    this.store.setTheme(mode);
   }
 }

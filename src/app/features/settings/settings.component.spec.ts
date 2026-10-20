@@ -71,7 +71,7 @@ describe('SettingsComponent', () => {
     expect(headerRow?.classList.contains('flex')).toBe(true);
     expect(headerRow?.classList.contains('items-center')).toBe(true);
     expect(headerRow?.classList.contains('md:hidden')).toBe(true);
-    expect(headerRow?.querySelector('h2')?.textContent?.trim()).toBe('Apariencia');
+    expect(headerRow?.querySelector('h2')?.textContent?.trim()).toBe('Preferencias');
   });
 
   it('pops the navigation history when a previous entry exists', async () => {

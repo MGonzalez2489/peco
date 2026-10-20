@@ -20,6 +20,7 @@ import {Account, Movement} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {CatalogStore} from '@core/stores/catalog.store';
 import {ScheduledTransactionsStore} from '@core/stores/scheduled-transactions.store';
+import {UserPreferencesStore} from '@core/stores/user-preferences.store';
 import {MovementType} from '@core/types';
 import {
   accountColor,
@@ -173,6 +174,7 @@ export class MovementDetailModalComponent {
   private readonly accountsStore = inject(AccountsStore);
   private readonly catalogStore = inject(CatalogStore);
   private readonly scheduledStore = inject(ScheduledTransactionsStore);
+  private readonly userPreferencesStore = inject(UserPreferencesStore);
 
   private readonly panelRef = viewChild<ElementRef<HTMLElement>>('panel');
 
@@ -225,7 +227,10 @@ export class MovementDetailModalComponent {
   readonly formattedAmount = computed(() => {
     const movement = this.displayedMovement();
     if (!movement) return '';
-    return `${MOVEMENT_TYPE_PALETTE[movement.type].sign}${formatCurrency(movement.amount)}`;
+    const amount = this.userPreferencesStore.hideBalance()
+      ? '--.--'
+      : formatCurrency(movement.amount);
+    return `${MOVEMENT_TYPE_PALETTE[movement.type].sign}${amount}`;
   });
 
   readonly formattedDate = computed(() => {

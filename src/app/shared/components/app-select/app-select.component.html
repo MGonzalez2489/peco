@@ -9,6 +9,7 @@
   [attr.aria-label]="accessibleLabel()"
   [attr.aria-invalid]="invalid() ? 'true' : null"
   [attr.title]="showLabel() ? null : (selectedOption()?.label ?? null)"
+  [attr.data-open]="isOpen()"
   aria-haspopup="listbox"
   [disabled]="disabled()"
   (click)="toggleOpen()"
@@ -156,6 +157,8 @@
     [class.py-2]="!sheet"
     [class.bg-indigo-50]="i === activeIndex()"
     [class.dark:bg-indigo-500/20]="i === activeIndex()"
+    [attr.data-active]="i === activeIndex()"
+    [attr.data-selected]="isSelected(option.value)"
   >
     @if (hasIconInsideCircle(option)) {
       <span

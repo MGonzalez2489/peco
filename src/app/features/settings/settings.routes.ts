@@ -17,13 +17,14 @@ export const settingsRoutes: Routes = [
           ),
       },
       {path: 'appearance', redirectTo: 'theme', pathMatch: 'full'},
+      {path: 'preferences', redirectTo: 'theme', pathMatch: 'full'},
       {path: 'data-backup', redirectTo: 'data', pathMatch: 'full'},
       {
         path: 'theme',
-        title: 'Apariencia',
+        title: 'Preferencias',
         loadComponent: () =>
-          import('./components/theme-settings/theme-settings.component').then(
-            (m) => m.ThemeSettingsComponent,
+          import('./components/user-preferences-settings/user-preferences-settings.component').then(
+            (m) => m.UserPreferencesSettingsComponent,
           ),
       },
       {
