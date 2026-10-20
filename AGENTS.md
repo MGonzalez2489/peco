@@ -313,3 +313,234 @@ lg:gap-4`):
 
 - All code, types, inputs, and components MUST be in English.
 - Accessible labels (aria-label) on icon-only buttons MUST be in Spanish (e.g., aria-label="Buscar movimiento").
+
+---
+
+# User Preferences Architecture
+
+**MANDATORY POLICY:** Every user-facing preference MUST be stored in the single `peco.user-preferences` object and accessed exclusively through `UserPreferencesStore`. Never read or write preference values with raw `localStorage` from a component.
+
+## 1. Data Model (`src/app/core/models/`)
+
+`UserPreferences` groups preferences by logical **section** so new domains can be added without touching unrelated features. Each section lives in its own model file (Single Export Rule).
+
+```ts
+// account-preferences.model.ts
+export interface AccountPreferences {
+  hideBalance: boolean;
+}
+
+// user-preferences.model.ts
+import {AccountPreferences} from './account-preferences.model';
+import {AppTheme} from '../types/app-theme.type';
+
+export interface UserPreferences {
+  theme: AppTheme;
+  pwaBannerDismissedAt: string | null;
+  accounts: AccountPreferences;
+}
+```
+
+- A **boolean** preference is a plain `boolean` field inside its section (`accounts.hideBalance`).
+- A **selection** preference is a union type field (e.g. `AppTheme = 'light' | 'dark' | 'system'`) inside its section.
+- Every new section interface MUST be exported from `src/app/core/models/index.ts`.
+- The default object lives in `src/app/core/constants/default-user-preferences.constant.ts` and MUST be updated whenever the schema changes.
+
+## 2. Storage Service with Backward Compatibility (`src/app/core/services/user-preferences-storage.service.ts`)
+
+Reading MUST never throw on old payloads. Merge every field with its default and add a dedicated merge helper per section:
+
+```ts
+const mergeWithDefaults = (value: unknown): UserPreferences => {
+  if (typeof value !== 'object' || value === null) {
+    return {...DEFAULT_USER_PREFERENCES};
+  }
+
+  const candidate = value as Partial<UserPreferences> & {accounts?: unknown};
+
+  return {
+    theme: typeof candidate.theme === 'string' ? normalizeTheme(candidate.theme) : DEFAULT_USER_PREFERENCES.theme,
+    pwaBannerDismissedAt:
+      typeof candidate.pwaBannerDismissedAt === 'string'
+        ? normalizeDismissedAt(candidate.pwaBannerDismissedAt)
+        : null,
+    accounts: mergeAccountsWithDefaults(candidate.accounts),
+  };
+};
+
+/** Payloads persisted before the `accounts` section existed merge with defaults. */
+const mergeAccountsWithDefaults = (value: unknown): AccountPreferences => {
+  if (typeof value !== 'object' || value === null) {
+    return {...DEFAULT_USER_PREFERENCES.accounts};
+  }
+
+  const candidate = value as Partial<AccountPreferences>;
+
+  return {
+    hideBalance:
+      typeof candidate.hideBalance === 'boolean'
+        ? candidate.hideBalance
+        : DEFAULT_USER_PREFERENCES.accounts.hideBalance,
+  };
+};
+```
+
+- Always guard on the exact expected `typeof` and fall back to the default. Never trust the parsed payload shape.
+- `save()` writes the FULL `UserPreferences` object to `peco.user-preferences` in a single `JSON.stringify`.
+
+## 3. Signal Store (`src/app/core/stores/user-preferences.store.ts`)
+
+Expose section-level computed signals plus one generic update method per section and a dedicated toggle helper for booleans:
+
+```ts
+withComputed(({preferences}) => ({
+  theme: computed(() => preferences().theme),
+  pwaBannerDismissedAt: computed(() => preferences().pwaBannerDismissedAt),
+  isPwaBannerDismissed: computed(() => !!preferences().pwaBannerDismissedAt),
+  accountsPreferences: computed(() => preferences().accounts),
+  hideBalance: computed(() => preferences().accounts.hideBalance),
+})),
+```
+
+Inside `withMethods`, define reusable local helpers in the closure (sibling methods cannot be referenced from the returned object literal), then expose them:
+
+```ts
+const commit = (changes: Partial<UserPreferences>): void => {
+  const preferences: UserPreferences = {...store.preferences(), ...changes};
+  patchState(store, {preferences});
+  storage.save(preferences);
+};
+
+const updateAccountPreferences = (partial: Partial<AccountPreferences>): void => {
+  const accounts: AccountPreferences = {...store.accountsPreferences(), ...partial};
+  commit({accounts});
+};
+
+return {
+  // required for every section, not just the booleans
+  updateAccountPreferences,
+  toggleHideBalance(): void {
+    updateAccountPreferences({hideBalance: !store.hideBalance()});
+  },
+};
+```
+
+## 4. Reusable Settings UI Components (`src/app/shared/components/`)
+
+**Anti-Duplication Principle:** Do NOT hand-roll preference rows in the settings view. Always use
+these reusable, standalone, single-responsibility components. They render only the row layout —
+they hold no state; the parent view owns the store binding.
+
+### A. Boolean Toggle Row — `SettingToggleRowComponent`
+
+```html
+<!-- src/app/shared/components/setting-toggle-row/setting-toggle-row.component.html -->
+<label class="flex items-center justify-between gap-4 p-4 transition-colors" ...>
+  <span class="min-w-0">
+    <span class="block text-sm font-semibold text-slate-900 dark:text-white">{{ title() }}</span>
+    <span class="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">{{ description() }}</span>
+  </span>
+  <span class="relative inline-flex shrink-0 items-center">
+    <input type="checkbox" role="switch" class="peer sr-only" [checked]="checked()" (change)="onCheckboxChange($event)" />
+    <!-- slider track + thumb -->
+  </span>
+</label>
+```
+
+- Inputs: `title` (required), `description` (required), `checked` (default `false`), `disabled` (default `false`).
+- Output: `checkedChange` emitting the new `boolean`.
+- The toggle is an `<input type="checkbox" role="switch">`, so it is keyboard/AT accessible by default.
+- **Rows carry NO icon** — do not add an `icon` input or an icon tile to setting rows.
+
+### B. Selection Row — `AppSelectComponent` (`src/app/shared/components/app-select/`)
+
+For finite choice preferences (theme, currency, start-of-week, etc.) use the existing `<app-select>`,
+never a native `<select>` or a custom dropdown.
+
+```html
+<app-select
+  controlId="pref-theme"
+  ariaLabel="Tema"
+  [options]="themeOptions"
+  [value]="theme()"
+  (valueChange)="onThemeChange($event)"
+/>
+```
+
+- Value options come from a `readonly SelectOption[]` constant in `src/app/core/constants/` (e.g. `THEME_OPTIONS`), declaring `value`, `label` (Spanish) and an optional `icon`/`color`.
+- The component supports both signal inputs (`value` + `valueChange`) and `ControlValueAccessor` for reactive forms.
+
+## 5. Privacy / Obscured Value Formatting (`src/app/shared/pipes/`)
+
+When a preference must hide real values across the app, create ONE global pipe that consumes the
+store and use it everywhere. NEVER inline the obscuring logic in templates or duplicate it.
+
+```ts
+// src/app/shared/pipes/privacy-currency.pipe.ts
+@Pipe({name: 'privacyCurrency', standalone: true, pure: false})
+export class PrivacyCurrencyPipe implements PipeTransform {
+  private readonly userPreferencesStore = inject(UserPreferencesStore);
+
+  transform(value: number | null | undefined): string {
+    if (value === null || value === undefined) return '';
+    return this.userPreferencesStore.hideBalance() ? '--.--' : formatCurrency(value);
+  }
+}
+```
+
+- The pipe is **impure** (`pure: false`) so every binding re-evaluates when the preference changes.
+- Apply it to ALL sensitive numeric displays of the affected domain: cards, list rows, detail
+  headers, summary totals and modal details. Replace direct `| currency` usage in those spots.
+- When a TypeScript-produced string needs the same protection (e.g. a `computed` label), inject
+  `UserPreferencesStore` in the component and branch on the same boolean — keep the token identical
+  (`'--.--'`) so the app reads consistently.
+
+## 6. Settings View Wiring (`src/app/features/settings/components/...`)
+
+Group the view into labeled sections, one per preference domain, following the Inset Grouped List
+pattern (a single rounded container per section with `divide-y` rows):
+
+```html
+<!-- APARIENCIA -->
+<h3 class="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Apariencia</h3>
+<div class="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">
+  <div class="flex flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between">
+    <app-select controlId="pref-theme" ariaLabel="Tema" [options]="themeOptions" [value]="theme()" (valueChange)="onThemeChange($event)" />
+  </div>
+</div>
+
+<!-- CUENTAS -->
+<h3 class="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Cuentas</h3>
+<div class="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">
+  <app-setting-toggle-row
+    title="Esconder balances"
+    description="Muestra o esconde los balances de las cuentas en toda la aplicación."
+    [checked]="hideBalance()"
+    (checkedChange)="onHideBalanceChange()"
+  />
+</div>
+```
+
+- The component injects `UserPreferencesStore` and exposes thin `computed` signals + handlers; the
+  template binds them. Do not call store methods directly from arbitrary templates.
+- Section headers and row copy are **Spanish**; inputs/handlers/types are **English**.
+
+## 7. New User Preference — Step-by-Step Checklist
+
+1. Add the field to the correct section interface in `src/app/core/models/` (create a new
+   `name-preferences.model.ts` for a new domain) and export it from `models/index.ts`.
+2. Add its default to `DEFAULT_USER_PREFERENCES`.
+3. Add a per-section merge helper in `UserPreferencesStorageService` and wire it into
+   `mergeWithDefaults` so old payloads fall back to the default.
+4. Add the computed signal(s) + `update<Section>Preferences` (and a `toggle<Field>` for booleans)
+   to `UserPreferencesStore`.
+5. Render the row in the settings view using `SettingToggleRowComponent` (boolean) or `AppSelectComponent` (selection).
+6. If the preference hides/obscures values, add or reuse a single global pipe and apply it to every
+   affected display.
+7. Cover it with specs: storage (round-trip + fallback when the field is missing), store
+   (signal + persistence), and the settings view (render + interaction).
+
+### Language Standards:
+
+- All code, types, inputs, and components MUST be in English.
+- Accessible labels (aria-label) on icon-only buttons MUST be in Spanish (e.g., aria-label="Buscar movimiento").
