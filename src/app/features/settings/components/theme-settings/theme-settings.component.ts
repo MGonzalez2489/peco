@@ -1,9 +1,10 @@
 import {ChangeDetectionStrategy, Component, inject} from '@angular/core';
-import {ThemeService, ThemeMode} from '@core/services/theme.service';
+import {ThemeService} from '@core/services/theme.service';
+import {AppTheme} from '@core/types/app-theme.type';
 import {AppIconComponent, IconName} from '@shared/components';
 
 interface ThemeOption {
-  mode: ThemeMode;
+  mode: AppTheme;
   label: string;
   description: string;
   icon: IconName;

@@ -1,5 +1,6 @@
 import {Injectable} from '@angular/core';
 import {APP_VERSION} from '../constants/app-version.constant';
+import {DEFAULT_USER_PREFERENCES} from '../constants/default-user-preferences.constant';
 import {LOCAL_STORAGE_KEYS} from '../constants/local-storage-keys.constant';
 import {SEED_ACCOUNTS} from '../constants/seed-accounts.constant';
 import {SEED_CATEGORIES} from '../constants/seed-categories.constant';
@@ -7,6 +8,12 @@ import {BackupData} from '../models/backup-data.model';
 import {BackupImportSelection} from '../types/backup-import-selection.type';
 import {buildBackupFilename} from '../utils/build-backup-filename.util';
 import {isAppStorageKey} from '../utils/is-app-storage-key.util';
+
+const PREFERENCE_STORAGE_KEYS: readonly string[] = [
+  LOCAL_STORAGE_KEYS.userPreferences,
+  LOCAL_STORAGE_KEYS.themeLegacy,
+  LOCAL_STORAGE_KEYS.pwaBannerDismissedAtLegacy,
+];
 
 @Injectable({providedIn: 'root'})
 export class DataBackupService {
@@ -58,6 +65,8 @@ export class DataBackupService {
       this.writeValue(key, parsed.data[key]);
     }
 
+    this.importPreferenceEntries(parsed.data);
+
     window.location.reload();
     return true;
   }
@@ -69,6 +78,7 @@ export class DataBackupService {
     this.writeValue(LOCAL_STORAGE_KEYS.movements, []);
     this.writeValue(LOCAL_STORAGE_KEYS.categories, SEED_CATEGORIES);
     this.writeValue(LOCAL_STORAGE_KEYS.scheduledTransactions, []);
+    this.writeValue(LOCAL_STORAGE_KEYS.userPreferences, DEFAULT_USER_PREFERENCES);
 
     window.location.reload();
   }
@@ -87,10 +97,25 @@ export class DataBackupService {
       keys.push(LOCAL_STORAGE_KEYS.categories, LOCAL_STORAGE_KEYS.categoriesLegacy);
     }
     if (selection.scheduledTransactions) {
-      keys.push(LOCAL_STORAGE_KEYS.scheduledTransactions);
+      keys.push(
+        LOCAL_STORAGE_KEYS.scheduledTransactions,
+        LOCAL_STORAGE_KEYS.scheduledTransactionsLegacy,
+      );
     }
 
     return [...new Set(keys)];
+  }
+
+  /**
+   * Preference keys are merged instead of cleared, so backups created before
+   * the `peco.user-preferences` key existed still restore the theme and the
+   * PWA banner dismissal (legacy keys are consolidated on the next startup).
+   */
+  private importPreferenceEntries(data: Record<string, unknown>): void {
+    for (const key of PREFERENCE_STORAGE_KEYS) {
+      if (!(key in data)) continue;
+      this.writeValue(key, data[key]);
+    }
   }
 
   private readValue(key: string): unknown {

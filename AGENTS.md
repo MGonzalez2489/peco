@@ -87,6 +87,20 @@ Use the Angular CLI to generate the code, then augment the code to meet the need
 5. Constants MUST be located in `app/core/constants/` using the format `name.constant.ts`.
 6. Strict Single Export Rule: NEVER include more than one `export` statement per file across models, DTOs, types, constants, or utilities.
 
+### Persistence: LocalStorage Key Naming Standard
+
+**MANDATORY POLICY:** ALL keys saved in `localStorage` MUST strictly follow the `peco.<kebab-case-domain>` format.
+
+- **Allowed Keys:**
+  - `peco.accounts`
+  - `peco.transactions` (or `peco.movements`)
+  - `peco.catalog.categories`
+  - `peco.scheduled-transactions` (Renamed from `peco_scheduled_transactions`)
+  - `peco.user-preferences` (Encapsulated user preferences object)
+- Legacy keys (`peco_*`, `peco.cuentas`, `peco.categories`, `peco.theme`, `peco.pwa-banner-dismissed-at`) MUST be migrated to the standard format on service initialization and then removed.
+- Every new persisted key MUST be declared in `src/app/core/constants/local-storage-keys.constant.ts` and MUST NOT be hardcoded at the call site.
+- All persistence of user-facing preferences (theme, dismissed banners, etc.) MUST go through `UserPreferencesStore` / `UserPreferencesStorageService` instead of raw `localStorage` access.
+
 ## Iconography & UI Standards
 
 ### Rules for Icons Usage:

@@ -1,5 +1,6 @@
 import {ChangeDetectionStrategy, Component, inject} from '@angular/core';
-import {ThemeService, ThemeMode} from '@core/services/theme.service';
+import {ThemeService} from '@core/services/theme.service';
+import {AppTheme} from '@core/types/app-theme.type';
 import {AppIconComponent} from '@shared/components/app-icon/app-icon.component';
 
 @Component({
@@ -13,7 +14,7 @@ export class PreferencesComponent {
   readonly themeService = inject(ThemeService);
 
   readonly options: Array<{
-    mode: ThemeMode;
+    mode: AppTheme;
     label: string;
     description: string;
     iconClasses: string;

@@ -1,16 +1,16 @@
-import {Injectable, computed, signal} from '@angular/core';
+import {Injectable, computed, inject, signal} from '@angular/core';
+import {UserPreferencesStore} from '../stores/user-preferences.store';
 import {PwaInstallPromptEvent} from '../types/pwa-install-prompt.type';
 
-const PWA_DISMISS_KEY = 'peco.pwa-banner-dismissed-at';
 const PWA_DISMISS_RETRY_DAYS = 7;
 const DAY_IN_MS = 86_400_000;
 const MOBILE_MEDIA_QUERY = '(hover: none) and (pointer: coarse)';
 
 @Injectable({providedIn: 'root'})
 export class PwaInstallService {
-  private readonly promptEvent = signal<PwaInstallPromptEvent | null>(null);
+  private readonly store = inject(UserPreferencesStore);
 
-  private readonly dismissedAt = signal(this.readDismissedAt());
+  private readonly promptEvent = signal<PwaInstallPromptEvent | null>(null);
 
   private readonly mobileMedia = window.matchMedia?.(MOBILE_MEDIA_QUERY) ?? null;
 
@@ -45,9 +45,11 @@ export class PwaInstallService {
   }
 
   dismiss(): void {
-    const now = Date.now();
-    this.dismissedAt.set(now);
-    localStorage.setItem(PWA_DISMISS_KEY, String(now));
+    this.store.dismissPwaBanner();
+    this.clearPrompt();
+  }
+
+  clearPrompt(): void {
     this.promptEvent.set(null);
   }
 
@@ -59,12 +61,15 @@ export class PwaInstallService {
   };
 
   private isRecentlyDismissed(): boolean {
-    return Date.now() - this.dismissedAt() < PWA_DISMISS_RETRY_DAYS * DAY_IN_MS;
-  }
+    if (!this.store.isPwaBannerDismissed()) {
+      return false;
+    }
 
-  private readDismissedAt(): number {
-    const raw = localStorage.getItem(PWA_DISMISS_KEY);
-    const parsed = raw === null ? NaN : Number(raw);
-    return Number.isFinite(parsed) ? parsed : 0;
+    const dismissedAt = Date.parse(this.store.pwaBannerDismissedAt() ?? '');
+    if (Number.isNaN(dismissedAt)) {
+      return false;
+    }
+
+    return Date.now() - dismissedAt < PWA_DISMISS_RETRY_DAYS * DAY_IN_MS;
   }
 }

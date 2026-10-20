@@ -66,6 +66,18 @@ describe('DataBackupService categories round trip', () => {
     expect(JSON.stringify(categories)).toContain('#EC4899');
   });
 
+  it('includes the user preferences key in the exported backup', async () => {
+    localStorage.setItem(
+      LOCAL_STORAGE_KEYS.userPreferences,
+      JSON.stringify({theme: 'dark', pwaBannerDismissedAt: null}),
+    );
+
+    const backup = await exportPayload();
+
+    expect(Object.keys(backup.data)).toContain(LOCAL_STORAGE_KEYS.userPreferences);
+    expect(JSON.stringify(backup.data[LOCAL_STORAGE_KEYS.userPreferences])).toContain('"dark"');
+  });
+
   it('omits the categories key when the user never customized categories', async () => {
     expect(localStorage.getItem(LOCAL_STORAGE_KEYS.categories)).toBe(null);
 
@@ -207,5 +219,35 @@ describe('DataBackupService selective import', () => {
 
     expect(restored).toBe(true);
     expect(localStorage.getItem(LOCAL_STORAGE_KEYS.accounts)).toBe('[{"id":"keep"}]');
+  });
+
+  it('merges the user preferences from the imported backup', async () => {
+    localStorage.setItem(
+      LOCAL_STORAGE_KEYS.userPreferences,
+      JSON.stringify({theme: 'light', pwaBannerDismissedAt: null}),
+    );
+
+    await service.importData(
+      buildFile({
+        [LOCAL_STORAGE_KEYS.accounts]: [{id: 'a'}],
+        [LOCAL_STORAGE_KEYS.userPreferences]: {theme: 'dark', pwaBannerDismissedAt: null},
+      }),
+      {accounts: true, movements: false, scheduledTransactions: false},
+    );
+
+    expect(localStorage.getItem(LOCAL_STORAGE_KEYS.userPreferences)).toContain('"dark"');
+  });
+
+  it('restores the legacy scheduled transactions key from old backups', async () => {
+    await service.importData(
+      buildFile({
+        [LOCAL_STORAGE_KEYS.scheduledTransactionsLegacy]: [{id: 'legacy'}],
+      }),
+      {accounts: false, movements: false, scheduledTransactions: true},
+    );
+
+    expect(localStorage.getItem(LOCAL_STORAGE_KEYS.scheduledTransactionsLegacy)).toContain(
+      '"legacy"',
+    );
   });
 });
