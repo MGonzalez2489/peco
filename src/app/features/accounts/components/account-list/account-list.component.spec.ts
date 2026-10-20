@@ -98,6 +98,17 @@ describe('AccountListComponent', () => {
     expect(content).toContain('-$1,200.00');
   });
 
+  it('renders the account type icon tile with a soft background', () => {
+    const tile = rowByName('Tarjeta Oro').querySelector<HTMLElement>('span[aria-hidden="true"]');
+    if (!tile) throw new Error('type icon tile must be rendered');
+
+    expect(tile.className).toContain('rounded-xl');
+    expect(tile.querySelector('app-icon svg')).not.toBeNull();
+    expect(fixture.componentInstance.accountIconBackground(accounts[2])).toBe(
+      fixture.componentInstance.accountIconColor(accounts[2]) + '20',
+    );
+  });
+
   it('renders the root, pin and exclusion badges', () => {
     expect(rowByName('Efectivo').textContent).toContain('Base');
     expect(rowByName('Efectivo').textContent).toContain('Excluida del total');
