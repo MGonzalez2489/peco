@@ -71,6 +71,34 @@ describe('AccountsComponent', () => {
     expect(content).toContain('$1,000.00');
   });
 
+  it('shows every account type in the desktop distribution card', () => {
+    const distribution = native().querySelector('app-account-type-distribution');
+    if (!distribution) throw new Error('distribution summary must be rendered');
+
+    const content = distribution.textContent ?? '';
+    expect(content).toContain('Efectivo');
+    expect(content).toContain('Débito');
+    expect(content).toContain('Crédito');
+    expect(content).toContain('Ahorro');
+  });
+
+  it('renders the compact mobile distribution widget with the four account types', () => {
+    const widget = native().querySelector('app-account-type-distribution-mobile');
+    if (!widget) throw new Error('mobile distribution widget must be rendered');
+
+    expect(widget.querySelectorAll('[role="listitem"]').length).toBe(4);
+    expect(widget.querySelector('.grid')?.className).toContain('grid-cols-2');
+
+    const content = widget.textContent ?? '';
+    expect(content).toContain('Efectivo');
+    expect(content).toContain('Débito');
+    expect(content).toContain('Crédito');
+    expect(content).toContain('Ahorro');
+    expect(content).toContain('2 cuentas');
+    expect(content).toContain('-$1,200.00');
+    expect(content).toContain('$1,000.00');
+  });
+
   it('links each row to the account detail view', () => {
     const detailLink = rows()[0].querySelector<HTMLAnchorElement>('a[href]');
     if (!detailLink) throw new Error('detail link must be rendered');

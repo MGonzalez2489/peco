@@ -1,5 +1,6 @@
 export * from './account-colors.constant';
 export * from './account-type-map.constant';
+export * from './account-type-palette.constant';
 export * from './account-types.constant';
 export * from './adjustment-category-id.constant';
 export * from './app-version.constant';

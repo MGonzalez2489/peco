@@ -36,7 +36,10 @@
               />
             </span>
             <div class="min-w-0">
-              <p class="truncate text-sm font-semibold text-slate-900 dark:text-white">
+              <p
+                class="truncate text-sm font-semibold"
+                [class]="summary.type | accountTypeLabelClass"
+              >
                 {{ summary.label }}
               </p>
               <p class="text-xs text-slate-400 dark:text-slate-400">

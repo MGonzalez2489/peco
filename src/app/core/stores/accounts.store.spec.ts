@@ -51,6 +51,22 @@ describe('AccountsStore', () => {
     expect(cash).toMatchObject({count: 1, total: 0});
   });
 
+  it('keeps the four canonical account types in the distribution', () => {
+    const summaries = store.accountTypeSummaries();
+
+    expect(summaries.map((summary) => summary.type)).toEqual([
+      'CASH',
+      'DEBIT',
+      'CREDIT',
+      'SAVINGS',
+    ]);
+    expect(summaries.find((summary) => summary.type === 'DEBIT')).toMatchObject({
+      count: 0,
+      total: 0,
+      label: 'Débito',
+    });
+  });
+
   it('keeps credit debt out of the liquid balance but inside the net worth', () => {
     store.createAccount({name: 'Tarjeta', initialBalance: -500, type: 'CREDIT', creditLimit: 5000});
     store.createAccount({name: 'Ahorro', initialBalance: 1200, type: 'SAVINGS'});
