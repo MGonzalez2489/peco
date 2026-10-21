@@ -147,7 +147,8 @@ export class DataBackupService {
 
   /**
    * Merges an imported preferences payload with the current ones so partial or
-   * outdated backups (missing sections such as `accounts`) restore cleanly.
+   * outdated backups (missing sections such as `accounts` or `movements`)
+   * restore cleanly.
    */
   private normalizeImportedPreferences(value: unknown): UserPreferences {
     const current = this.userPreferencesStore.preferences();
@@ -156,7 +157,14 @@ export class DataBackupService {
       return current;
     }
 
-    return {...current, ...(value as Partial<UserPreferences>)};
+    const candidate = value as Partial<UserPreferences>;
+
+    return {
+      ...current,
+      ...candidate,
+      accounts: {...current.accounts, ...(candidate.accounts ?? {})},
+      movements: {...current.movements, ...(candidate.movements ?? {})},
+    };
   }
 
   private readValue(key: string): unknown {

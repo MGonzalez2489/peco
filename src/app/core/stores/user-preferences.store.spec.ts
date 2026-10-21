@@ -104,4 +104,48 @@ describe('UserPreferencesStore', () => {
     const stored = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.userPreferences) ?? '{}');
     expect(stored.accounts.hideBalance).toBe(true);
   });
+
+  it('exposes the default movement preferences', () => {
+    expect(store.movementPreferences()).toEqual(DEFAULT_USER_PREFERENCES.movements);
+    expect(store.hideReversal()).toBe(true);
+  });
+
+  it('toggles hideReversal and persists it immediately', () => {
+    store.toggleHideReversal();
+
+    expect(store.hideReversal()).toBe(false);
+    expect(store.movementPreferences().hideReversal).toBe(false);
+
+    const stored = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.userPreferences) ?? '{}');
+    expect(stored.movements.hideReversal).toBe(false);
+    expect(stored.theme).toBe(DEFAULT_USER_PREFERENCES.theme);
+    expect(stored.accounts.hideBalance).toBe(false);
+
+    store.toggleHideReversal();
+
+    expect(store.hideReversal()).toBe(true);
+  });
+
+  it('merges partial movement preferences through updateMovementPreferences', () => {
+    store.updateMovementPreferences({hideReversal: false});
+
+    expect(store.movementPreferences()).toEqual({hideReversal: false});
+
+    const stored = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.userPreferences) ?? '{}');
+    expect(stored.movements.hideReversal).toBe(false);
+  });
+
+  it('falls back to the default movement preferences when the stored payload has no movements section', () => {
+    localStorage.setItem(
+      LOCAL_STORAGE_KEYS.userPreferences,
+      JSON.stringify({theme: 'dark', pwaBannerDismissedAt: null, accounts: {hideBalance: false}}),
+    );
+
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({providers: [UserPreferencesStore]});
+    const restored = TestBed.inject(UserPreferencesStore);
+
+    expect(restored.hideReversal()).toBe(DEFAULT_USER_PREFERENCES.movements.hideReversal);
+    expect(restored.theme()).toBe('dark');
+  });
 });

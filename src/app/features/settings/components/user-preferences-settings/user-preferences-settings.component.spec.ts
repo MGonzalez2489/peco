@@ -29,11 +29,21 @@ describe('UserPreferencesSettingsComponent', () => {
     fixture.detectChanges();
   };
 
-  const hideBalanceToggle = (): HTMLInputElement => {
-    const toggle = native().querySelector<HTMLInputElement>('input[role="switch"]');
-    if (!toggle) throw new Error('hide balance toggle must be rendered');
+  const toggleFor = (title: string): HTMLInputElement => {
+    const label = Array.from(native().querySelectorAll<HTMLLabelElement>('label')).find((item) =>
+      item.textContent?.includes(title),
+    );
+    if (!label) throw new Error(`${title} row must be rendered`);
+
+    const toggle = label.querySelector<HTMLInputElement>('input[role="switch"]');
+    if (!toggle) throw new Error(`${title} toggle must be rendered`);
+
     return toggle;
   };
+
+  const hideBalanceToggle = (): HTMLInputElement => toggleFor('Esconder balances');
+
+  const hideReversalToggle = (): HTMLInputElement => toggleFor('Esconder reversiones');
 
   beforeEach(() => {
     localStorage.clear();
@@ -116,5 +126,35 @@ describe('UserPreferencesSettingsComponent', () => {
     fixture.detectChanges();
 
     expect(hideBalanceToggle().checked).toBe(true);
+  });
+
+  it('renders the movements section with the hide reversal toggle in Spanish', () => {
+    const text = native().textContent ?? '';
+    const toggle = hideReversalToggle();
+
+    expect(text).toContain('Movimientos');
+    expect(text).toContain('Esconder reversiones');
+    expect(text).toContain(
+      'Oculta de las listas los movimientos que fueron revertidos y sus respectivas contra-reversiones para mantener un historial limpio.',
+    );
+    expect(toggle.checked).toBe(true);
+  });
+
+  it('toggles hideReversal in the store and persists it immediately', () => {
+    hideReversalToggle().click();
+    fixture.detectChanges();
+
+    expect(store.hideReversal()).toBe(false);
+    expect(hideReversalToggle().checked).toBe(false);
+
+    const stored = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.userPreferences) ?? '{}');
+    expect(stored.movements.hideReversal).toBe(false);
+  });
+
+  it('reflects a hideReversal change made outside the view', () => {
+    store.toggleHideReversal();
+    fixture.detectChanges();
+
+    expect(hideReversalToggle().checked).toBe(false);
   });
 });

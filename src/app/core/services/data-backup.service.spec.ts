@@ -92,6 +92,7 @@ describe('DataBackupService categories round trip', () => {
     expect(preferences).toBeDefined();
     expect(preferences['theme']).toBeDefined();
     expect(preferences['accounts']).toEqual({hideBalance: false});
+    expect(preferences['movements']).toEqual({hideReversal: true});
   });
 
   it('omits the categories key when the user never customized categories', async () => {
@@ -295,6 +296,27 @@ describe('DataBackupService selective import', () => {
 
     expect(stored['theme']).toBe('dark');
     expect(stored['accounts']).toEqual({hideBalance: true});
+    expect(stored['movements']).toEqual({hideReversal: true});
+  });
+
+  it('restores the movement preferences carried by the imported backup', async () => {
+    await service.importData(
+      buildFile({
+        [LOCAL_STORAGE_KEYS.userPreferences]: {
+          theme: 'dark',
+          pwaBannerDismissedAt: null,
+          accounts: {hideBalance: false},
+          movements: {hideReversal: false},
+        },
+      }),
+      {accounts: false, movements: false, scheduledTransactions: false, preferences: true},
+    );
+
+    const stored = JSON.parse(
+      localStorage.getItem(LOCAL_STORAGE_KEYS.userPreferences) ?? '{}',
+    ) as Record<string, unknown>;
+
+    expect(stored['movements']).toEqual({hideReversal: false});
   });
 
   it('restores the legacy preference keys from old backups when selected', async () => {

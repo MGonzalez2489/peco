@@ -3,6 +3,7 @@ import {withDevtools} from '@angular-architects/ngrx-toolkit';
 import {patchState, signalStore, withComputed, withHooks, withMethods, withState} from '@ngrx/signals';
 import {DEFAULT_USER_PREFERENCES} from '../constants/default-user-preferences.constant';
 import {AccountPreferences} from '../models/account-preferences.model';
+import {MovementPreferences} from '../models/movement-preferences.model';
 import {UserPreferences} from '../models/user-preferences.model';
 import {UserPreferencesStorageService} from '../services/user-preferences-storage.service';
 import {AppTheme} from '../types/app-theme.type';
@@ -35,6 +36,8 @@ export const UserPreferencesStore = signalStore(
     isPwaBannerDismissed: computed(() => !!preferences().pwaBannerDismissedAt),
     accountsPreferences: computed(() => preferences().accounts),
     hideBalance: computed(() => preferences().accounts.hideBalance),
+    movementPreferences: computed(() => preferences().movements),
+    hideReversal: computed(() => preferences().movements.hideReversal),
   })),
   withMethods((store) => {
     const storage = inject(UserPreferencesStorageService);
@@ -48,6 +51,11 @@ export const UserPreferencesStore = signalStore(
     const updateAccountPreferences = (partial: Partial<AccountPreferences>): void => {
       const accounts: AccountPreferences = {...store.accountsPreferences(), ...partial};
       commit({accounts});
+    };
+
+    const updateMovementPreferences = (partial: Partial<MovementPreferences>): void => {
+      const movements: MovementPreferences = {...store.movementPreferences(), ...partial};
+      commit({movements});
     };
 
     return {
@@ -71,6 +79,10 @@ export const UserPreferencesStore = signalStore(
       updateAccountPreferences,
       toggleHideBalance(): void {
         updateAccountPreferences({hideBalance: !store.hideBalance()});
+      },
+      updateMovementPreferences,
+      toggleHideReversal(): void {
+        updateMovementPreferences({hideReversal: !store.hideReversal()});
       },
     };
   }),
