@@ -8,6 +8,7 @@ export * from './changelog.model';
 export * from './distribution-chart-item.model';
 export * from './monthly-commitments.model';
 export * from './movement.model';
+export * from './movement-preferences.model';
 export * from './movement-filters.model';
 export * from './movement-group.model';
 export * from './movement-totals.model';

@@ -21,6 +21,8 @@ export class UserPreferencesSettingsComponent {
 
   protected readonly hideBalance = computed(() => this.userPreferencesStore.hideBalance());
 
+  protected readonly hideReversal = computed(() => this.userPreferencesStore.hideReversal());
+
   protected readonly isPwaBannerDismissed = computed(() =>
     this.userPreferencesStore.isPwaBannerDismissed(),
   );
@@ -39,5 +41,9 @@ export class UserPreferencesSettingsComponent {
 
   protected onHideBalanceChange(): void {
     this.userPreferencesStore.toggleHideBalance();
+  }
+
+  protected onHideReversalChange(): void {
+    this.userPreferencesStore.toggleHideReversal();
   }
 }

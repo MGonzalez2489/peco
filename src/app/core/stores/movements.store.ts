@@ -16,8 +16,10 @@ import {buildReversalMovement} from '../utils/build-reversal-movement.util';
 import {calculateMovementTotals} from '../utils/calculate-movement-totals.util';
 import {formatCurrency} from '../utils/format-currency.util';
 import {groupMovementsByDate} from '../utils/group-movements-by-date.util';
+import {isReversalMovement} from '../utils/is-reversal-movement.util';
 import {AccountsStore} from './accounts.store';
 import {CatalogStore} from './catalog.store';
+import {UserPreferencesStore} from './user-preferences.store';
 
 interface MovementsState {
   movements: Movement[];
@@ -28,7 +30,6 @@ const INITIAL_FILTERS: MovementFilters = {
   type: 'ALL',
   accountId: '',
   categoryId: '',
-  hideReversals: false,
 };
 
 const initialState = (): MovementsState => ({
@@ -43,10 +44,25 @@ export const MovementsStore = signalStore(
   withState(initialState),
   withCallState(),
   withComputed(({movements, filters}) => {
-    const filtered = () => {
-      const {type, accountId, categoryId, hideReversals} = filters();
+    const userPreferencesStore = inject(UserPreferencesStore);
 
-      return movements()
+    /**
+     * Reversal visibility is a device-wide preference: when it is enabled both
+     * the reverted movement and its contra-movement are hidden from every list.
+     */
+    const isHiddenByPreference = (movement: Movement): boolean =>
+      userPreferencesStore.hideReversal() && isReversalMovement(movement);
+
+    const visibleMovements = computed(() =>
+      movements()
+        .filter((movement) => !isHiddenByPreference(movement))
+        .sort(byNewestFirst),
+    );
+
+    const filtered = () => {
+      const {type, accountId, categoryId} = filters();
+
+      return visibleMovements()
         .filter((movement) => {
           const matchesType = type === 'ALL' || movement.type === type;
           const matchesAccount =
@@ -54,30 +70,25 @@ export const MovementsStore = signalStore(
             movement.accountId === accountId ||
             movement.targetAccountId === accountId;
           const matchesCategory = !categoryId || movement.categoryId === categoryId;
-          const matchesReversal = !hideReversals || (!movement.isReversal && !movement.reversalId);
 
-          return matchesType && matchesAccount && matchesCategory && matchesReversal;
+          return matchesType && matchesAccount && matchesCategory;
         })
         .sort(byNewestFirst);
     };
 
     return {
       sortedMovements: computed(() => [...movements()].sort(byNewestFirst)),
+      visibleMovements,
       filteredMovements: computed(filtered),
       groupedMovementsByDate: computed(() => groupMovementsByDate(filtered())),
       filteredTotals: computed(() => calculateMovementTotals(filtered())),
       activeFilterCount: computed(() => {
-        const {type, accountId, categoryId, hideReversals} = filters();
-        return (
-          (type !== 'ALL' ? 1 : 0) +
-          (accountId ? 1 : 0) +
-          (categoryId ? 1 : 0) +
-          (hideReversals ? 1 : 0)
-        );
+        const {type, accountId, categoryId} = filters();
+        return (type !== 'ALL' ? 1 : 0) + (accountId ? 1 : 0) + (categoryId ? 1 : 0);
       }),
       hasActiveFilters: computed(() => {
-        const {type, accountId, categoryId, hideReversals} = filters();
-        return type !== 'ALL' || accountId !== '' || categoryId !== '' || hideReversals;
+        const {type, accountId, categoryId} = filters();
+        return type !== 'ALL' || accountId !== '' || categoryId !== '';
       }),
     };
   }),
@@ -209,11 +220,11 @@ export const MovementsStore = signalStore(
         patchState(store, {filters: INITIAL_FILTERS});
       },
       recentMovements(limit = 5): Movement[] {
-        return store.sortedMovements().slice(0, limit);
+        return store.visibleMovements().slice(0, limit);
       },
       movementsForAccount(accountId: string): Movement[] {
         return store
-          .sortedMovements()
+          .visibleMovements()
           .filter(
             (movement) =>
               movement.accountId === accountId || movement.targetAccountId === accountId,

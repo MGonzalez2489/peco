@@ -14,6 +14,7 @@ import {SelectOption} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {CatalogStore} from '@core/stores/catalog.store';
 import {MovementsStore} from '@core/stores/movements.store';
+import {UserPreferencesStore} from '@core/stores/user-preferences.store';
 import {MovementFilterType} from '@core/types';
 import {toAccountOption, toCategoryOption} from '@core/utils';
 import {AppSelectComponent, ModalComponent} from '@shared/components';
@@ -52,6 +53,7 @@ export class FiltroMovimientosModalComponent {
   readonly accountsStore = inject(AccountsStore);
   readonly catalogStore = inject(CatalogStore);
   readonly movementsStore = inject(MovementsStore);
+  private readonly userPreferencesStore = inject(UserPreferencesStore);
 
   readonly accounts = this.accountsStore.accounts;
   readonly categories = this.catalogStore.filterableCategories;
@@ -86,7 +88,7 @@ export class FiltroMovimientosModalComponent {
       this.type.set(filters.type);
       this.accountId.set(filters.accountId);
       this.categoryId.set(filters.categoryId);
-      this.hideReversals.set(filters.hideReversals);
+      this.hideReversals.set(this.userPreferencesStore.hideReversal());
     });
   }
 
@@ -95,8 +97,12 @@ export class FiltroMovimientosModalComponent {
       type: this.type(),
       accountId: this.accountId(),
       categoryId: this.categoryId(),
-      hideReversals: this.hideReversals(),
     });
+
+    if (this.hideReversals() !== this.userPreferencesStore.hideReversal()) {
+      this.userPreferencesStore.updateMovementPreferences({hideReversal: this.hideReversals()});
+    }
+
     this.closed.emit();
   }
 

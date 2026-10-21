@@ -22,6 +22,7 @@ describe('UserPreferencesStorageService', () => {
       theme: 'dark',
       pwaBannerDismissedAt: null,
       accounts: {hideBalance: false},
+      movements: {hideReversal: false},
     };
 
     service.save(preferences);
@@ -53,6 +54,7 @@ describe('UserPreferencesStorageService', () => {
         theme: 'system',
         pwaBannerDismissedAt: null,
         accounts: {hideBalance: false},
+        movements: {hideReversal: false},
       } satisfies UserPreferences),
     );
     localStorage.setItem(LOCAL_STORAGE_KEYS.themeLegacy, 'dark');
@@ -61,6 +63,7 @@ describe('UserPreferencesStorageService', () => {
 
     expect(loaded.theme).toBe('dark');
     expect(loaded.pwaBannerDismissedAt).toBe(null);
+    expect(loaded.movements.hideReversal).toBe(false);
     expect(localStorage.getItem(LOCAL_STORAGE_KEYS.themeLegacy)).toBe(null);
   });
 
@@ -117,5 +120,47 @@ describe('UserPreferencesStorageService', () => {
     );
 
     expect(service.load().accounts.hideBalance).toBe(true);
+  });
+
+  it('falls back to default movement preferences when the movements section is missing', () => {
+    localStorage.setItem(
+      LOCAL_STORAGE_KEYS.userPreferences,
+      JSON.stringify({theme: 'dark', pwaBannerDismissedAt: null, accounts: {hideBalance: false}}),
+    );
+
+    const loaded = service.load();
+
+    expect(loaded.movements).toEqual(DEFAULT_USER_PREFERENCES.movements);
+    expect(loaded.movements.hideReversal).toBe(true);
+    expect(loaded.theme).toBe('dark');
+  });
+
+  it('falls back to the default hideReversal when it is missing or invalid', () => {
+    localStorage.setItem(
+      LOCAL_STORAGE_KEYS.userPreferences,
+      JSON.stringify({theme: 'dark', pwaBannerDismissedAt: null, movements: {}}),
+    );
+
+    expect(service.load().movements.hideReversal).toBe(true);
+
+    localStorage.setItem(
+      LOCAL_STORAGE_KEYS.userPreferences,
+      JSON.stringify({theme: 'dark', pwaBannerDismissedAt: null, movements: {hideReversal: 'yes'}}),
+    );
+
+    expect(service.load().movements.hideReversal).toBe(true);
+  });
+
+  it('preserves a stored hideReversal of false', () => {
+    localStorage.setItem(
+      LOCAL_STORAGE_KEYS.userPreferences,
+      JSON.stringify({
+        theme: 'light',
+        pwaBannerDismissedAt: null,
+        movements: {hideReversal: false},
+      }),
+    );
+
+    expect(service.load().movements.hideReversal).toBe(false);
   });
 });

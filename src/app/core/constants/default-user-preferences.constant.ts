@@ -6,4 +6,8 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   accounts: {
     hideBalance: false,
   },
+  movements: {
+    // Reversals are hidden by default to keep the movement history clean.
+    hideReversal: true,
+  },
 };

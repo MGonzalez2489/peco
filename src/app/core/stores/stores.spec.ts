@@ -4,10 +4,12 @@ import {Account} from '../models/account.model';
 import {AccountsStore} from './accounts.store';
 import {CatalogStore} from './catalog.store';
 import {MovementsStore} from './movements.store';
+import {UserPreferencesStore} from './user-preferences.store';
 
 describe('Finance stores', () => {
   let accountsStore: InstanceType<typeof AccountsStore>;
   let movementsStore: InstanceType<typeof MovementsStore>;
+  let userPreferencesStore: InstanceType<typeof UserPreferencesStore>;
 
   beforeEach(() => {
     localStorage.clear();
@@ -15,6 +17,7 @@ describe('Finance stores', () => {
 
     accountsStore = TestBed.inject(AccountsStore);
     movementsStore = TestBed.inject(MovementsStore);
+    userPreferencesStore = TestBed.inject(UserPreferencesStore);
   });
 
   it('initializes with only the root account at zero balance', () => {
@@ -284,5 +287,80 @@ describe('Finance stores', () => {
     const updated = accountsStore.accounts().find((item) => item.id === account.id);
     expect(updated?.pinToHome).toBe(!account.pinToHome);
     expect(updated?.currentBalance).toBe(before);
+  });
+
+  it('hides reverted movements and their contra-movements when the preference is enabled', () => {
+    const account = accountsStore.createAccount({
+      name: 'Ahorro',
+      initialBalance: 0,
+      type: 'SAVINGS',
+    });
+    if (!account) throw new Error('account must be created');
+
+    const movement = movementsStore.registerMovement({
+      accountId: account.id,
+      categoryId: 'services',
+      type: 'EXPENSE',
+      amount: 30,
+    });
+    if (!movement) throw new Error('registerMovement must not return null');
+
+    expect(userPreferencesStore.hideReversal()).toBe(true);
+    expect(movementsStore.revertMovement(movement.id)).toBe(true);
+    expect(movementsStore.movements().length).toBe(2);
+
+    expect(movementsStore.filteredMovements().length).toBe(0);
+    expect(movementsStore.movementsForAccount(account.id).length).toBe(0);
+    expect(movementsStore.recentMovements(5).length).toBe(0);
+  });
+
+  it('shows every movement when the reversal preference is disabled', () => {
+    const account = accountsStore.createAccount({
+      name: 'Ahorro',
+      initialBalance: 0,
+      type: 'SAVINGS',
+    });
+    if (!account) throw new Error('account must be created');
+
+    const movement = movementsStore.registerMovement({
+      accountId: account.id,
+      categoryId: 'services',
+      type: 'EXPENSE',
+      amount: 30,
+    });
+    if (!movement) throw new Error('registerMovement must not return null');
+
+    userPreferencesStore.updateMovementPreferences({hideReversal: false});
+
+    expect(movementsStore.revertMovement(movement.id)).toBe(true);
+
+    expect(movementsStore.filteredMovements().length).toBe(2);
+    expect(movementsStore.movementsForAccount(account.id).length).toBe(2);
+    expect(movementsStore.recentMovements(5).length).toBe(2);
+  });
+
+  it('keeps hiding the reversal pair when the preference is turned back on', () => {
+    const account = accountsStore.createAccount({
+      name: 'Ahorro',
+      initialBalance: 0,
+      type: 'SAVINGS',
+    });
+    if (!account) throw new Error('account must be created');
+
+    const movement = movementsStore.registerMovement({
+      accountId: account.id,
+      categoryId: 'services',
+      type: 'EXPENSE',
+      amount: 30,
+    });
+    if (!movement) throw new Error('registerMovement must not return null');
+
+    movementsStore.revertMovement(movement.id);
+
+    userPreferencesStore.updateMovementPreferences({hideReversal: false});
+    expect(movementsStore.filteredMovements().length).toBe(2);
+
+    userPreferencesStore.updateMovementPreferences({hideReversal: true});
+    expect(movementsStore.filteredMovements().length).toBe(0);
   });
 });

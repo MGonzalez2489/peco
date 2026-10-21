@@ -4,5 +4,4 @@ export interface MovementFilters {
   type: MovementFilterType;
   accountId: string;
   categoryId: string;
-  hideReversals: boolean;
 }

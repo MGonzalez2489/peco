@@ -26,6 +26,7 @@ export * from './group-settings-sections.util';
 export * from './is-future-date.util';
 export * from './is-income-schedule.util';
 export * from './is-liability.util';
+export * from './is-reversal-movement.util';
 export * from './resolve-scheduled-transaction-type.util';
 export * from './to-movement-type.util';
 export * from './is-schedule-due.util';
