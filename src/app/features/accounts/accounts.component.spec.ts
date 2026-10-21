@@ -51,20 +51,6 @@ describe('AccountsComponent', () => {
     expect(content).toContain('Ahorro emergencia');
   });
 
-  it('opens the edit modal when an account row is clicked', () => {
-    const target = accountsStore.accounts().find((account) => account.name === 'Tarjeta Oro');
-    if (!target) throw new Error('target account must exist');
-
-    const targetRow = rows().find((row) => row.textContent?.includes(target.name));
-    const editTrigger = targetRow?.querySelector<HTMLButtonElement>('button');
-    if (!editTrigger) throw new Error('row edit trigger must be rendered');
-
-    editTrigger.click();
-    fixture.detectChanges();
-
-    expect(fixture.componentInstance.editingAccount()?.id).toBe(target.id);
-  });
-
   it('opens the creation modal from the header button', () => {
     createButton().click();
     fixture.detectChanges();

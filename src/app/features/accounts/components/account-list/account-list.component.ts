@@ -21,8 +21,6 @@ import {PrivacyCurrencyPipe} from '@shared/pipes/privacy-currency.pipe';
 export class AccountListComponent {
   readonly accounts = input.required<Account[]>();
 
-  readonly editAccount = output<Account>();
-
   readonly creditUsage = getCreditUsage;
 
   readonly accountAccent = (account: Account): string =>
@@ -43,9 +41,5 @@ export class AccountListComponent {
     const goal = account.targetGoal ?? 0;
     if (goal <= 0) return 0;
     return Math.min(100, Math.max(0, Math.round((account.currentBalance / goal) * 100)));
-  }
-
-  onEditAccount(account: Account): void {
-    this.editAccount.emit(account);
   }
 }
