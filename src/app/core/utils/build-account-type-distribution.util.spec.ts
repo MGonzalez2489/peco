@@ -1,5 +1,5 @@
 import {Account} from '../models/account.model';
-import {groupAccountsByType} from './group-accounts-by-type.util';
+import {buildAccountTypeDistribution} from './build-account-type-distribution.util';
 
 const buildAccount = (overrides: Partial<Account>): Account => ({
   id: crypto.randomUUID(),
@@ -11,22 +11,27 @@ const buildAccount = (overrides: Partial<Account>): Account => ({
   ...overrides,
 });
 
-describe('groupAccountsByType', () => {
-  it('returns an empty summary when there are no accounts', () => {
-    expect(groupAccountsByType([])).toEqual([]);
+describe('buildAccountTypeDistribution', () => {
+  it('always returns the four canonical account types', () => {
+    const summaries = buildAccountTypeDistribution([]);
+
+    expect(summaries.map((summary) => summary.type)).toEqual([
+      'CASH',
+      'DEBIT',
+      'CREDIT',
+      'SAVINGS',
+    ]);
   });
 
-  it('only includes account types that are present', () => {
-    const summaries = groupAccountsByType([
-      buildAccount({type: 'CASH'}),
-      buildAccount({type: 'CREDIT', currentBalance: -500}),
-    ]);
+  it('keeps empty account types with a zero count and a zero total', () => {
+    const summaries = buildAccountTypeDistribution([buildAccount({type: 'CASH'})]);
+    const debit = summaries.find((summary) => summary.type === 'DEBIT');
 
-    expect(summaries.map((summary) => summary.type)).toEqual(['CASH', 'CREDIT']);
+    expect(debit).toMatchObject({count: 0, total: 0, label: 'Débito'});
   });
 
   it('aggregates counts and signed totals per account type', () => {
-    const summaries = groupAccountsByType([
+    const summaries = buildAccountTypeDistribution([
       buildAccount({type: 'CASH', currentBalance: 100}),
       buildAccount({type: 'CASH', currentBalance: 50}),
       buildAccount({type: 'CREDIT', currentBalance: -1200}),
@@ -44,7 +49,7 @@ describe('groupAccountsByType', () => {
   });
 
   it('orders summaries by the canonical account type list', () => {
-    const summaries = groupAccountsByType([
+    const summaries = buildAccountTypeDistribution([
       buildAccount({type: 'SAVINGS'}),
       buildAccount({type: 'CREDIT'}),
       buildAccount({type: 'DEBIT'}),
@@ -60,9 +65,10 @@ describe('groupAccountsByType', () => {
   });
 
   it('exposes the type color and icon for the summary card', () => {
-    const [summary] = groupAccountsByType([buildAccount({type: 'CREDIT'})]);
+    const summaries = buildAccountTypeDistribution([buildAccount({type: 'CREDIT'})]);
+    const credit = summaries.find((summary) => summary.type === 'CREDIT');
 
-    expect(summary.color).toBe('rose');
-    expect(summary.icon).toBe('credit-card');
+    expect(credit?.color).toBe('rose');
+    expect(credit?.icon).toBe('credit-card');
   });
 });

@@ -6,6 +6,7 @@ import {AppIconComponent} from '@shared/components/app-icon/app-icon.component';
 import {AccountFormModalComponent} from './components/account-form-modal.component';
 import {AccountListComponent} from './components/account-list/account-list.component';
 import {AccountTypeDistributionComponent} from './components/account-type-distribution/account-type-distribution.component';
+import {AccountTypeDistributionMobileComponent} from './components/account-type-distribution-mobile/account-type-distribution-mobile.component';
 
 @Component({
   selector: 'app-accounts',
@@ -14,6 +15,7 @@ import {AccountTypeDistributionComponent} from './components/account-type-distri
     AccountFormModalComponent,
     AccountListComponent,
     AccountTypeDistributionComponent,
+    AccountTypeDistributionMobileComponent,
     MovementFormModalComponent,
   ],
   templateUrl: './accounts.component.html',

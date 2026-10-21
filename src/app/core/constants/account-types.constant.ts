@@ -12,7 +12,7 @@ export const ACCOUNT_TYPES: AccountTypeDefinition[] = [
     key: 'DEBIT',
     name: 'Débito',
     pluralName: 'Débito',
-    color: 'blue',
+    color: 'sky',
     icon: 'credit-card',
   },
   {
