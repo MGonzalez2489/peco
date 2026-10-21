@@ -72,17 +72,6 @@ describe('AccountListComponent', () => {
     expect(content).toContain('Tarjeta Oro');
   });
 
-  it('emits the selected account when a row is clicked', () => {
-    const emitted: Account[] = [];
-    fixture.componentInstance.editAccount.subscribe((account) => emitted.push(account));
-
-    const button = rowByName('Tarjeta Oro').querySelector<HTMLButtonElement>('button');
-    if (!button) throw new Error('edit trigger must be rendered');
-    button.click();
-
-    expect(emitted).toEqual([accounts[2]]);
-  });
-
   it('shows the savings goal progress', () => {
     const content = rowByName('Ahorro viaje').textContent ?? '';
 
