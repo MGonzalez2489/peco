@@ -1,5 +1,15 @@
 [
   {
+    "version": "v0.0.9-a",
+    "fecha": "2026-10-21",
+    "highlights": [
+      "Nueva Funcionalidad: preferencias de usuario centralizadas con configuración de tema, ocultar saldos y gestión desde Ajustes",
+      "Nueva Funcionalidad: importación y exportación de preferencias de usuario en los respaldos de datos",
+      "Mejora de UX: distribución por tipo de cuenta unificada en todas las vistas, con indicador compacto adaptado al móvil",
+      "Mejora de UX: visualización de saldos sensible con opción para ocultarlos en toda la aplicación usando formato discreto"
+    ]
+  },
+  {
     "version": "v0.0.8-a",
     "fecha": "2026-10-11",
     "highlights": [
