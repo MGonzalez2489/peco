@@ -1,6 +1,6 @@
 {
   "name": "peco",
-  "version": "0.0.9-a",
+  "version": "0.0.10-a",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
