@@ -97,8 +97,8 @@ describe('AccountFormModalComponent', () => {
       .accounts()
       .find((account) => account.name === 'Tarjeta de crédito');
     expect(created?.type).toBe('CREDIT');
-    expect(created?.currentBalance).toBe(-1500);
-    expect(created?.creditLimit).toBe(15000);
+    expect(created?.currentBalance).toBe(-150000);
+    expect(created?.creditLimit).toBe(1500000);
     expect(created?.targetGoal).toBeUndefined();
   });
 
@@ -132,16 +132,16 @@ describe('AccountFormModalComponent', () => {
     submit();
 
     const created = accountsStore.accounts().find((account) => account.name === 'Cuenta de ahorro');
-    expect(created?.targetGoal).toBe(2000);
+    expect(created?.targetGoal).toBe(200000);
     expect(created?.creditLimit).toBeUndefined();
   });
 
   it('populates the credit limit when editing a credit account', async () => {
     const created = accountsStore.createAccount({
       name: 'Tarjeta de crédito',
-      initialBalance: -500,
+      initialBalance: -50000,
       type: 'CREDIT',
-      creditLimit: 12000,
+      creditLimit: 1200000,
       includeInTotal: true,
     });
     if (!created) throw new Error('account must be created');
@@ -155,14 +155,15 @@ describe('AccountFormModalComponent', () => {
     expect(form.controls['creditLimit'].value).toBe(12000);
   });
 
-  it('sanitizes negative input for non-credit accounts', async () => {
+  it('keeps the typed negative value so the rule can be explained', async () => {
     await open();
     setText('#cat-name', 'Cuenta de débito');
     selectType('DEBIT');
     setText('#cat-balance', '-100');
 
     const form = (fixture.componentInstance as unknown as {form: FormGroup}).form;
-    expect(form.controls['initialBalance'].value).toBe(100);
+    expect(form.controls['initialBalance'].value).toBe(-100);
+    expect(form.controls['initialBalance'].hasError('negativeBalance')).toBe(true);
   });
 
   it('rejects a negative balance for non-credit accounts', async () => {
@@ -175,7 +176,10 @@ describe('AccountFormModalComponent', () => {
     form.controls['initialBalance'].markAsTouched();
     fixture.detectChanges();
 
-    expect(form.controls['initialBalance'].hasError('min')).toBe(true);
+    expect(form.controls['initialBalance'].hasError('negativeBalance')).toBe(true);
+    expect(native().textContent).toContain(
+      'Solo las tarjetas de crédito pueden registrar un saldo inicial negativo',
+    );
 
     submit();
 
@@ -225,40 +229,40 @@ describe('AccountFormModalComponent', () => {
   });
 
   it('registers an income adjustment when the balance increases', async () => {
-    const account = seedAccount(1000);
+    const account = seedAccount(100000);
     await open(account);
     setText('#cat-balance', '1500');
     submit();
 
-    expect(accountById(account.id)?.currentBalance).toBe(1500);
+    expect(accountById(account.id)?.currentBalance).toBe(150000);
     expect(movementsStore.movements().length).toBe(1);
     expect(movementsStore.movements()[0]).toMatchObject({
       accountId: account.id,
       categoryId: ADJUSTMENT_CATEGORY_ID,
       type: 'INCOME',
-      amount: 500,
+      amount: 50000,
       note: 'Ajuste manual de saldo',
     });
   });
 
   it('registers an expense adjustment when the balance decreases', async () => {
-    const account = seedAccount(1500);
+    const account = seedAccount(150000);
     await open(account);
     setText('#cat-balance', '1200');
     submit();
 
-    expect(accountById(account.id)?.currentBalance).toBe(1200);
+    expect(accountById(account.id)?.currentBalance).toBe(120000);
     expect(movementsStore.movements().length).toBe(1);
     expect(movementsStore.movements()[0]).toMatchObject({
       accountId: account.id,
       categoryId: ADJUSTMENT_CATEGORY_ID,
       type: 'EXPENSE',
-      amount: 300,
+      amount: 30000,
     });
   });
 
   it('updates metadata without registering a movement when the balance is unchanged', async () => {
-    const account = seedAccount(1000);
+    const account = seedAccount(100000);
     await open(account);
     setText('#cat-balance', '1000');
     setText('#cat-name', 'Vacaciones');
@@ -290,7 +294,7 @@ describe('AccountFormModalComponent', () => {
       .accounts()
       .find((account) => account.name === 'Fondo de emergencia');
     expect(created?.includeInTotal).toBe(false);
-    expect(accountsStore.totalBalance()).toBe(100);
+    expect(accountsStore.totalBalance()).toBe(10000);
     expect(accountsStore.availableBalance()).toBe(0);
   });
 });

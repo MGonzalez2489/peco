@@ -3,11 +3,16 @@ import {LOCAL_STORAGE_KEYS} from '../constants/local-storage-keys.constant';
 import {SEED_ACCOUNTS} from '../constants/seed-accounts.constant';
 import {Account} from '../models/account.model';
 import {ensureRootAccount} from '../utils/ensure-root-account.util';
+import {migrateAmountsToCents} from '../utils/migrate-amounts-to-cents.util';
 import {readStorageArray} from '../utils/read-storage-array.util';
 import {writeStorageArray} from '../utils/write-storage-array.util';
 
 @Injectable({providedIn: 'root'})
 export class AccountsStorageService {
+  constructor() {
+    migrateAmountsToCents();
+  }
+
   getAccounts(): Account[] {
     const persisted = readStorageArray<Account>(LOCAL_STORAGE_KEYS.accounts);
     if (persisted) return ensureRootAccount(persisted);

@@ -1,5 +1,4 @@
 import {ChangeDetectionStrategy, Component, computed, inject, signal} from '@angular/core';
-import {CurrencyPipe} from '@angular/common';
 import {RouterLink} from '@angular/router';
 import {MOVEMENT_TYPE_PALETTE} from '@core/constants';
 import {ScheduledTransaction} from '@core/models';
@@ -16,6 +15,7 @@ import {
 } from '@core/utils';
 import {ExecuteScheduleModalComponent} from '@features/scheduled/components';
 import {AppIconComponent} from '@shared/components';
+import {PrivacyCurrencyPipe} from '@shared/pipes/privacy-currency.pipe';
 
 const MAX_UPCOMING_ITEMS = 5;
 const FALLBACK_CATEGORY_COLOR = '#94a3b8';
@@ -27,7 +27,7 @@ interface StatusPill {
 
 @Component({
   selector: 'app-upcoming-payments-widget',
-  imports: [CurrencyPipe, RouterLink, ExecuteScheduleModalComponent, AppIconComponent],
+  imports: [RouterLink, PrivacyCurrencyPipe, ExecuteScheduleModalComponent, AppIconComponent],
   templateUrl: './upcoming-payments-widget.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

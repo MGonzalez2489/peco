@@ -1,10 +1,10 @@
-import {CurrencyPipe} from '@angular/common';
 import {ChangeDetectionStrategy, Component, input, output} from '@angular/core';
 import {DistributionChartItem} from '@core/models';
+import {PrivacyCurrencyPipe} from '@shared/pipes/privacy-currency.pipe';
 
 @Component({
   selector: 'app-scheduled-distribution-legend',
-  imports: [CurrencyPipe],
+  imports: [PrivacyCurrencyPipe],
   templateUrl: './scheduled-distribution-legend.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

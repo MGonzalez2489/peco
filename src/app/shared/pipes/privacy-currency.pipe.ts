@@ -1,12 +1,12 @@
 import {Pipe, PipeTransform, inject} from '@angular/core';
 import {UserPreferencesStore} from '@core/stores/user-preferences.store';
-import {formatCurrency} from '@core/utils';
+import {formatCentsToCurrency} from '@core/utils';
 
 const OBSCURED_AMOUNT = '--.--';
 
 /**
- * Formats a monetary value as standard currency, or obscures it when the
- * user has enabled "hide balance" in the account preferences.
+ * Formats an integer cents amount as standard currency, or obscures it when
+ * the user has enabled "hide balance" in the account preferences.
  *
  * Marked as impure so every binding re-evaluates when the privacy
  * preference changes without the input value changing.
@@ -24,6 +24,6 @@ export class PrivacyCurrencyPipe implements PipeTransform {
       return '';
     }
 
-    return this.userPreferencesStore.hideBalance() ? OBSCURED_AMOUNT : formatCurrency(value);
+    return this.userPreferencesStore.hideBalance() ? OBSCURED_AMOUNT : formatCentsToCurrency(value);
   }
 }

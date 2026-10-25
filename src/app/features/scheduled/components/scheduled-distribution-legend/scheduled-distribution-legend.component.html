@@ -25,7 +25,7 @@
         <span
           class="w-20 shrink-0 text-right font-medium whitespace-nowrap tabular-nums text-slate-500"
         >
-          {{ item.amount | currency: 'USD' : 'symbol' : '1.2-2' }}
+          {{ item.amount | privacyCurrency }}
         </span>
         <span class="w-12 shrink-0 text-right font-semibold whitespace-nowrap tabular-nums">
           ({{ item.percentage }}%)

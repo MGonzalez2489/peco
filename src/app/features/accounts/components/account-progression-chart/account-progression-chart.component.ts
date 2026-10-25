@@ -5,7 +5,8 @@ import {
   accountColor,
   calculateChartAxisRange,
   calculateEventDrivenProgression,
-  formatCurrency,
+  formatCentsToCurrency,
+  fromCents,
   isSameMonthAndYear,
   movementBalanceImpact,
   resolveAccountColor,
@@ -56,7 +57,7 @@ export class AccountProgressionChartComponent {
 
   protected readonly ariaLabel = computed(
     () =>
-      `Evolución del saldo de ${this.account().name}. Saldo actual ${formatCurrency(
+      `Evolución del saldo de ${this.account().name}. Saldo actual ${formatCentsToCurrency(
         this.account().currentBalance,
       )}.`,
   );
@@ -186,7 +187,7 @@ export class AccountProgressionChartComponent {
 
   protected readonly tooltip = computed<ApexTooltip>(() => ({
     theme: this.themeService.isDark() ? 'dark' : 'light',
-    y: {formatter: (value: number) => formatCurrency(value)},
+    y: {formatter: (value: number) => formatCentsToCurrency(value)},
   }));
 
   private isAfterPeriod(isoDate: string, period: Period): boolean {
@@ -203,6 +204,6 @@ export class AccountProgressionChartComponent {
       currency: 'USD',
       notation: 'compact',
       maximumFractionDigits: 1,
-    }).format(value);
+    }).format(fromCents(value));
   }
 }

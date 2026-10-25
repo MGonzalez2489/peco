@@ -4,6 +4,7 @@ import {ScheduledTransactionType} from './scheduled-transaction-type.model';
 export interface ScheduledTransaction {
   id: string;
   name: string;
+  /** Positive magnitude in integer cents; the direction comes from `type`. */
   estimatedAmount: number;
   type: ScheduledTransactionType;
   categoryId: string;

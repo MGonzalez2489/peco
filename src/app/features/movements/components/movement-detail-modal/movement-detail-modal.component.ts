@@ -24,7 +24,7 @@ import {UserPreferencesStore} from '@core/stores/user-preferences.store';
 import {MovementType} from '@core/types';
 import {
   accountColor,
-  formatCurrency,
+  formatCentsToCurrency,
   formatLongDate,
   recurrenceLabel,
   resolveAccountColor,
@@ -229,7 +229,7 @@ export class MovementDetailModalComponent {
     if (!movement) return '';
     const amount = this.userPreferencesStore.hideBalance()
       ? '--.--'
-      : formatCurrency(movement.amount);
+      : formatCentsToCurrency(movement.amount);
     return `${MOVEMENT_TYPE_PALETTE[movement.type].sign}${amount}`;
   });
 

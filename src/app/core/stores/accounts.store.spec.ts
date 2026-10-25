@@ -98,6 +98,57 @@ describe('AccountsStore', () => {
     expect(store.totalBalance()).toBe(-900);
   });
 
+  it('clamps a negative initial balance for non-credit accounts', () => {
+    const account = store.createAccount({
+      name: 'Débito',
+      initialBalance: -10000,
+      type: 'DEBIT',
+    });
+    if (!account) throw new Error('account must be created');
+
+    expect(account.currentBalance).toBe(0);
+    expect(store.accounts().find((item) => item.id === account.id)?.currentBalance).toBe(0);
+  });
+
+  it('clamps a negative balance when updating a non-credit account', () => {
+    const account = store.createAccount({
+      name: 'Ahorro',
+      initialBalance: 50000,
+      type: 'SAVINGS',
+    });
+    if (!account) throw new Error('account must be created');
+
+    store.updateAccount(account.id, {currentBalance: -10000});
+
+    expect(store.accounts().find((item) => item.id === account.id)?.currentBalance).toBe(0);
+  });
+
+  it('clamps when an account is switched from credit to a non-credit type', () => {
+    const account = store.createAccount({
+      name: 'Tarjeta',
+      initialBalance: -50000,
+      type: 'CREDIT',
+      creditLimit: 500000,
+    });
+    if (!account) throw new Error('account must be created');
+
+    store.updateAccount(account.id, {type: 'DEBIT'});
+
+    expect(store.accounts().find((item) => item.id === account.id)?.currentBalance).toBe(0);
+  });
+
+  it('keeps a negative balance for credit accounts', () => {
+    const account = store.createAccount({
+      name: 'Tarjeta',
+      initialBalance: -150000,
+      type: 'CREDIT',
+      creditLimit: 500000,
+    });
+    if (!account) throw new Error('account must be created');
+
+    expect(account.currentBalance).toBe(-150000);
+  });
+
   it('updates the distribution when a credit payment is registered through a balance update', () => {
     const account = store.createAccount({
       name: 'Tarjeta',

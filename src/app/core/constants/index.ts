@@ -3,6 +3,7 @@ export * from './account-type-map.constant';
 export * from './account-type-palette.constant';
 export * from './account-types.constant';
 export * from './adjustment-category-id.constant';
+export * from './amount-schema-version.constant';
 export * from './app-version.constant';
 export * from './category-apply-type-label.constant';
 export * from './category-apply-type-visuals.constant';

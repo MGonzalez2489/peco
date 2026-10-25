@@ -18,5 +18,7 @@ export const monthlyEquivalent = (
 
   const step = Math.max(1, Math.floor(interval || 1));
 
-  return (amount * occurrences) / step;
+  // Amounts are integer cents, so the derived monthly equivalent must stay an
+  // integer too (a yearly amount divided by twelve can be fractional).
+  return Math.round((amount * occurrences) / step);
 };

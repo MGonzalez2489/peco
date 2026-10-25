@@ -16,7 +16,7 @@ import {AccountsStore} from '@core/stores/accounts.store';
 import {CatalogStore} from '@core/stores/catalog.store';
 import {MovementsStore} from '@core/stores/movements.store';
 import {MovementType} from '@core/types';
-import {accountColor, toAccountOption, toCategoryOption} from '@core/utils';
+import {accountColor, toAccountOption, toCents, toCategoryOption} from '@core/utils';
 import {AppSelectComponent, ModalComponent} from '@shared/components';
 import {CurrencyInputDirective} from '@shared/directives';
 
@@ -159,7 +159,8 @@ export class MovementFormModalComponent {
       accountId: raw.accountId ?? '',
       categoryId: raw.categoryId ?? '',
       type: raw.type ?? 'EXPENSE',
-      amount: raw.amount ?? 0,
+      // The input works in decimal dollars; movements persist integer cents.
+      amount: toCents(raw.amount ?? 0),
       note: raw.note?.trim() || undefined,
       targetAccountId: destinationId ?? undefined,
     });

@@ -4,7 +4,7 @@ import {Account, Movement} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {MovementsStore} from '@core/stores/movements.store';
 import {UserPreferencesStore} from '@core/stores/user-preferences.store';
-import {formatCurrency, getCreditUsage} from '@core/utils';
+import {formatCentsToCurrency, getCreditUsage} from '@core/utils';
 import {AccountTypeColorPipe} from '@shared/pipes/account-type-color.pipe';
 import {MovementListComponent, StatCardComponent} from '@shared/components';
 import {MovementDetailModalComponent} from '@features/movements/components/movement-detail-modal/movement-detail-modal.component';
@@ -43,7 +43,7 @@ export class DashboardComponent {
 
   readonly accountSubtext = (account: Account): string => {
     const format = (value: number): string =>
-      this.userPreferencesStore.hideBalance() ? '--.--' : formatCurrency(value);
+      this.userPreferencesStore.hideBalance() ? '--.--' : formatCentsToCurrency(value);
 
     const credit = getCreditUsage(account);
     if (credit) {

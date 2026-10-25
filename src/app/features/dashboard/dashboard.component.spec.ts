@@ -46,7 +46,7 @@ describe('DashboardComponent', () => {
       accountId: 'c-cash',
       categoryId: 'services',
       type: 'EXPENSE',
-      amount: 250,
+      amount: 25000,
     });
 
     const fixture = TestBed.createComponent(DashboardComponent);

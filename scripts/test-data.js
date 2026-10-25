@@ -25,8 +25,13 @@ const STORAGE_KEYS = {
   accounts: 'peco.accounts',
   movements: 'peco.movements',
   categories: 'peco.catalog.categories',
-  scheduledTransactions: 'peco_scheduled_transactions',
+  scheduledTransactions: 'peco.scheduled-transactions',
+  schemaVersion: 'peco.schema-version',
 };
+
+// Persisted amounts are integer cents; the generator works in decimal dollars
+// for readability and converts once, right before writing the fixture.
+const toCents = (amount) => Math.round(amount * 100);
 
 const ACCOUNT_NAMES = [
   'Cuenta de nómina',
@@ -831,14 +836,29 @@ const generate = () => {
 
   const dataFileRelativePath = `scripts/${path.basename(OUTPUT_FILE)}`;
 
+  const persistedAccounts = accounts.map((account) => ({
+    ...account,
+    currentBalance: toCents(account.currentBalance),
+    targetGoal: account.targetGoal === undefined ? undefined : toCents(account.targetGoal),
+  }));
+  const persistedMovements = movements.map((movement) => ({
+    ...movement,
+    amount: toCents(movement.amount),
+  }));
+  const persistedSchedules = scheduledTransactions.map((schedule) => ({
+    ...schedule,
+    estimatedAmount: toCents(schedule.estimatedAmount),
+  }));
+
   const backup = {
     version: pkg.version,
     exportedAt: NOW.toISOString(),
     data: {
-      [STORAGE_KEYS.accounts]: accounts,
-      [STORAGE_KEYS.movements]: movements,
+      [STORAGE_KEYS.accounts]: persistedAccounts,
+      [STORAGE_KEYS.movements]: persistedMovements,
       [STORAGE_KEYS.categories]: SEED_CATEGORIES,
-      [STORAGE_KEYS.scheduledTransactions]: scheduledTransactions,
+      [STORAGE_KEYS.scheduledTransactions]: persistedSchedules,
+      [STORAGE_KEYS.schemaVersion]: '2',
     },
   };
 
