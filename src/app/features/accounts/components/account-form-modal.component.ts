@@ -9,17 +9,28 @@ import {
   viewChild,
 } from '@angular/core';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
-import {FormBuilder, FormControl, ReactiveFormsModule, Validators} from '@angular/forms';
+import {
+  AbstractControl,
+  FormBuilder,
+  FormControl,
+  ReactiveFormsModule,
+  ValidationErrors,
+  Validators,
+} from '@angular/forms';
 import {ADJUSTMENT_CATEGORY_ID, ACCOUNT_TYPES} from '@core/constants';
 import {Account, SelectOption} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {MovementsStore} from '@core/stores/movements.store';
 import {AccountType} from '@core/types';
-import {accountColor} from '@core/utils';
+import {accountColor, fromCents, toCents} from '@core/utils';
 import {AppSelectComponent, ModalComponent} from '@shared/components';
 import {CurrencyInputDirective} from '@shared/directives';
 
 const ADJUSTMENT_NOTE = 'Ajuste manual de saldo';
+
+/** Rejects a negative value; only applied to account types that cannot be in debt. */
+const negativeBalanceForbidden = (control: AbstractControl): ValidationErrors | null =>
+  typeof control.value === 'number' && control.value < 0 ? {negativeBalance: true} : null;
 
 @Component({
   selector: 'app-account-form-modal',
@@ -52,7 +63,7 @@ export class AccountFormModalComponent {
     name: this.fb.control<string>('', Validators.required),
     type: this.fb.control<AccountType>('CASH', Validators.required),
     initialBalance: this.fb.control<number | null>(0, {
-      validators: [Validators.required, Validators.min(0)],
+      validators: [Validators.required, negativeBalanceForbidden],
     }),
     targetGoal: this.fb.control<number | null>(null, Validators.min(0)),
     creditLimit: this.fb.control<number | null>(null),
@@ -94,9 +105,9 @@ export class AccountFormModalComponent {
       this.form.reset({
         name: editing.name,
         type: editing.type,
-        initialBalance: editing.currentBalance,
-        targetGoal: editing.targetGoal ?? null,
-        creditLimit: editing.creditLimit ?? null,
+        initialBalance: fromCents(editing.currentBalance),
+        targetGoal: editing.targetGoal != null ? fromCents(editing.targetGoal) : null,
+        creditLimit: editing.creditLimit != null ? fromCents(editing.creditLimit) : null,
         includeInTotal: editing.includeInTotal ?? true,
         pinToHome: editing.pinToHome ?? false,
         note: editing.note ?? '',
@@ -126,7 +137,7 @@ export class AccountFormModalComponent {
     if (type === 'CREDIT') {
       balance.setValidators([Validators.required]);
     } else {
-      balance.setValidators([Validators.required, Validators.min(0)]);
+      balance.setValidators([Validators.required, negativeBalanceForbidden]);
     }
     balance.updateValueAndValidity();
   }
@@ -168,12 +179,13 @@ export class AccountFormModalComponent {
     const raw = this.form.getRawValue();
     const editing = this.account();
     const isCredit = raw.type === 'CREDIT';
-    const targetGoal = isCredit ? undefined : (raw.targetGoal ?? undefined);
-    const creditLimit = isCredit ? (raw.creditLimit ?? undefined) : undefined;
+    const targetGoal = isCredit || raw.targetGoal == null ? undefined : toCents(raw.targetGoal);
+    const creditLimit = !isCredit || raw.creditLimit == null ? undefined : toCents(raw.creditLimit);
+    // The form works in decimal dollars; the store and models persist cents.
+    const newBalanceInCents = toCents(raw.initialBalance ?? 0);
 
     if (editing) {
-      const newBalance = raw.initialBalance ?? 0;
-      const delta = Math.round((newBalance - editing.currentBalance) * 100) / 100;
+      const delta = newBalanceInCents - editing.currentBalance;
 
       if (delta !== 0) {
         this.movementsStore.registerMovement({
@@ -187,7 +199,7 @@ export class AccountFormModalComponent {
 
       this.accountsStore.updateAccount(editing.id, {
         name: raw.name?.trim() ?? '',
-        currentBalance: newBalance,
+        currentBalance: newBalanceInCents,
         type: raw.type ?? editing.type,
         targetGoal,
         creditLimit,
@@ -198,7 +210,7 @@ export class AccountFormModalComponent {
     } else {
       this.accountsStore.createAccount({
         name: raw.name?.trim() ?? '',
-        initialBalance: raw.initialBalance ?? 0,
+        initialBalance: newBalanceInCents,
         type: raw.type ?? 'CASH',
         targetGoal,
         creditLimit,
@@ -215,6 +227,9 @@ export class AccountFormModalComponent {
   errorFor<T>(field: FormControl<T>): string | null {
     if (!field.touched || !field.errors) return null;
     if (field.hasError('required')) return 'Este campo es obligatorio.';
+    if (field.hasError('negativeBalance')) {
+      return 'Solo las tarjetas de crédito pueden registrar un saldo inicial negativo';
+    }
     if (field.hasError('min')) return `El valor mínimo es ${field.getError('min').min}.`;
     return 'Valor inválido.';
   }

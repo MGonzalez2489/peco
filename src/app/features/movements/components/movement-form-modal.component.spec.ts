@@ -145,7 +145,7 @@ describe('MovementFormModalComponent', () => {
     submit();
 
     expect(movementsStore.movements().length).toBe(1);
-    expect(movementsStore.movements()[0]?.amount).toBe(500);
+    expect(movementsStore.movements()[0]?.amount).toBe(50000);
     expect(scheduledStore.scheduledTransactions()).toEqual([]);
   });
 });

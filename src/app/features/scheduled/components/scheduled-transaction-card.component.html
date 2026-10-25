@@ -69,7 +69,7 @@
       <span class="flex shrink-0 items-center justify-end gap-3 lg:col-span-3">
         <span class="text-right">
           <span class="block text-sm font-bold tabular-nums {{ amountPalette() }}">
-            {{ schedule().estimatedAmount | currency: 'USD' : 'symbol' : '1.2-2' }}
+            {{ schedule().estimatedAmount | privacyCurrency }}
           </span>
           <span
             class="mt-0.5 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold"

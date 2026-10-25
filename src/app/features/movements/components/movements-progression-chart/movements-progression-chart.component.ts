@@ -1,7 +1,12 @@
 import {ChangeDetectionStrategy, Component, computed, inject, input} from '@angular/core';
 import {Movement, ProgressionPoint} from '@core/models';
 import {ThemeService} from '@core/services/theme.service';
-import {calculateChartAxisRange, calculateMovementProgression, formatCurrency} from '@core/utils';
+import {
+  calculateChartAxisRange,
+  calculateMovementProgression,
+  formatCentsToCurrency,
+  fromCents,
+} from '@core/utils';
 import {
   ApexAxisChartSeries,
   ApexChart,
@@ -54,7 +59,7 @@ export class MovementsProgressionChartComponent {
   protected readonly ariaLabel = computed(() => {
     const points = this.progression();
     const net = points.length > 0 ? points[points.length - 1].y : 0;
-    return `Progresión de ingresos y egresos del período. Balance ${formatCurrency(net)}.`;
+    return `Progresión de ingresos y egresos del período. Balance ${formatCentsToCurrency(net)}.`;
   });
 
   protected readonly series = computed<ApexAxisChartSeries>(() => [
@@ -153,7 +158,7 @@ export class MovementsProgressionChartComponent {
 
   protected readonly tooltip = computed<ApexTooltip>(() => ({
     theme: this.themeService.isDark() ? 'dark' : 'light',
-    y: {formatter: (value: number) => formatCurrency(value)},
+    y: {formatter: (value: number) => formatCentsToCurrency(value)},
   }));
 
   private shortCurrency(value: number): string {
@@ -162,6 +167,6 @@ export class MovementsProgressionChartComponent {
       currency: 'USD',
       notation: 'compact',
       maximumFractionDigits: 1,
-    }).format(value);
+    }).format(fromCents(value));
   }
 }

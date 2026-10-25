@@ -14,6 +14,15 @@ import {BalanceOperation} from '../types/balance-operation.type';
 import {buildAccountTypeDistribution} from '../utils/build-account-type-distribution.util';
 import {calculateNetLiquidBalance} from '../utils/calculate-net-liquid-balance.util';
 import {calculateTotalLiabilities} from '../utils/calculate-total-liabilities.util';
+import {isNegativeBalanceAllowed} from '../utils/is-negative-balance-allowed.util';
+
+/**
+ * Defensive guard: only credit accounts may persist a negative balance. Any
+ * other account type is clamped to zero so the invariant holds even when a
+ * caller bypasses the form validation.
+ */
+const clampBalance = (type: Account['type'], balance: number): number =>
+  isNegativeBalanceAllowed(type) ? balance : Math.max(0, balance);
 
 interface AccountsState {
   accounts: Account[];
@@ -69,7 +78,7 @@ export const AccountsStore = signalStore(
           const account: Account = {
             id: crypto.randomUUID(),
             name: dto.name.trim(),
-            currentBalance: dto.initialBalance,
+            currentBalance: clampBalance(dto.type, dto.initialBalance),
             type: dto.type,
             includeInTotal: dto.includeInTotal ?? true,
             createdAt: dto.createdAt ?? new Date().toISOString(),
@@ -91,11 +100,16 @@ export const AccountsStore = signalStore(
       },
       updateAccount(id: string, changes: Partial<Account>): void {
         commit(
-          store
-            .accounts()
-            .map((account) =>
-              account.id === id ? {...account, ...changes, id: account.id} : account,
-            ),
+          store.accounts().map((account) => {
+            if (account.id !== id) return account;
+
+            const merged = {...account, ...changes, id: account.id};
+
+            return {
+              ...merged,
+              currentBalance: clampBalance(merged.type, merged.currentBalance),
+            };
+          }),
         );
       },
       deleteAccount(id: string): boolean {

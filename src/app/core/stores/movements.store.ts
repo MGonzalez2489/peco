@@ -14,7 +14,7 @@ import {MovementsStorageService} from '../services/movements-storage.service';
 import {BalanceOperation} from '../types/balance-operation.type';
 import {buildReversalMovement} from '../utils/build-reversal-movement.util';
 import {calculateMovementTotals} from '../utils/calculate-movement-totals.util';
-import {formatCurrency} from '../utils/format-currency.util';
+import {formatCentsToCurrency} from '../utils/format-cents-to-currency.util';
 import {groupMovementsByDate} from '../utils/group-movements-by-date.util';
 import {isReversalMovement} from '../utils/is-reversal-movement.util';
 import {AccountsStore} from './accounts.store';
@@ -207,7 +207,7 @@ export const MovementsStore = signalStore(
             type: 'TRANSFER',
             amount: account.currentBalance,
             targetAccountId,
-            note: `Eliminación de cuenta ${account.name} traspaso ${formatCurrency(account.currentBalance)}`,
+            note: `Eliminación de cuenta ${account.name} traspaso ${formatCentsToCurrency(account.currentBalance)}`,
           });
         }
 

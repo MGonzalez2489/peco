@@ -571,3 +571,86 @@ the export/import specs still pass and that the new field round-trips.
 
 - All code, types, inputs, and components MUST be in English.
 - Accessible labels (aria-label) on icon-only buttons MUST be in Spanish (e.g., aria-label="Buscar movimiento").
+
+# Monetary Values & Financial Rules
+
+## 1. Storage in Integer Cents
+
+**MANDATORY POLICY:** Every monetary amount MUST be persisted, modeled, and manipulated as an
+**integer number of cents**. Decimal values are only allowed at the UI boundary (form controls and
+formatted display strings).
+
+- Models, DTOs, stores, and `localStorage` payloads hold integer cents (`$1,500.00` is `150000`).
+- Money inputs keep working in decimal dollars. Convert at the form boundary only:
+  - Prefill: `fromCents(model.amount)`.
+  - Submit: `toCents(rawFormValue)`.
+- Never store, sum, or compare decimal dollars. Accounting totals are plain integer additions.
+- Transaction and scheduled amounts are always **positive magnitudes**; income/expense direction
+  comes from the `type` field, never from the sign of the amount.
+
+## 2. Conversion Utilities
+
+The conversion helpers live in `src/app/core/utils/` (one export per file, as always):
+
+| Utility | File | Behavior |
+| --- | --- | --- |
+| `toCents(amount)` | `to-cents.util.ts` | `Math.round(amount * 100)` |
+| `fromCents(cents)` | `from-cents.util.ts` | `cents / 100` |
+| `formatCentsToCurrency(cents)` | `format-cents-to-currency.util.ts` | Localized `$` string |
+| `formatCurrency(decimal)` | `format-currency.util.ts` | Decimal-only formatter |
+
+- Use `formatCentsToCurrency` for every value that comes from a model, store, or pipe.
+- `formatCurrency` is reserved for values already converted to decimal (e.g. before passing a
+  cents series to a compact chart axis, divide with `fromCents` first).
+- The global `privacyCurrency` pipe consumes **cents** and already applies
+  `formatCentsToCurrency`. Prefer it in templates over the Angular `currency` pipe.
+
+## 3. Two-Decimal Input Limit
+
+Every money input MUST use `CurrencyInputDirective` (`appCurrencyInput`), which truncates typed
+values to at most two decimals (`12.345` becomes `12.34`). Never accept raw `type="number"` for
+money.
+
+## 4. Negative Balances Are Credit-Only
+
+**MANDATORY POLICY:** Only accounts with `type === 'CREDIT'` may hold a negative balance (an
+outstanding debt). Every other account type must keep a balance `>= 0`.
+
+- UI: `AccountFormModalComponent` applies the `negativeBalanceForbidden` validator to non-credit
+  types and shows the Spanish error
+  `"Solo las tarjetas de crédito pueden registrar un saldo inicial negativo"`.
+- Money inputs allow typing `-` for every account type so the validator can explain the rule;
+  do not silently strip the minus sign.
+- Store: `AccountsStore.createAccount` / `updateAccount` defensively clamp non-credit balances to
+  `0` with `Math.max(0, balance)`. Never rely on the form alone to enforce the invariant.
+- Scheduled transfers, movements, and goals must stay non-negative magnitudes.
+
+## 5. Schema Migration
+
+- The cents schema is versioned by `AMOUNT_SCHEMA_VERSION` and persisted at
+  `LOCAL_STORAGE_KEYS.schemaVersion` (`peco.schema-version`).
+- `migrateAmountsToCents()` performs a one-time, global migration of every amount-bearing key
+  (accounts, movements, scheduled transactions, and their legacy aliases) and stamps the version.
+- It runs from the `AccountsStorageService`, `MovementsStorageService`, and
+  `ScheduledTransactionsStorageService` constructors **before** any read.
+- New amount-bearing keys MUST be added to the migration map, and the schema version bumped
+  whenever the stored representation changes.
+
+## 6. Backup Compatibility
+
+- `exportData()` writes cents because it serializes the current `localStorage` state.
+- `importData()` runs `migrateBackupAmountsToCents()` on every imported payload: backups without
+  `peco.schema-version` predate the cents schema and are converted before they are written.
+- The import always stamps `peco.schema-version` so the startup migration does not convert the
+  imported cents a second time.
+- `resetAllData()` also stamps the schema version after seeding cents data.
+
+## 7. Verification Checklist
+
+Before shipping a change that touches money:
+
+1. A non-credit account cannot save a negative balance and shows the Spanish error.
+2. A credit card saved with `-$1,500.00` persists `-150000` cents and displays `-$1,500.00`.
+3. Money inputs reject a third decimal.
+4. Existing decimal `localStorage` data migrates exactly once and is not double-converted.
+5. `npm test` and `ng build` pass.

@@ -1,4 +1,5 @@
 import {TestBed} from '@angular/core/testing';
+import {AMOUNT_SCHEMA_VERSION} from '../constants/amount-schema-version.constant';
 import {LOCAL_STORAGE_KEYS} from '../constants/local-storage-keys.constant';
 import {BackupData} from '../models/backup-data.model';
 import {CatalogStore} from '../stores/catalog.store';
@@ -182,6 +183,23 @@ describe('DataBackupService selective import', () => {
     expect(localStorage.getItem(LOCAL_STORAGE_KEYS.movements)).toContain('"m"');
     expect(localStorage.getItem(LOCAL_STORAGE_KEYS.categories)).toContain('"cat"');
     expect(localStorage.getItem(LOCAL_STORAGE_KEYS.scheduledTransactions)).toBe('[{"id":"keep"}]');
+  });
+
+  it('keeps cents from a current backup whose schema version was parsed as a number', async () => {
+    await service.importData(
+      buildFile({
+        // `exportData()` JSON-parses the stored `'2'`, so a real backup carries
+        // the numeric version and must not be treated as legacy decimals.
+        [LOCAL_STORAGE_KEYS.schemaVersion]: Number(AMOUNT_SCHEMA_VERSION),
+        [LOCAL_STORAGE_KEYS.accounts]: [{id: 'a', currentBalance: -150000}],
+        [LOCAL_STORAGE_KEYS.movements]: [{id: 'm', amount: 2510}],
+      }),
+      {accounts: true, movements: true, scheduledTransactions: false, preferences: false},
+    );
+
+    expect(localStorage.getItem(LOCAL_STORAGE_KEYS.accounts)).toContain('"currentBalance":-150000');
+    expect(localStorage.getItem(LOCAL_STORAGE_KEYS.movements)).toContain('"amount":2510');
+    expect(localStorage.getItem(LOCAL_STORAGE_KEYS.schemaVersion)).toBe(AMOUNT_SCHEMA_VERSION);
   });
 
   it('keeps current movements when only accounts are selected', async () => {

@@ -13,7 +13,12 @@ import {map} from 'rxjs';
 import {Account, Movement, SelectOption} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {MovementsStore} from '@core/stores/movements.store';
-import {formatCurrency, getCreditUsage, isSameMonthAndYear, toAccountOption} from '@core/utils';
+import {
+  formatCentsToCurrency,
+  getCreditUsage,
+  isSameMonthAndYear,
+  toAccountOption,
+} from '@core/utils';
 import {
   AppIconComponent,
   AppSelectComponent,
@@ -110,7 +115,7 @@ export class AccountDetailComponent {
   readonly transferDestinationOptions = computed<SelectOption[]>(() =>
     this.otherAccounts().map((account) => ({
       ...toAccountOption(account),
-      label: `${account.name} (${formatCurrency(account.currentBalance)})`,
+      label: `${account.name} (${formatCentsToCurrency(account.currentBalance)})`,
     })),
   );
 
@@ -130,7 +135,7 @@ export class AccountDetailComponent {
     if (account.currentBalance === 0) {
       return `La cuenta "${account.name}" se eliminará junto con su historial. ¿Deseas continuar?`;
     }
-    return `La cuenta "${account.name}" tiene un saldo de ${formatCurrency(account.currentBalance)}. Se creará una transferencia automática y luego se eliminará.`;
+    return `La cuenta "${account.name}" tiene un saldo de ${formatCentsToCurrency(account.currentBalance)}. Se creará una transferencia automática y luego se eliminará.`;
   });
 
   readonly accountGoalProgress = computed(() => {

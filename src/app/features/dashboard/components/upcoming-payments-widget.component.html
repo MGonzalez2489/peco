@@ -55,8 +55,7 @@
             <!-- COLUMNS 10-12: AMOUNT & STATUS -->
             <div class="flex shrink-0 flex-col items-end gap-1 lg:col-span-3 justify-end lg:gap-2">
               <span class="text-sm font-bold tabular-nums {{ amountText(schedule) }}">
-                {{ amountSign(schedule)
-                }}{{ schedule.estimatedAmount | currency: 'USD' : 'symbol' : '1.2-2' }}
+                {{ amountSign(schedule) }}{{ schedule.estimatedAmount | privacyCurrency }}
               </span>
               <span
                 class="inline-flex max-w-full items-center rounded-full px-2 py-0.5 text-[11px] font-semibold {{
@@ -103,7 +102,7 @@
         Gestionar
       </a>
       <p class="text-right text-xs text-slate-400 dark:text-slate-500">
-        Egresos pendientes: {{ nextDueAmount() | currency: 'USD' : 'symbol' : '1.2-2' }}
+        Egresos pendientes: {{ nextDueAmount() | privacyCurrency }}
       </p>
     </div>
   }

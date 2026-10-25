@@ -1,4 +1,3 @@
-import {CurrencyPipe} from '@angular/common';
 import {ChangeDetectionStrategy, Component, computed, inject, signal} from '@angular/core';
 import {DistributionChartItem, ScheduledTransaction} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
@@ -11,6 +10,7 @@ import {ScheduledDistributionChartComponent} from './components/scheduled-distri
 import {ScheduledFiltrosModalComponent} from './components/scheduled-filtros-modal/scheduled-filtros-modal.component';
 import {ScheduledTransactionCardComponent} from './components/scheduled-transaction-card.component';
 import {ScheduledTransactionFormModalComponent} from './components/scheduled-transaction-form-modal.component';
+import {PrivacyCurrencyPipe} from '@shared/pipes/privacy-currency.pipe';
 
 type DistributionType = 'EXPENSE' | 'INCOME';
 type MobileSection = 'summary' | 'transactions';
@@ -18,7 +18,7 @@ type MobileSection = 'summary' | 'transactions';
 @Component({
   selector: 'app-scheduled-transactions',
   imports: [
-    CurrencyPipe,
+    PrivacyCurrencyPipe,
     AppIconComponent,
     ScheduledTransactionCardComponent,
     ScheduledTransactionFormModalComponent,

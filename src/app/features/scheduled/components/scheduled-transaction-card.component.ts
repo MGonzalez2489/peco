@@ -7,7 +7,6 @@ import {
   output,
   signal,
 } from '@angular/core';
-import {CurrencyPipe} from '@angular/common';
 import {formatLocalDate, isScheduleDue, recurrenceLabel, toSoftCategoryColor} from '@core/utils';
 import {ScheduledTransaction} from '@core/models';
 import {CatalogStore} from '@core/stores/catalog.store';
@@ -15,12 +14,13 @@ import {AccountsStore} from '@core/stores/accounts.store';
 import {ScheduledTransactionsStore} from '@core/stores/scheduled-transactions.store';
 import {ScheduledTransactionTypeKey} from '@core/types';
 import {AppIconComponent, ConfirmModalComponent} from '@shared/components';
+import {PrivacyCurrencyPipe} from '@shared/pipes/privacy-currency.pipe';
 
 const FALLBACK_CATEGORY_COLOR = '#94a3b8';
 
 @Component({
   selector: 'app-scheduled-transaction-card',
-  imports: [CurrencyPipe, ConfirmModalComponent, AppIconComponent],
+  imports: [PrivacyCurrencyPipe, ConfirmModalComponent, AppIconComponent],
   templateUrl: './scheduled-transaction-card.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

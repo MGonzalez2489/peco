@@ -40,16 +40,16 @@ describe('AccountListComponent', () => {
       }),
       buildAccount({
         name: 'Ahorro viaje',
-        currentBalance: 800,
+        currentBalance: 80000,
         type: 'SAVINGS',
-        targetGoal: 2000,
+        targetGoal: 200000,
         pinToHome: true,
       }),
       buildAccount({
         name: 'Tarjeta Oro',
-        currentBalance: -1200,
+        currentBalance: -120000,
         type: 'CREDIT',
-        creditLimit: 5000,
+        creditLimit: 500000,
       }),
     ];
 

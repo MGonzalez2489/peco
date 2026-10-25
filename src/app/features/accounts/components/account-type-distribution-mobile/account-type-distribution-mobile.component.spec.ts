@@ -29,10 +29,10 @@ describe('AccountTypeDistributionMobileComponent', () => {
 
     fixture = TestBed.createComponent(AccountTypeDistributionMobileComponent);
     fixture.componentRef.setInput('summaries', [
-      buildSummary({type: 'CASH', label: 'Efectivo', count: 1, total: 250}),
-      buildSummary({type: 'DEBIT', label: 'Débito', count: 2, total: 1000}),
-      buildSummary({type: 'CREDIT', label: 'Crédito', count: 1, total: -1200}),
-      buildSummary({type: 'SAVINGS', label: 'Ahorro', count: 3, total: 450}),
+      buildSummary({type: 'CASH', label: 'Efectivo', count: 1, total: 25000}),
+      buildSummary({type: 'DEBIT', label: 'Débito', count: 2, total: 100000}),
+      buildSummary({type: 'CREDIT', label: 'Crédito', count: 1, total: -120000}),
+      buildSummary({type: 'SAVINGS', label: 'Ahorro', count: 3, total: 45000}),
     ]);
     fixture.detectChanges();
   });
@@ -62,7 +62,7 @@ describe('AccountTypeDistributionMobileComponent', () => {
 
   it('keeps a column for the account types without accounts', () => {
     fixture.componentRef.setInput('summaries', [
-      buildSummary({type: 'CASH', count: 1, total: 100}),
+      buildSummary({type: 'CASH', count: 1, total: 10000}),
     ]);
     fixture.detectChanges();
 

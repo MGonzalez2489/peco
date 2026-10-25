@@ -34,9 +34,11 @@ import {
 import {
   accountColor,
   defaultStopDate,
+  fromCents,
   isFutureDate,
   resolveScheduledTransactionType,
   toAccountOption,
+  toCents,
   toCategoryOption,
   toMovementType,
   tomorrowIsoDate,
@@ -210,7 +212,7 @@ export class ScheduledTransactionFormModalComponent {
 
       this.form.reset({
         name: current?.name ?? '',
-        estimatedAmount: current?.estimatedAmount ?? 0,
+        estimatedAmount: current ? fromCents(current.estimatedAmount) : 0,
         type,
         categoryId: current?.categoryId ?? '',
         sourceAccountId: current?.sourceAccountId ?? accounts[0]?.id ?? '',
@@ -278,7 +280,8 @@ export class ScheduledTransactionFormModalComponent {
     const stopCondition = raw.stopCondition ?? 'NEVER';
     const base = {
       name,
-      estimatedAmount: raw.estimatedAmount ?? 0,
+      // The input works in decimal dollars; schedules persist integer cents.
+      estimatedAmount: toCents(raw.estimatedAmount ?? 0),
       type: resolveScheduledTransactionType(raw.type),
       categoryId: raw.categoryId ?? '',
       sourceAccountId: raw.sourceAccountId ?? '',

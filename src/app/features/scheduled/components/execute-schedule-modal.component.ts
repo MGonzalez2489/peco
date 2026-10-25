@@ -1,6 +1,6 @@
 import {ChangeDetectionStrategy, Component, computed, effect, input, output} from '@angular/core';
 import {FormControl, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
-import {formatCurrency} from '@core/utils';
+import {formatCentsToCurrency, fromCents, toCents} from '@core/utils';
 import {ModalComponent} from '@shared/components';
 import {CurrencyInputDirective} from '@shared/directives';
 
@@ -17,8 +17,10 @@ type ExecuteForm = FormGroup<{
 export class ExecuteScheduleModalComponent {
   readonly isOpen = input(false);
   readonly name = input('');
+  /** Estimated amount in integer cents. */
   readonly estimatedAmount = input(0);
 
+  /** Emits the applied amount in integer cents. */
   readonly applied = output<number>();
   readonly closed = output<void>();
 
@@ -31,12 +33,12 @@ export class ExecuteScheduleModalComponent {
 
   private readonly amountControl = this.form.controls.amount;
 
-  readonly estimatedLabel = computed(() => formatCurrency(this.estimatedAmount()));
+  readonly estimatedLabel = computed(() => formatCentsToCurrency(this.estimatedAmount()));
 
   constructor() {
     effect(() => {
       if (this.isOpen()) {
-        this.amountControl.setValue(this.estimatedAmount());
+        this.amountControl.setValue(fromCents(this.estimatedAmount()));
       }
     });
   }
@@ -45,10 +47,10 @@ export class ExecuteScheduleModalComponent {
     this.form.markAllAsTouched();
     if (this.form.invalid) return;
 
-    this.applied.emit(this.amountControl.value ?? this.estimatedAmount());
+    this.applied.emit(toCents(this.amountControl.value));
   }
 
   useEstimate(): void {
-    this.amountControl.setValue(this.estimatedAmount());
+    this.amountControl.setValue(fromCents(this.estimatedAmount()));
   }
 }

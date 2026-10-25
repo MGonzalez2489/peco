@@ -1,9 +1,9 @@
-import {CurrencyPipe} from '@angular/common';
 import {ChangeDetectionStrategy, Component, computed, inject, input, output} from '@angular/core';
 import {DistributionChartItem} from '@core/models';
 import {ThemeService} from '@core/services/theme.service';
-import {formatCurrency, toSoftCategoryColor} from '@core/utils';
+import {formatCentsToCurrency, toSoftCategoryColor} from '@core/utils';
 import {AppIconComponent} from '@shared/components/app-icon/app-icon.component';
+import {PrivacyCurrencyPipe} from '@shared/pipes/privacy-currency.pipe';
 import {
   ApexChart,
   ApexDataLabels,
@@ -24,9 +24,9 @@ interface ChartSlice extends DistributionChartItem {
 @Component({
   selector: 'app-scheduled-distribution-chart',
   imports: [
-    CurrencyPipe,
     NgApexchartsModule,
     AppIconComponent,
+    PrivacyCurrencyPipe,
     ScheduledDistributionLegendComponent,
   ],
   templateUrl: './scheduled-distribution-chart.component.html',
@@ -63,7 +63,7 @@ export class ScheduledDistributionChartComponent {
 
   protected readonly ariaLabel = computed(
     () =>
-      `Distribución de ${this.emptyStateLabel()} programados por categoría. Total ${formatCurrency(
+      `Distribución de ${this.emptyStateLabel()} programados por categoría. Total ${formatCentsToCurrency(
         this.totalAmount(),
       )}.`,
   );
@@ -167,6 +167,6 @@ export class ScheduledDistributionChartComponent {
   private tooltipValue(value: number): string {
     const total = this.chartSlices().reduce((sum, slice) => sum + slice.amount, 0);
     const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
-    return `${formatCurrency(value)} · ${percentage}%`;
+    return `${formatCentsToCurrency(value)} · ${percentage}%`;
   }
 }

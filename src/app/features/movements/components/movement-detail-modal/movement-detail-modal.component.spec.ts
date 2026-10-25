@@ -11,7 +11,7 @@ const baseMovement = (overrides: Partial<Movement> = {}): Movement => ({
   accountId: 'c-cash',
   categoryId: 'services',
   type: 'EXPENSE',
-  amount: 861,
+  amount: 86100,
   date: new Date(2026, 9, 16, 6, 50).toISOString(),
   ...overrides,
 });

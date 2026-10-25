@@ -1,4 +1,5 @@
 import {Injectable, inject} from '@angular/core';
+import {AMOUNT_SCHEMA_VERSION} from '../constants/amount-schema-version.constant';
 import {APP_VERSION} from '../constants/app-version.constant';
 import {DEFAULT_USER_PREFERENCES} from '../constants/default-user-preferences.constant';
 import {LOCAL_STORAGE_KEYS} from '../constants/local-storage-keys.constant';
@@ -10,6 +11,7 @@ import {UserPreferencesStore} from '../stores/user-preferences.store';
 import {BackupImportSelection} from '../types/backup-import-selection.type';
 import {buildBackupFilename} from '../utils/build-backup-filename.util';
 import {isAppStorageKey} from '../utils/is-app-storage-key.util';
+import {migrateBackupAmountsToCents} from '../utils/migrate-backup-amounts.util';
 
 /**
  * Legacy preference keys persisted before the consolidated `peco.user-preferences`
@@ -70,16 +72,22 @@ export class DataBackupService {
     if (!this.isBackupData(parsed)) return false;
 
     const keys = this.resolveImportKeys(selection);
+    // Backups created before the cents schema still hold decimal amounts.
+    const importedData = migrateBackupAmountsToCents(parsed.data);
 
     this.clearEntries(keys);
 
     for (const key of keys) {
-      if (!(key in parsed.data)) continue;
-      this.writeValue(key, parsed.data[key]);
+      if (!(key in importedData)) continue;
+      this.writeValue(key, importedData[key]);
     }
 
+    // The payload was normalized to cents, so stamping the version prevents the
+    // startup migration from converting it again after the reload.
+    this.writeValue(LOCAL_STORAGE_KEYS.schemaVersion, AMOUNT_SCHEMA_VERSION);
+
     if (selection.preferences) {
-      this.importPreferences(parsed.data);
+      this.importPreferences(importedData);
     }
 
     window.location.reload();
@@ -94,6 +102,7 @@ export class DataBackupService {
     this.writeValue(LOCAL_STORAGE_KEYS.categories, SEED_CATEGORIES);
     this.writeValue(LOCAL_STORAGE_KEYS.scheduledTransactions, []);
     this.writeValue(LOCAL_STORAGE_KEYS.userPreferences, DEFAULT_USER_PREFERENCES);
+    this.writeValue(LOCAL_STORAGE_KEYS.schemaVersion, AMOUNT_SCHEMA_VERSION);
 
     window.location.reload();
   }

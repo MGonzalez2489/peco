@@ -31,12 +31,16 @@ describe('AccountsComponent', () => {
     accountsStore = TestBed.inject(AccountsStore);
     accountsStore.createAccount({
       name: 'Tarjeta Oro',
-      initialBalance: -1200,
+      initialBalance: -120000,
       type: 'CREDIT',
-      creditLimit: 5000,
+      creditLimit: 500000,
     });
-    accountsStore.createAccount({name: 'Ahorro viaje', initialBalance: 800, type: 'SAVINGS'});
-    accountsStore.createAccount({name: 'Ahorro emergencia', initialBalance: 200, type: 'SAVINGS'});
+    accountsStore.createAccount({name: 'Ahorro viaje', initialBalance: 80000, type: 'SAVINGS'});
+    accountsStore.createAccount({
+      name: 'Ahorro emergencia',
+      initialBalance: 20000,
+      type: 'SAVINGS',
+    });
 
     fixture = TestBed.createComponent(AccountsComponent);
     fixture.detectChanges();

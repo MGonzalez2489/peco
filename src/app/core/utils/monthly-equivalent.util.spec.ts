@@ -28,4 +28,10 @@ describe('monthlyEquivalent', () => {
     expect(monthlyEquivalent(100, unknown)).toBe(0);
     expect(Number.isNaN(monthlyEquivalent(100, unknown))).toBe(false);
   });
+
+  it('rounds the monthly equivalent to whole cents', () => {
+    // 1000 cents a year is not divisible by twelve without a fraction.
+    expect(monthlyEquivalent(1000, 'YEARLY')).toBe(83);
+    expect(Number.isInteger(monthlyEquivalent(1001, 'YEARLY'))).toBe(true);
+  });
 });
