@@ -75,13 +75,14 @@ export class CurrencyInputDirective implements ControlValueAccessor {
   handleInput(event: Event): void {
     const input = event.target as HTMLInputElement;
     const raw = input.value;
-    const digitsBeforeCaret = (raw.slice(0, input.selectionStart ?? raw.length).match(/\d/g) ?? [])
-      .length;
+    const typedBeforeCaret = (
+      raw.slice(0, input.selectionStart ?? raw.length).match(/[\d.]/g) ?? []
+    ).length;
 
     const cleaned = onlyNumeric(raw, this.allowNegative());
     input.value = this.prefix() + this.formatTyped(cleaned);
     this.onChange(parseCurrency(cleaned, this.allowNegative()));
-    this.restoreCaret(input, digitsBeforeCaret);
+    this.restoreCaret(input, typedBeforeCaret);
   }
 
   handleBlur(): void {
@@ -97,16 +98,23 @@ export class CurrencyInputDirective implements ControlValueAccessor {
     const unsigned = negative ? cleaned.slice(1) : cleaned;
     const [integer = '0', ...rest] = unsigned.split('.');
     const decimals = rest.join('').slice(0, 2);
-    const formatted = decimals ? `${groupInteger(integer)}.${decimals}` : groupInteger(integer);
+    // Keep the decimal separator the user just typed even before any decimal
+    // digit exists; dropping it makes the dot impossible to enter.
+    const hasDecimalPoint = rest.length > 0;
+    const formatted = hasDecimalPoint
+      ? `${groupInteger(integer)}.${decimals}`
+      : groupInteger(integer);
     return negative ? `-${formatted}` : formatted;
   }
 
-  private restoreCaret(input: HTMLInputElement, digitsBeforeCaret: number): void {
+  private restoreCaret(input: HTMLInputElement, typedBeforeCaret: number): void {
     const formatted = input.value;
     let index = 0;
     let seen = 0;
-    while (index < formatted.length && seen < digitsBeforeCaret) {
-      if (/\d/.test(formatted[index])) seen++;
+    while (index < formatted.length && seen < typedBeforeCaret) {
+      // Grouping commas are inserted by the formatter and never typed, so they
+      // do not advance the caret; digits and the decimal point do.
+      if (/[\d.]/.test(formatted[index])) seen++;
       index++;
     }
     input.setSelectionRange(index, index);
