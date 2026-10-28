@@ -22,7 +22,7 @@ import {Account, SelectOption} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {MovementsStore} from '@core/stores/movements.store';
 import {AccountType} from '@core/types';
-import {accountColor, fromCents, toCents} from '@core/utils';
+import {fromCents, toAccountTypeOption, toCents} from '@core/utils';
 import {AppSelectComponent, ModalComponent} from '@shared/components';
 import {CurrencyInputDirective} from '@shared/directives';
 
@@ -52,12 +52,7 @@ export class AccountFormModalComponent {
 
   private readonly nameInput = viewChild<ElementRef<HTMLInputElement>>('nameInput');
 
-  protected readonly accountTypeOptions: SelectOption[] = ACCOUNT_TYPES.map((type) => ({
-    value: type.key,
-    label: type.name,
-    icon: type.icon,
-    color: accountColor(type.color).chip,
-  }));
+  protected readonly accountTypeOptions: SelectOption[] = ACCOUNT_TYPES.map(toAccountTypeOption);
 
   protected readonly form = this.fb.group({
     name: this.fb.control<string>('', Validators.required),

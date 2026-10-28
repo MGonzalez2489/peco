@@ -9,13 +9,13 @@ import {
   signal,
 } from '@angular/core';
 import {FormsModule} from '@angular/forms';
-import {MOVEMENT_TYPE_LABEL} from '@core/constants';
+import {ACCOUNT_TYPE_FILTER_OPTIONS, MOVEMENT_TYPE_LABEL} from '@core/constants';
 import {SelectOption} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {CatalogStore} from '@core/stores/catalog.store';
 import {MovementsStore} from '@core/stores/movements.store';
 import {UserPreferencesStore} from '@core/stores/user-preferences.store';
-import {MovementFilterType} from '@core/types';
+import {AccountTypeFilter, MovementFilterType} from '@core/types';
 import {toAccountOption, toCategoryOption} from '@core/utils';
 import {AppSelectComponent, ModalComponent} from '@shared/components';
 
@@ -75,9 +75,13 @@ export class FiltroMovimientosModalComponent {
     {value: 'TRANSFER', label: MOVEMENT_TYPE_LABEL.TRANSFER},
   ];
 
+  readonly accountTypeOptions: SelectOption[] = [...ACCOUNT_TYPE_FILTER_OPTIONS];
+
   readonly type = signal<MovementFilterType>('ALL');
   readonly accountId = signal('');
   readonly categoryId = signal('');
+  readonly accountType = signal<AccountTypeFilter>('ALL');
+  readonly note = signal('');
   readonly hideReversals = signal(false);
 
   constructor() {
@@ -88,6 +92,8 @@ export class FiltroMovimientosModalComponent {
       this.type.set(filters.type);
       this.accountId.set(filters.accountId);
       this.categoryId.set(filters.categoryId);
+      this.accountType.set(filters.accountType);
+      this.note.set(filters.note);
       this.hideReversals.set(this.userPreferencesStore.hideReversal());
     });
   }
@@ -97,6 +103,8 @@ export class FiltroMovimientosModalComponent {
       type: this.type(),
       accountId: this.accountId(),
       categoryId: this.categoryId(),
+      accountType: this.accountType(),
+      note: this.note(),
     });
 
     if (this.hideReversals() !== this.userPreferencesStore.hideReversal()) {

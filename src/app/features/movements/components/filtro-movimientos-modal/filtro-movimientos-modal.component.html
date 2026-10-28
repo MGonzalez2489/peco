@@ -31,6 +31,39 @@
 
     <div>
       <label
+        for="filtros-nota"
+        class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
+      >
+        Buscar en la nota
+      </label>
+      <input
+        id="filtros-nota"
+        type="text"
+        [(ngModel)]="note"
+        placeholder="Ej. Supermercado, Renta..."
+        class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+      />
+    </div>
+
+    <div>
+      <label
+        for="filtros-tipo-cuenta"
+        class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
+      >
+        Tipo de cuenta
+      </label>
+      <app-select
+        controlId="filtros-tipo-cuenta"
+        ariaLabel="Tipo de cuenta"
+        placeholder="Todos los tipos"
+        [options]="accountTypeOptions"
+        [ngModel]="accountType()"
+        (ngModelChange)="accountType.set($event)"
+      />
+    </div>
+
+    <div>
+      <label
         for="filtros-cuenta"
         class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
       >

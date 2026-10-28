@@ -243,6 +243,119 @@ describe('Finance stores', () => {
     expect(movementsStore.activeFilterCount()).toBe(0);
   });
 
+  it('filters movements by note with a case-insensitive contains match', () => {
+    const account = accountsStore.createAccount({
+      name: 'Ahorro',
+      initialBalance: 0,
+      type: 'SAVINGS',
+    });
+    if (!account) throw new Error('account must be created');
+
+    movementsStore.registerMovement({
+      accountId: account.id,
+      categoryId: 'services',
+      type: 'EXPENSE',
+      amount: 100,
+      note: 'Supermercado Central',
+    });
+    movementsStore.registerMovement({
+      accountId: account.id,
+      categoryId: 'services',
+      type: 'EXPENSE',
+      amount: 200,
+      note: 'Pago de RENTA julio',
+    });
+
+    movementsStore.setFilters({note: 'super'});
+    expect(movementsStore.filteredMovements().map((movement) => movement.note)).toEqual([
+      'Supermercado Central',
+    ]);
+
+    movementsStore.setFilters({note: 'RENTA'});
+    expect(movementsStore.filteredMovements().map((movement) => movement.note)).toEqual([
+      'Pago de RENTA julio',
+    ]);
+
+    movementsStore.setFilters({note: 'hipoteca'});
+    expect(movementsStore.filteredMovements()).toEqual([]);
+
+    movementsStore.clearFilters();
+    expect(movementsStore.filteredMovements().length).toBe(2);
+  });
+
+  it('filters movements by account type, including transfer destinations', () => {
+    const cash = accountsStore.createAccount({
+      name: 'Efectivo',
+      initialBalance: 0,
+      type: 'CASH',
+    });
+    const card = accountsStore.createAccount({
+      name: 'Tarjeta',
+      initialBalance: 0,
+      type: 'CREDIT',
+    });
+    if (!cash || !card) throw new Error('accounts must be created');
+
+    movementsStore.registerMovement({
+      accountId: cash.id,
+      categoryId: 'services',
+      type: 'EXPENSE',
+      amount: 100,
+    });
+    movementsStore.registerMovement({
+      accountId: card.id,
+      categoryId: 'services',
+      type: 'EXPENSE',
+      amount: 200,
+    });
+    movementsStore.registerMovement({
+      accountId: cash.id,
+      categoryId: 'transfer',
+      type: 'TRANSFER',
+      amount: 300,
+      targetAccountId: card.id,
+    });
+
+    movementsStore.setFilters({accountType: 'CREDIT'});
+    expect(
+      movementsStore
+        .filteredMovements()
+        .map((movement) => movement.amount)
+        .sort((a, b) => a - b),
+    ).toEqual([200, 300]);
+
+    movementsStore.setFilters({accountType: 'CASH'});
+    expect(
+      movementsStore
+        .filteredMovements()
+        .map((movement) => movement.amount)
+        .sort((a, b) => a - b),
+    ).toEqual([100, 300]);
+
+    movementsStore.setFilters({accountType: 'SAVINGS'});
+    expect(movementsStore.filteredMovements()).toEqual([]);
+
+    movementsStore.clearFilters();
+    expect(movementsStore.filteredMovements().length).toBe(3);
+  });
+
+  it('counts the note and account type filters as active filters', () => {
+    movementsStore.setFilters({accountType: 'DEBIT'});
+    expect(movementsStore.activeFilterCount()).toBe(1);
+    expect(movementsStore.hasActiveFilters()).toBe(true);
+
+    movementsStore.setFilters({note: 'renta'});
+    expect(movementsStore.activeFilterCount()).toBe(2);
+
+    movementsStore.setFilters({note: '   '});
+    expect(movementsStore.activeFilterCount()).toBe(1);
+
+    movementsStore.clearFilters();
+    expect(movementsStore.filters().accountType).toBe('ALL');
+    expect(movementsStore.filters().note).toBe('');
+    expect(movementsStore.hasActiveFilters()).toBe(false);
+  });
+
   it('groups filtered movements by formatted date', () => {
     const root = accountsStore.rootAccount();
     if (!root) throw new Error('root account must exist');

@@ -11,12 +11,14 @@ import {CreateMovementDTO} from '../dtos/create-movement.dto';
 import {Movement} from '../models/movement.model';
 import {MovementFilters} from '../models/movement-filters.model';
 import {MovementsStorageService} from '../services/movements-storage.service';
+import {AccountType} from '../types/account-type.type';
 import {BalanceOperation} from '../types/balance-operation.type';
 import {buildReversalMovement} from '../utils/build-reversal-movement.util';
 import {calculateMovementTotals} from '../utils/calculate-movement-totals.util';
 import {formatCentsToCurrency} from '../utils/format-cents-to-currency.util';
 import {groupMovementsByDate} from '../utils/group-movements-by-date.util';
 import {isReversalMovement} from '../utils/is-reversal-movement.util';
+import {matchesNoteQuery} from '../utils/matches-note-query.util';
 import {AccountsStore} from './accounts.store';
 import {CatalogStore} from './catalog.store';
 import {UserPreferencesStore} from './user-preferences.store';
@@ -30,6 +32,8 @@ const INITIAL_FILTERS: MovementFilters = {
   type: 'ALL',
   accountId: '',
   categoryId: '',
+  accountType: 'ALL',
+  note: '',
 };
 
 const initialState = (): MovementsState => ({
@@ -45,6 +49,7 @@ export const MovementsStore = signalStore(
   withCallState(),
   withComputed(({movements, filters}) => {
     const userPreferencesStore = inject(UserPreferencesStore);
+    const accountsStore = inject(AccountsStore);
 
     /**
      * Reversal visibility is a device-wide preference: when it is enabled both
@@ -60,7 +65,21 @@ export const MovementsStore = signalStore(
     );
 
     const filtered = () => {
-      const {type, accountId, categoryId} = filters();
+      const {type, accountId, categoryId, accountType, note} = filters();
+      const accountTypeById = new Map<string, AccountType>();
+      for (const account of accountsStore.accounts()) {
+        accountTypeById.set(account.id, account.type);
+      }
+
+      const matchesAccountType = (movement: Movement): boolean => {
+        if (accountType === 'ALL') return true;
+
+        return (
+          accountTypeById.get(movement.accountId) === accountType ||
+          (movement.targetAccountId !== undefined &&
+            accountTypeById.get(movement.targetAccountId) === accountType)
+        );
+      };
 
       return visibleMovements()
         .filter((movement) => {
@@ -71,7 +90,13 @@ export const MovementsStore = signalStore(
             movement.targetAccountId === accountId;
           const matchesCategory = !categoryId || movement.categoryId === categoryId;
 
-          return matchesType && matchesAccount && matchesCategory;
+          return (
+            matchesType &&
+            matchesAccount &&
+            matchesCategory &&
+            matchesAccountType(movement) &&
+            matchesNoteQuery(movement.note, note)
+          );
         })
         .sort(byNewestFirst);
     };
@@ -83,12 +108,24 @@ export const MovementsStore = signalStore(
       groupedMovementsByDate: computed(() => groupMovementsByDate(filtered())),
       filteredTotals: computed(() => calculateMovementTotals(filtered())),
       activeFilterCount: computed(() => {
-        const {type, accountId, categoryId} = filters();
-        return (type !== 'ALL' ? 1 : 0) + (accountId ? 1 : 0) + (categoryId ? 1 : 0);
+        const {type, accountId, categoryId, accountType, note} = filters();
+        return (
+          (type !== 'ALL' ? 1 : 0) +
+          (accountId ? 1 : 0) +
+          (categoryId ? 1 : 0) +
+          (accountType !== 'ALL' ? 1 : 0) +
+          (note.trim() ? 1 : 0)
+        );
       }),
       hasActiveFilters: computed(() => {
-        const {type, accountId, categoryId} = filters();
-        return type !== 'ALL' || accountId !== '' || categoryId !== '';
+        const {type, accountId, categoryId, accountType, note} = filters();
+        return (
+          type !== 'ALL' ||
+          accountId !== '' ||
+          categoryId !== '' ||
+          accountType !== 'ALL' ||
+          note.trim() !== ''
+        );
       }),
     };
   }),

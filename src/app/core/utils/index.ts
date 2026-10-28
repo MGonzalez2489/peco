@@ -1,4 +1,5 @@
 export * from './account-color.util';
+export * from './matches-note-query.util';
 export * from './calculate-net-liquid-balance.util';
 export * from './calculate-total-liabilities.util';
 export * from './get-outstanding-debt.util';
@@ -45,6 +46,7 @@ export * from './recurrence-label.util';
 export * from './reversal-impact.util';
 export * from './resolve-default-category-id.util';
 export * from './to-account-option.util';
+export * from './to-account-type-option.util';
 export * from './to-icon-name.util';
 export * from './to-category-option.util';
 export * from './to-category-slug.util';
