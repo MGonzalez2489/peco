@@ -1,4 +1,5 @@
 export * from './account-colors.constant';
+export * from './account-type-filter-options.constant';
 export * from './account-type-map.constant';
 export * from './account-type-palette.constant';
 export * from './account-types.constant';
