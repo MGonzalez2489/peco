@@ -14,4 +14,6 @@ export interface Movement {
   isReversal?: boolean;
   isCanceled?: boolean;
   scheduledTransactionId?: string;
+  /** ISO timestamp of the last edit, used for audit purposes. */
+  updatedAt?: string;
 }

@@ -1,5 +1,6 @@
 import {ComponentFixture, TestBed} from '@angular/core/testing';
 import {provideAppIcons} from '@core/icons/app-icons.provider';
+import {AccountsStore} from '@core/stores/accounts.store';
 import {MovementsStore} from '@core/stores/movements.store';
 import {ScheduledTransactionsStore} from '@core/stores/scheduled-transactions.store';
 import {MovementFormModalComponent} from './movement-form-modal.component';
@@ -8,6 +9,7 @@ describe('MovementFormModalComponent', () => {
   let fixture: ComponentFixture<MovementFormModalComponent>;
   let scheduledStore: InstanceType<typeof ScheduledTransactionsStore>;
   let movementsStore: InstanceType<typeof MovementsStore>;
+  let accountsStore: InstanceType<typeof AccountsStore>;
 
   const native = (): HTMLElement => fixture.nativeElement as HTMLElement;
 
@@ -59,6 +61,7 @@ describe('MovementFormModalComponent', () => {
 
     scheduledStore = TestBed.inject(ScheduledTransactionsStore);
     movementsStore = TestBed.inject(MovementsStore);
+    accountsStore = TestBed.inject(AccountsStore);
     fixture = TestBed.createComponent(MovementFormModalComponent);
     fixture.detectChanges();
   });
@@ -147,5 +150,61 @@ describe('MovementFormModalComponent', () => {
     expect(movementsStore.movements().length).toBe(1);
     expect(movementsStore.movements()[0]?.amount).toBe(50000);
     expect(scheduledStore.scheduledTransactions()).toEqual([]);
+  });
+
+  describe('edit mode', () => {
+    const registerExpense = (amount = 10000): void => {
+      const account = accountsStore.accounts()[0];
+      if (!account) throw new Error('a seeded account is required');
+
+      movementsStore.registerMovement({
+        accountId: account.id,
+        categoryId: 'services',
+        type: 'EXPENSE',
+        amount,
+        note: 'Cena',
+      });
+    };
+
+    const openEdit = async (): Promise<void> => {
+      const movement = movementsStore.movements()[0];
+      if (!movement) throw new Error('a movement is required');
+
+      fixture.componentRef.setInput('editMovement', movement);
+      await open();
+    };
+
+    it('prefills the form and locks the movement type', async () => {
+      registerExpense();
+      await openEdit();
+
+      const title = native().querySelector('#modal-title');
+      expect(title?.textContent).toContain('Editar movimiento');
+
+      const amount = native().querySelector<HTMLInputElement>('#mov-amount');
+      expect(Number(amount?.value)).toBe(100);
+
+      const type = native().querySelector<HTMLButtonElement>('#mov-type');
+      expect(type?.disabled).toBe(true);
+
+      expect(native().textContent).toContain('El tipo de movimiento no se puede modificar.');
+    });
+
+    it('updates the movement instead of registering a new one', async () => {
+      registerExpense();
+      await openEdit();
+
+      const amount = native().querySelector<HTMLInputElement>('#mov-amount');
+      if (!amount) throw new Error('amount input must be rendered');
+      amount.value = '150';
+      amount.dispatchEvent(new Event('input', {bubbles: true}));
+      fixture.detectChanges();
+
+      submit();
+
+      expect(movementsStore.movements().length).toBe(1);
+      expect(movementsStore.movements()[0]?.amount).toBe(15000);
+      expect(movementsStore.movements()[0]?.updatedAt).toBeTruthy();
+    });
   });
 });

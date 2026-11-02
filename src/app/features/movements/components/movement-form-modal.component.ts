@@ -11,12 +11,12 @@ import {
 import {FormBuilder, FormControl, ReactiveFormsModule, Validators} from '@angular/forms';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {MOVEMENT_TYPES} from '@core/constants';
-import {Category, SelectOption} from '@core/models';
+import {Category, Movement, SelectOption} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {CatalogStore} from '@core/stores/catalog.store';
 import {MovementsStore} from '@core/stores/movements.store';
 import {MovementType} from '@core/types';
-import {accountColor, toAccountOption, toCents, toCategoryOption} from '@core/utils';
+import {accountColor, fromCents, toAccountOption, toCents, toCategoryOption} from '@core/utils';
 import {AppSelectComponent, ModalComponent} from '@shared/components';
 import {CurrencyInputDirective} from '@shared/directives';
 
@@ -29,6 +29,8 @@ import {CurrencyInputDirective} from '@shared/directives';
 export class MovementFormModalComponent {
   readonly isOpen = input(false);
   readonly presetType = input<MovementType>('EXPENSE');
+  /** When present the modal edits this movement instead of creating a new one. */
+  readonly editMovement = input<Movement | null>(null);
 
   readonly closed = output<void>();
 
@@ -37,6 +39,10 @@ export class MovementFormModalComponent {
   readonly movementsStore = inject(MovementsStore);
 
   readonly accounts = this.accountsStore.accounts;
+
+  readonly isEditMode = computed(() => this.editMovement() !== null);
+
+  readonly saveError = signal<string | null>(null);
 
   private readonly fb = inject(FormBuilder);
 
@@ -101,22 +107,42 @@ export class MovementFormModalComponent {
     });
 
     effect(() => {
-      if (this.isOpen()) {
-        const preset = this.presetType();
+      if (!this.isOpen()) return;
+
+      this.saveError.set(null);
+      const editing = this.editMovement();
+
+      if (editing) {
         this.form.reset({
-          amount: 0,
-          type: preset,
-          accountId: '',
-          categoryId: '',
-          targetAccountId: null,
-          note: '',
+          amount: fromCents(editing.amount),
+          type: editing.type,
+          accountId: editing.accountId,
+          categoryId: editing.categoryId,
+          targetAccountId: editing.targetAccountId ?? null,
+          note: editing.note ?? '',
         });
-        this.selectedType.set(preset);
-        this.sourceAccountId.set('');
-        const first = this.accounts()[0];
-        if (first) sourceControl.setValue(first.id);
-        this.syncDestination(preset);
+        this.selectedType.set(editing.type);
+        this.sourceAccountId.set(editing.accountId);
+        typeControl.disable();
+        this.syncDestination(editing.type);
+        return;
       }
+
+      const preset = this.presetType();
+      typeControl.enable();
+      this.form.reset({
+        amount: 0,
+        type: preset,
+        accountId: '',
+        categoryId: '',
+        targetAccountId: null,
+        note: '',
+      });
+      this.selectedType.set(preset);
+      this.sourceAccountId.set('');
+      const first = this.accounts()[0];
+      if (first) sourceControl.setValue(first.id);
+      this.syncDestination(preset);
     });
 
     effect(() => {
@@ -152,6 +178,35 @@ export class MovementFormModalComponent {
     if (this.form.invalid) return;
 
     const raw = this.form.getRawValue();
+    const editing = this.editMovement();
+
+    if (editing) {
+      const destinationId = editing.type === 'TRANSFER' ? (raw.targetAccountId ?? null) : undefined;
+      if (editing.type === 'TRANSFER' && (!destinationId || destinationId === raw.accountId)) {
+        this.saveError.set('Selecciona una cuenta destino válida.');
+        return;
+      }
+
+      const updated = this.movementsStore.editMovement(editing.id, {
+        accountId: raw.accountId ?? '',
+        categoryId: raw.categoryId ?? '',
+        // The input works in decimal dollars; movements persist integer cents.
+        amount: toCents(raw.amount ?? 0),
+        note: raw.note?.trim() || undefined,
+        targetAccountId: destinationId ?? undefined,
+      });
+
+      if (!updated) {
+        this.saveError.set(
+          this.movementsStore.error() ?? 'No se pudo editar el movimiento. Inténtalo de nuevo.',
+        );
+        return;
+      }
+
+      this.closed.emit();
+      return;
+    }
+
     const destinationId = raw.type === 'TRANSFER' ? (raw.targetAccountId ?? null) : undefined;
     if (raw.type === 'TRANSFER' && (!destinationId || destinationId === raw.accountId)) return;
 

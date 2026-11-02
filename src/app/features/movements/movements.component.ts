@@ -11,6 +11,7 @@ import {
 import {PrivacyCurrencyPipe} from '@shared/pipes/privacy-currency.pipe';
 import {FiltroMovimientosModalComponent} from './components/filtro-movimientos-modal/filtro-movimientos-modal.component';
 import {MovementDetailModalComponent} from './components/movement-detail-modal/movement-detail-modal.component';
+import {MovementFormModalComponent} from './components/movement-form-modal.component';
 import {MovementsProgressionChartComponent} from './components/movements-progression-chart/movements-progression-chart.component';
 
 @Component({
@@ -19,6 +20,7 @@ import {MovementsProgressionChartComponent} from './components/movements-progres
     PrivacyCurrencyPipe,
     MovementListComponent,
     MovementDetailModalComponent,
+    MovementFormModalComponent,
     FiltroMovimientosModalComponent,
     MovementsProgressionChartComponent,
     AppIconComponent,
@@ -35,6 +37,10 @@ export class MovementsComponent {
   readonly selectedMovement = signal<Movement | null>(null);
 
   readonly isMovementDetailOpen = computed(() => this.selectedMovement() !== null);
+
+  readonly editingMovement = signal<Movement | null>(null);
+
+  readonly isEditFormOpen = computed(() => this.editingMovement() !== null);
 
   readonly selectedPeriod = signal<MonthPickerSelection>({
     month: new Date().getMonth() + 1,
@@ -92,5 +98,14 @@ export class MovementsComponent {
 
   closeMovementDetail(): void {
     this.selectedMovement.set(null);
+  }
+
+  openEditMovement(movement: Movement): void {
+    this.selectedMovement.set(null);
+    this.editingMovement.set(movement);
+  }
+
+  closeEditMovement(): void {
+    this.editingMovement.set(null);
   }
 }

@@ -1,4 +1,8 @@
-<app-modal [isOpen]="isOpen()" title="Nuevo movimiento" (closed)="closed.emit()">
+<app-modal
+  [isOpen]="isOpen()"
+  [title]="isEditMode() ? 'Editar movimiento' : 'Nuevo movimiento'"
+  (closed)="closed.emit()"
+>
   @if (accounts().length === 0) {
     <p class="mt-4 text-sm text-slate-500 dark:text-slate-400">
       Primero crea una cuenta desde la sección Cuentas.
@@ -22,6 +26,10 @@
         />
         @if (errorFor(form.controls.type); as error) {
           <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ error }}</p>
+        } @else if (isEditMode()) {
+          <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            El tipo de movimiento no se puede modificar.
+          </p>
         }
       </div>
 
@@ -132,6 +140,15 @@
         ></textarea>
       </div>
 
+      @if (saveError(); as error) {
+        <p
+          role="alert"
+          class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300"
+        >
+          {{ error }}
+        </p>
+      }
+
       <div class="modal-footer flex justify-end gap-2 pt-2">
         <button
           type="button"
@@ -144,7 +161,7 @@
           type="submit"
           class="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm shadow-indigo-600/30 transition hover:bg-indigo-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
         >
-          Guardar
+          {{ isEditMode() ? 'Guardar cambios' : 'Guardar' }}
         </button>
       </div>
     </form>

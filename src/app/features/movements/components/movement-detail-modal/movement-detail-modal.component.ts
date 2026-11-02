@@ -26,6 +26,7 @@ import {
   accountColor,
   formatCentsToCurrency,
   formatLongDate,
+  movementEditBlockMessage,
   recurrenceLabel,
   resolveAccountColor,
   resolveAccountIcon,
@@ -55,8 +56,9 @@ interface CategoryView {
 }
 
 /**
- * Read-only bottom sheet that presents every detail of a single movement.
- * It never renders editable controls; dismissal only emits `close`.
+ * Bottom sheet that presents every detail of a single movement. It never
+ * renders form controls; it only exposes the detail view and requests an edit
+ * when the audit window allows it.
  */
 @Component({
   selector: 'app-movement-detail-modal',
@@ -296,6 +298,16 @@ export class MovementDetailModalComponent {
 
     return badges;
   });
+
+  /** Audit guard: only same-day, non-reversed movements can be edited. */
+  readonly editBlockMessage = computed(() => {
+    const movement = this.displayedMovement();
+    return movement ? movementEditBlockMessage(movement) : null;
+  });
+
+  readonly canEdit = computed(
+    () => this.displayedMovement() !== null && this.editBlockMessage() === null,
+  );
 
   constructor() {
     effect(() => {

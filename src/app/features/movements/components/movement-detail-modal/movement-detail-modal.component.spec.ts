@@ -93,6 +93,44 @@ describe('MovementDetailModalComponent', () => {
     expect(native().querySelector('input, select, textarea')).toBeNull();
   });
 
+  it('emits editRequested for a same-day movement', async () => {
+    await open(baseMovement({date: new Date().toISOString()}));
+
+    let edits = 0;
+    fixture.componentInstance.editRequested.subscribe(() => (edits += 1));
+
+    const button = Array.from(native().querySelectorAll('button')).find((item) =>
+      item.textContent?.includes('Editar movimiento'),
+    );
+    expect(button?.disabled).toBe(false);
+    button?.click();
+
+    expect(edits).toBe(1);
+  });
+
+  it('disables editing for historical movements with a Spanish explanation', async () => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    await open(baseMovement({date: yesterday.toISOString()}));
+
+    const button = Array.from(native().querySelectorAll('button')).find((item) =>
+      item.textContent?.includes('Editar movimiento'),
+    );
+    expect(button).toBeDefined();
+    expect(button?.disabled).toBe(true);
+    expect(button?.getAttribute('aria-label')).toContain('día de hoy');
+  });
+
+  it('disables editing for reversed movements', async () => {
+    await open(baseMovement({date: new Date().toISOString(), isReversal: true}));
+
+    const button = Array.from(native().querySelectorAll('button')).find((item) =>
+      item.textContent?.includes('Editar movimiento'),
+    );
+    expect(button?.disabled).toBe(true);
+    expect(button?.getAttribute('aria-label')).toContain('reversados u omitidos');
+  });
+
   it('emits close when the Cerrar button is pressed', async () => {
     await open(baseMovement());
 

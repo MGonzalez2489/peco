@@ -476,4 +476,188 @@ describe('Finance stores', () => {
     userPreferencesStore.updateMovementPreferences({hideReversal: true});
     expect(movementsStore.filteredMovements().length).toBe(0);
   });
+
+  describe('movement editing guard rails', () => {
+    const createCashAccount = (name: string, initialBalance: number): Account => {
+      const account = accountsStore.createAccount({
+        name,
+        initialBalance,
+        type: 'CASH',
+      });
+      if (!account) throw new Error('account must be created');
+      return account;
+    };
+
+    const balanceOf = (id: string): number | undefined =>
+      accountsStore.accounts().find((account) => account.id === id)?.currentBalance;
+
+    it('edits a same-day expense and applies only the balance delta', () => {
+      const account = createCashAccount('Efectivo', 50000);
+      const movement = movementsStore.registerMovement({
+        accountId: account.id,
+        categoryId: 'services',
+        type: 'EXPENSE',
+        amount: 10000,
+        date: new Date().toISOString(),
+      });
+      if (!movement) throw new Error('registerMovement must not return null');
+
+      expect(balanceOf(account.id)).toBe(40000);
+
+      const edited = movementsStore.editMovement(movement.id, {
+        accountId: account.id,
+        categoryId: 'services',
+        amount: 15000,
+        note: 'Monto corregido',
+      });
+
+      expect(edited).toBe(true);
+      expect(balanceOf(account.id)).toBe(35000);
+      expect(movementsStore.movements()[0]?.amount).toBe(15000);
+      expect(movementsStore.movements()[0]?.note).toBe('Monto corregido');
+      expect(movementsStore.movements()[0]?.type).toBe('EXPENSE');
+      expect(movementsStore.movements()[0]?.updatedAt).toBeTruthy();
+    });
+
+    it('moves the balance when the origin account and category change', () => {
+      const source = createCashAccount('Origen', 50000);
+      const destination = createCashAccount('Destino', 20000);
+      const movement = movementsStore.registerMovement({
+        accountId: source.id,
+        categoryId: 'services',
+        type: 'EXPENSE',
+        amount: 10000,
+      });
+      if (!movement) throw new Error('registerMovement must not return null');
+
+      const edited = movementsStore.editMovement(movement.id, {
+        accountId: destination.id,
+        categoryId: 'car',
+        amount: 10000,
+      });
+
+      expect(edited).toBe(true);
+      expect(balanceOf(source.id)).toBe(50000);
+      expect(balanceOf(destination.id)).toBe(10000);
+      expect(movementsStore.movements()[0]?.categoryId).toBe('car');
+    });
+
+    it('edits a transfer amount without duplicating or losing money', () => {
+      const source = createCashAccount('Origen', 50000);
+      const destination = createCashAccount('Destino', 20000);
+      const movement = movementsStore.registerMovement({
+        accountId: source.id,
+        categoryId: 'transfer',
+        type: 'TRANSFER',
+        amount: 500,
+        targetAccountId: destination.id,
+      });
+      if (!movement) throw new Error('registerMovement must not return null');
+
+      expect(balanceOf(source.id)).toBe(49500);
+      expect(balanceOf(destination.id)).toBe(20500);
+
+      const edited = movementsStore.editMovement(movement.id, {
+        accountId: source.id,
+        categoryId: 'transfer',
+        amount: 1000,
+        targetAccountId: destination.id,
+      });
+
+      expect(edited).toBe(true);
+      expect(balanceOf(source.id)).toBe(49000);
+      expect(balanceOf(destination.id)).toBe(21000);
+      expect(movementsStore.movements()[0]?.amount).toBe(1000);
+    });
+
+    it('swaps both accounts of a transfer without duplicating balances', () => {
+      const source = createCashAccount('Origen', 50000);
+      const destination = createCashAccount('Destino', 20000);
+      const alternate = createCashAccount('Alterna', 30000);
+      const movement = movementsStore.registerMovement({
+        accountId: source.id,
+        categoryId: 'transfer',
+        type: 'TRANSFER',
+        amount: 500,
+        targetAccountId: destination.id,
+      });
+      if (!movement) throw new Error('registerMovement must not return null');
+
+      const edited = movementsStore.editMovement(movement.id, {
+        accountId: alternate.id,
+        categoryId: 'transfer',
+        amount: 800,
+        targetAccountId: source.id,
+      });
+
+      expect(edited).toBe(true);
+      expect(balanceOf(source.id)).toBe(50800);
+      expect(balanceOf(destination.id)).toBe(20000);
+      expect(balanceOf(alternate.id)).toBe(29200);
+    });
+
+    it('blocks editing a movement that was registered before today', () => {
+      const account = createCashAccount('Efectivo', 50000);
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+
+      const movement = movementsStore.registerMovement({
+        accountId: account.id,
+        categoryId: 'services',
+        type: 'EXPENSE',
+        amount: 10000,
+        date: yesterday.toISOString(),
+      });
+      if (!movement) throw new Error('registerMovement must not return null');
+
+      const edited = movementsStore.editMovement(movement.id, {
+        accountId: account.id,
+        categoryId: 'services',
+        amount: 20000,
+      });
+
+      expect(edited).toBe(false);
+      expect(movementsStore.error()).toContain('día de hoy');
+      expect(balanceOf(account.id)).toBe(40000);
+      expect(movementsStore.movements()[0]?.amount).toBe(10000);
+    });
+
+    it('blocks editing reversed and canceled movements', () => {
+      const account = createCashAccount('Efectivo', 50000);
+      const movement = movementsStore.registerMovement({
+        accountId: account.id,
+        categoryId: 'services',
+        type: 'EXPENSE',
+        amount: 10000,
+      });
+      if (!movement) throw new Error('registerMovement must not return null');
+
+      expect(movementsStore.revertMovement(movement.id)).toBe(true);
+      expect(
+        movementsStore.editMovement(movement.id, {
+          accountId: account.id,
+          categoryId: 'services',
+          amount: 20000,
+        }),
+      ).toBe(false);
+      expect(movementsStore.error()).toContain('reversados u omitidos');
+
+      const canceled = movementsStore.registerCanceledMovement({
+        accountId: account.id,
+        categoryId: 'services',
+        type: 'EXPENSE',
+        amount: 3000,
+      });
+      if (!canceled) throw new Error('registerCanceledMovement must not return null');
+
+      expect(
+        movementsStore.editMovement(canceled.id, {
+          accountId: account.id,
+          categoryId: 'services',
+          amount: 4000,
+        }),
+      ).toBe(false);
+      expect(movementsStore.error()).toContain('reversados u omitidos');
+    });
+  });
 });

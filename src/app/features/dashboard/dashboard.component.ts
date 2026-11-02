@@ -8,6 +8,7 @@ import {formatCentsToCurrency, getCreditUsage} from '@core/utils';
 import {AccountTypeColorPipe} from '@shared/pipes/account-type-color.pipe';
 import {MovementListComponent, StatCardComponent} from '@shared/components';
 import {MovementDetailModalComponent} from '@features/movements/components/movement-detail-modal/movement-detail-modal.component';
+import {MovementFormModalComponent} from '@features/movements/components/movement-form-modal.component';
 import {DragScrollDirective} from '@shared/directives/drag-scroll.directive';
 import {UpcomingPaymentsWidgetComponent} from './components/upcoming-payments-widget.component';
 
@@ -18,6 +19,7 @@ import {UpcomingPaymentsWidgetComponent} from './components/upcoming-payments-wi
     DragScrollDirective,
     MovementListComponent,
     MovementDetailModalComponent,
+    MovementFormModalComponent,
     StatCardComponent,
     UpcomingPaymentsWidgetComponent,
     AccountTypeColorPipe,
@@ -38,6 +40,10 @@ export class DashboardComponent {
   readonly selectedMovement = signal<Movement | null>(null);
 
   readonly isMovementDetailOpen = computed(() => this.selectedMovement() !== null);
+
+  readonly editingMovement = signal<Movement | null>(null);
+
+  readonly isEditFormOpen = computed(() => this.editingMovement() !== null);
 
   readonly recentMovements = computed(() => this.movementsStore.recentMovements(5));
 
@@ -60,5 +66,14 @@ export class DashboardComponent {
 
   closeMovementDetail(): void {
     this.selectedMovement.set(null);
+  }
+
+  openEditMovement(movement: Movement): void {
+    this.selectedMovement.set(null);
+    this.editingMovement.set(movement);
+  }
+
+  closeEditMovement(): void {
+    this.editingMovement.set(null);
   }
 }

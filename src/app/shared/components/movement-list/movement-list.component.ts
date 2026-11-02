@@ -6,7 +6,8 @@ import {
   input,
   output,
   signal,
-} from '@angular/core';import {MOVEMENT_TYPE_LABEL, MOVEMENT_TYPE_PALETTE, MOVEMENT_TYPES} from '@core/constants';
+} from '@angular/core';
+import {MOVEMENT_TYPE_LABEL, MOVEMENT_TYPE_PALETTE, MOVEMENT_TYPES} from '@core/constants';
 import {Movement} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {CatalogStore} from '@core/stores/catalog.store';
@@ -16,6 +17,7 @@ import {
   accountColor,
   formatLocalTime,
   groupMovementsByDate,
+  movementEditBlockMessage,
   reversalImpact,
   toSoftCategoryColor,
 } from '@core/utils';
@@ -38,6 +40,7 @@ export class MovementListComponent {
   readonly selectable = input(false);
 
   readonly movementSelected = output<Movement>();
+  readonly movementEditRequested = output<Movement>();
 
   readonly accountsStore = inject(AccountsStore);
   readonly catalogStore = inject(CatalogStore);
@@ -99,9 +102,18 @@ export class MovementListComponent {
 
   readonly movementTime = (movement: Movement): string => formatLocalTime(movement.date);
 
+  /** Only same-day, non-reversed movements expose the edit action. */
+  readonly canEdit = (movement: Movement): boolean => movementEditBlockMessage(movement) === null;
+
   selectMovement(movement: Movement): void {
     if (this.selectable()) {
       this.movementSelected.emit(movement);
+    }
+  }
+
+  requestEdit(movement: Movement): void {
+    if (this.canEdit(movement)) {
+      this.movementEditRequested.emit(movement);
     }
   }
 

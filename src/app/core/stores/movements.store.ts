@@ -8,6 +8,7 @@ import {
 } from '@angular-architects/ngrx-toolkit';
 import {patchState, signalStore, withComputed, withMethods, withState} from '@ngrx/signals';
 import {CreateMovementDTO} from '../dtos/create-movement.dto';
+import {EditMovementDTO} from '../dtos/edit-movement.dto';
 import {Movement} from '../models/movement.model';
 import {MovementFilters} from '../models/movement-filters.model';
 import {MovementsStorageService} from '../services/movements-storage.service';
@@ -19,6 +20,8 @@ import {formatCentsToCurrency} from '../utils/format-cents-to-currency.util';
 import {groupMovementsByDate} from '../utils/group-movements-by-date.util';
 import {isReversalMovement} from '../utils/is-reversal-movement.util';
 import {matchesNoteQuery} from '../utils/matches-note-query.util';
+import {movementBalanceImpact} from '../utils/movement-balance-impact.util';
+import {movementEditBlockMessage} from '../utils/movement-edit-block-message.util';
 import {AccountsStore} from './accounts.store';
 import {CatalogStore} from './catalog.store';
 import {UserPreferencesStore} from './user-preferences.store';
@@ -148,6 +151,22 @@ export const MovementsStore = signalStore(
       }
     };
 
+    const accountExists = (id: string | undefined): boolean =>
+      Boolean(id) && accountsStore.accounts().some((account) => account.id === id);
+
+    /**
+     * Applies the net balance difference between the original movement and the
+     * edited one, so swapping accounts or amounts never duplicates money.
+     */
+    const applyBalanceDeltas = (deltas: Map<string, number>): void => {
+      for (const [accountId, delta] of deltas) {
+        if (delta === 0) continue;
+
+        const operation: BalanceOperation = delta > 0 ? 'ADD' : 'SUBTRACT';
+        accountsStore.updateBalance(accountId, Math.abs(delta), operation);
+      }
+    };
+
     const registerMovement = (dto: CreateMovementDTO): Movement | null => {
       try {
         const movement: Movement = {
@@ -211,6 +230,86 @@ export const MovementsStore = signalStore(
       },
       registerMovement,
       registerCanceledMovement,
+      editMovement(id: string, dto: EditMovementDTO): boolean {
+        const original = store.movements().find((movement) => movement.id === id);
+        if (!original) {
+          patchState(store, setError(new Error('El movimiento que intentas editar no existe.')));
+          return false;
+        }
+
+        const blockMessage = movementEditBlockMessage(original);
+        if (blockMessage) {
+          patchState(store, setError(new Error(blockMessage)));
+          return false;
+        }
+
+        if (!Number.isInteger(dto.amount) || dto.amount <= 0) {
+          patchState(
+            store,
+            setError(new Error('El monto debe ser un entero de centavos mayor que cero.')),
+          );
+          return false;
+        }
+
+        if (!accountExists(dto.accountId)) {
+          patchState(store, setError(new Error('Selecciona una cuenta válida.')));
+          return false;
+        }
+
+        if (original.type === 'TRANSFER') {
+          if (!accountExists(dto.targetAccountId) || dto.targetAccountId === dto.accountId) {
+            patchState(store, setError(new Error('Selecciona una cuenta destino válida.')));
+            return false;
+          }
+        }
+
+        try {
+          const updated: Movement = {
+            ...original,
+            accountId: dto.accountId,
+            categoryId: dto.categoryId,
+            amount: dto.amount,
+            note: dto.note,
+            targetAccountId: original.type === 'TRANSFER' ? dto.targetAccountId : undefined,
+            updatedAt: new Date().toISOString(),
+          };
+
+          const deltas = new Map<string, number>();
+          const accumulate = (accountId: string | undefined, delta: number): void => {
+            if (!accountId || delta === 0) return;
+
+            deltas.set(accountId, (deltas.get(accountId) ?? 0) + delta);
+          };
+
+          // Revert the original impact, then apply the edited one.
+          accumulate(original.accountId, -movementBalanceImpact(original, original.accountId));
+          if (original.type === 'TRANSFER' && original.targetAccountId) {
+            accumulate(
+              original.targetAccountId,
+              -movementBalanceImpact(original, original.targetAccountId),
+            );
+          }
+
+          accumulate(updated.accountId, movementBalanceImpact(updated, updated.accountId));
+          if (updated.type === 'TRANSFER' && updated.targetAccountId) {
+            accumulate(
+              updated.targetAccountId,
+              movementBalanceImpact(updated, updated.targetAccountId),
+            );
+          }
+
+          commit(
+            store.movements().map((movement) => (movement.id === original.id ? updated : movement)),
+          );
+          applyBalanceDeltas(deltas);
+          patchState(store, setLoaded());
+
+          return true;
+        } catch (error) {
+          patchState(store, setError(error));
+          return false;
+        }
+      },
       revertMovement(id: string): boolean {
         const original = store.movements().find((movement) => movement.id === id);
         if (!original || original.isReversal || original.isCanceled) return false;

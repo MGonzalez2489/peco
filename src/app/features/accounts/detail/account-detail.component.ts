@@ -28,6 +28,7 @@ import {
   MovementListComponent,
 } from '@shared/components';
 import {MovementDetailModalComponent} from '@features/movements/components/movement-detail-modal/movement-detail-modal.component';
+import {MovementFormModalComponent} from '@features/movements/components/movement-form-modal.component';
 import {PrivacyCurrencyPipe} from '@shared/pipes/privacy-currency.pipe';
 import {AccountFormModalComponent} from '../components/account-form-modal.component';
 import {AccountProgressionChartComponent} from '../components/account-progression-chart/account-progression-chart.component';
@@ -46,6 +47,7 @@ interface Period {
     AppSelectComponent,
     MovementListComponent,
     MovementDetailModalComponent,
+    MovementFormModalComponent,
     MonthPickerBottomSheetComponent,
     AccountFormModalComponent,
     AppIconComponent,
@@ -78,6 +80,10 @@ export class AccountDetailComponent {
   readonly selectedMovement = signal<Movement | null>(null);
 
   readonly isMovementDetailOpen = computed(() => this.selectedMovement() !== null);
+
+  readonly editingMovement = signal<Movement | null>(null);
+
+  readonly isEditFormOpen = computed(() => this.editingMovement() !== null);
 
   readonly minDate = computed(() => this.account()?.createdAt ?? new Date().toISOString());
 
@@ -170,6 +176,15 @@ export class AccountDetailComponent {
 
   closeMovementDetail(): void {
     this.selectedMovement.set(null);
+  }
+
+  openEditMovement(movement: Movement): void {
+    this.selectedMovement.set(null);
+    this.editingMovement.set(movement);
+  }
+
+  closeEditMovement(): void {
+    this.editingMovement.set(null);
   }
 
   proceedToDeleteAccount(): void {
