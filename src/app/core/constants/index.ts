@@ -18,6 +18,7 @@ export * from './local-storage-keys.constant';
 export * from './max-visible-releases.constant';
 export * from './movement-type-label.constant';
 export * from './movement-type-palette.constant';
+export * from './movement-type-theme.constant';
 export * from './movement-types.constant';
 export * from './navigation-items.constant';
 export * from './navigation-quick-links.constant';

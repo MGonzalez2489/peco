@@ -8,17 +8,26 @@ import {
   output,
   signal,
 } from '@angular/core';
-import {FormBuilder, FormControl, ReactiveFormsModule, Validators} from '@angular/forms';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
-import {MOVEMENT_TYPES} from '@core/constants';
+import {FormBuilder, FormControl, ReactiveFormsModule, Validators} from '@angular/forms';
+import {MOVEMENT_TYPE_THEME, MOVEMENT_TYPES} from '@core/constants';
 import {Category, Movement, SelectOption} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {CatalogStore} from '@core/stores/catalog.store';
 import {MovementsStore} from '@core/stores/movements.store';
 import {MovementType} from '@core/types';
-import {accountColor, fromCents, toAccountOption, toCents, toCategoryOption} from '@core/utils';
+import {fromCents, toAccountOption, toCategoryOption, toCents} from '@core/utils';
 import {AppSelectComponent, ModalComponent} from '@shared/components';
 import {CurrencyInputDirective} from '@shared/directives';
+
+const TYPE_BUTTON_BASE_CLASS =
+  'flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-bold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus-visible:ring-offset-slate-900';
+
+const TYPE_BUTTON_INACTIVE_CLASS =
+  'text-slate-700 enabled:hover:bg-slate-200 dark:text-slate-300 dark:enabled:hover:bg-slate-700';
+
+const AMOUNT_INPUT_BASE_CLASS =
+  'w-full rounded-2xl border-1 bg-white py-3 pr-4 pl-8 text-sm text-slate-900 shadow-sm outline-none transition-colors placeholder:text-slate-500 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-400';
 
 @Component({
   selector: 'app-movement-form-modal',
@@ -80,12 +89,27 @@ export class MovementFormModalComponent {
     this.destinationAccounts().map((account) => toAccountOption(account)),
   );
 
-  readonly typeOptions: SelectOption[] = MOVEMENT_TYPES.map((type) => ({
-    value: type.key,
-    label: type.name,
-    icon: type.icon,
-    color: accountColor(type.color).chip,
+  readonly movementTypeOptions = MOVEMENT_TYPES.map((type) => ({
+    key: type.key,
+    name: type.name,
   }));
+
+  private readonly selectedTheme = computed(() => MOVEMENT_TYPE_THEME[this.selectedType()]);
+
+  readonly amountInputClass = computed(() => {
+    const theme = this.selectedTheme();
+    return [
+      AMOUNT_INPUT_BASE_CLASS,
+      theme.inputTextClass,
+      theme.inputBorderClass,
+      theme.inputFocusClass,
+    ].join(' ');
+  });
+
+  readonly amountSymbolClass = computed(
+    () =>
+      `pointer-events-none absolute left-4 select-none text-sm font-semibold transition-colors ${this.selectedTheme().inputTextClass}`,
+  );
 
   constructor() {
     const typeControl = this.form.controls.type;
@@ -229,6 +253,24 @@ export class MovementFormModalComponent {
     if (field.hasError('min')) return `El valor mínimo es ${field.getError('min').min}.`;
     if (field.hasError('max')) return `El valor máximo es ${field.getError('max').max}.`;
     return 'Valor inválido.';
+  }
+
+  /** Segmented control classes: the active segment carries the movement type color. */
+  typeButtonClass(type: MovementType): string {
+    const theme = MOVEMENT_TYPE_THEME[type];
+    const state =
+      this.selectedType() === type ? theme.activeButtonClass : TYPE_BUTTON_INACTIVE_CLASS;
+    return `${TYPE_BUTTON_BASE_CLASS} ${theme.focusRingClass} ${state}`;
+  }
+
+  /**
+   * Movement types are immutable after creation: the segmented control is disabled
+   * while editing so balances and categories cannot drift from the original record.
+   */
+  setMovementType(type: MovementType): void {
+    if (this.isEditMode()) return;
+    this.form.controls.type.setValue(type);
+    this.form.controls.type.markAsTouched();
   }
 
   private syncDestination(type: MovementType): void {
