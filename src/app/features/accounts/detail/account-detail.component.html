@@ -139,7 +139,8 @@
             ></div>
           </div>
           <p class="text-xs text-slate-500 dark:text-slate-400">
-            De {{ credit.limit | privacyCurrency }} te queda {{ credit.available | privacyCurrency }}.
+            De {{ credit.limit | privacyCurrency }} te queda
+            {{ credit.available | privacyCurrency }}.
           </p>
         </div>
       } @else if (account.targetGoal && account.targetGoal > 0) {
@@ -169,6 +170,7 @@
         [selectable]="true"
         emptyMessage="No hay movimientos asociados a esta cuenta."
         (movementSelected)="openMovementDetail($event)"
+        (movementEditRequested)="openEditMovement($event)"
       />
     </div>
   </section>
@@ -177,6 +179,13 @@
     [movement]="selectedMovement()"
     [isOpen]="isMovementDetailOpen()"
     (close)="closeMovementDetail()"
+    (editRequested)="openEditMovement($event)"
+  />
+
+  <app-movement-form-modal
+    [isOpen]="isEditFormOpen()"
+    [editMovement]="editingMovement()"
+    (closed)="closeEditMovement()"
   />
 
   <app-account-form-modal

@@ -243,7 +243,30 @@
       </dl>
 
       <!-- FOOTER ACTIONS -->
-      <div class="mt-6">
+      <div class="mt-6 space-y-2">
+        @if (canEdit()) {
+          <button
+            type="button"
+            (click)="editRequested.emit(current)"
+            class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-indigo-600/30 transition hover:bg-indigo-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
+          >
+            <app-icon name="edit" size="16" class="h-4 w-4" />
+            Editar movimiento
+          </button>
+        } @else if (editBlockMessage(); as reason) {
+          <span [attr.title]="reason" class="block">
+            <button
+              type="button"
+              disabled
+              [attr.aria-label]="reason"
+              class="inline-flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500"
+            >
+              <app-icon name="edit" size="16" class="h-4 w-4" />
+              Editar movimiento
+            </button>
+          </span>
+        }
+
         <button
           type="button"
           (click)="dismiss()"

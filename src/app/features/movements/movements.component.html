@@ -111,6 +111,7 @@
     [selectable]="true"
     emptyMessage="No hay movimientos con los filtros seleccionados."
     (movementSelected)="openMovementDetail($event)"
+    (movementEditRequested)="openEditMovement($event)"
   />
 </section>
 
@@ -118,6 +119,13 @@
   [movement]="selectedMovement()"
   [isOpen]="isMovementDetailOpen()"
   (close)="closeMovementDetail()"
+  (editRequested)="openEditMovement($event)"
+/>
+
+<app-movement-form-modal
+  [isOpen]="isEditFormOpen()"
+  [editMovement]="editingMovement()"
+  (closed)="closeEditMovement()"
 />
 
 <app-filtro-movimientos-modal [isOpen]="filtersOpen()" (closed)="filtersOpen.set(false)" />

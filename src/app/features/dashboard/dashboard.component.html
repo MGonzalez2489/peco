@@ -80,6 +80,7 @@
       [selectable]="true"
       emptyMessage="Todavía no hay movimientos."
       (movementSelected)="openMovementDetail($event)"
+      (movementEditRequested)="openEditMovement($event)"
     />
   </div>
 
@@ -90,4 +91,11 @@
   [movement]="selectedMovement()"
   [isOpen]="isMovementDetailOpen()"
   (close)="closeMovementDetail()"
+  (editRequested)="openEditMovement($event)"
+/>
+
+<app-movement-form-modal
+  [isOpen]="isEditFormOpen()"
+  [editMovement]="editingMovement()"
+  (closed)="closeEditMovement()"
 />
