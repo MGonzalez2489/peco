@@ -25,7 +25,11 @@ export const ChangelogStore = signalStore(
   withState(INITIAL_STATE),
   withCallState(),
   withComputed(({releases}) => ({
-    lastChanges: computed(() => releases().slice(0, MAX_VISIBLE_RELEASES)),
+    lastChanges: computed(() =>
+      releases()
+        .filter((release) => release._draft !== true)
+        .slice(0, MAX_VISIBLE_RELEASES),
+    ),
   })),
   withMethods((store) => {
     const api = inject(ChangelogApiService);

@@ -55,6 +55,16 @@ describe('ChangelogStore', () => {
     expect(store.lastChanges().length).toBe(5);
   });
 
+  it('hides draft releases from the visible slice', () => {
+    store.load();
+    httpTesting
+      .expectOne(CHANGELOG_URL)
+      .flush([{version: 'v0.0.11-a', _draft: true, highlights: ['Borrador']}, ...buildReleases(2)]);
+
+    expect(store.releases().length).toBe(3);
+    expect(store.lastChanges().map((release) => release.version)).toEqual(['v0.0.0', 'v0.1.0']);
+  });
+
   it('records the error and clears releases on failure', () => {
     store.load();
     httpTesting.expectOne(CHANGELOG_URL).flush('boom', {status: 500, statusText: 'Server Error'});

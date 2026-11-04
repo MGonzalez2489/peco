@@ -50,6 +50,59 @@ describe('migrateAmountsToCents', () => {
     ]);
   });
 
+  it('converts the period snapshot wrappers and their nested breakdown to cents', () => {
+    localStorage.setItem(
+      LOCAL_STORAGE_KEYS.periodSnapshots,
+      JSON.stringify([
+        {
+          id: 'snap-2026-10',
+          globalInitialBalance: 1500.5,
+          globalFinalBalance: 2000,
+          totalInflows: 10.25,
+          totalOutflows: 5.5,
+          totalTransfers: 0,
+          totalTransactionsCount: 3,
+          accountBalances: [
+            {
+              accountId: 'c-cash',
+              initialBalance: 100.5,
+              finalBalance: 200,
+              totalInflows: 10.25,
+              totalOutflows: 5.5,
+              totalTransfers: 1.5,
+              totalTransactions: 3,
+            },
+          ],
+        },
+      ]),
+    );
+
+    migrateAmountsToCents();
+
+    expect(readJson(LOCAL_STORAGE_KEYS.periodSnapshots)).toEqual([
+      {
+        id: 'snap-2026-10',
+        globalInitialBalance: 150050,
+        globalFinalBalance: 200000,
+        totalInflows: 1025,
+        totalOutflows: 550,
+        totalTransfers: 0,
+        totalTransactionsCount: 3,
+        accountBalances: [
+          {
+            accountId: 'c-cash',
+            initialBalance: 10050,
+            finalBalance: 20000,
+            totalInflows: 1025,
+            totalOutflows: 550,
+            totalTransfers: 150,
+            totalTransactions: 3,
+          },
+        ],
+      },
+    ]);
+  });
+
   it('runs only once so already-migrated cents are never converted again', () => {
     localStorage.setItem(
       LOCAL_STORAGE_KEYS.accounts,

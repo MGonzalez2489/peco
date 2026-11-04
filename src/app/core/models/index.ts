@@ -1,3 +1,4 @@
+export * from './account-period-balance.model';
 export * from './account-preferences.model';
 export * from './account-type-definition.model';
 export * from './account-type-summary.model';
@@ -13,6 +14,7 @@ export * from './movement-filters.model';
 export * from './movement-group.model';
 export * from './movement-totals.model';
 export * from './navigation-item.model';
+export * from './period-snapshot.model';
 export * from './progression-point.model';
 export * from './scheduled-transaction-type.model';
 export * from './scheduled-transaction.model';

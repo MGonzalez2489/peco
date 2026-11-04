@@ -1,5 +1,12 @@
 [
   {
+    "version": "v0.0.11-a",
+    "_draft": true,
+    "highlights": [
+      "Nueva Funcionalidad: cierre automático de periodos mensuales con snapshots históricos inmutables que agrupan los totales globales y el desglose de saldos por cuenta"
+    ]
+  },
+  {
     "version": "v0.0.10-a",
     "fecha": "2026-10-21",
     "highlights": [

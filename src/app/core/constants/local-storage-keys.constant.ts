@@ -1,11 +1,13 @@
 export const LOCAL_STORAGE_KEYS = {
   accounts: 'peco.accounts',
+  periodSnapshots: 'peco.period-snapshots',
   movements: 'peco.movements',
   categories: 'peco.catalog.categories',
   scheduledTransactions: 'peco.scheduled-transactions',
   userPreferences: 'peco.user-preferences',
   schemaVersion: 'peco.schema-version',
   accountsLegacy: 'peco.cuentas',
+  periodSnapshotsLegacy: 'peco_period_snapshots',
   categoriesLegacy: 'peco.categories',
   scheduledTransactionsLegacy: 'peco_scheduled_transactions',
   themeLegacy: 'peco.theme',

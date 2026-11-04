@@ -1,5 +1,6 @@
-import {Component, signal} from '@angular/core';
+import {Component, inject, signal} from '@angular/core';
 import {RouterOutlet} from '@angular/router';
+import {PeriodSnapshotsStore} from '@core/stores/period-snapshots.store';
 import {PwaInstallBannerComponent} from '@core/components/pwa-install-banner/pwa-install-banner.component';
 import {UpdateBannerComponent} from '@core/components/update-banner/update-banner.component';
 import {MovementFormModalComponent} from '@features/movements/components';
@@ -64,6 +65,12 @@ import {NavIconComponent, NavbarComponent, SidebarComponent} from '@shared/compo
   `,
 })
 export class AppComponent {
+  /**
+   * Injected eagerly so the store closes every missing past period during app
+   * initialization, before the first page reads the period snapshots.
+   */
+  private readonly periodSnapshotsStore = inject(PeriodSnapshotsStore);
+
   readonly modalOpen = signal(false);
   readonly mobileMenuOpen = signal(false);
   readonly sidebarCollapsed = signal(false);
