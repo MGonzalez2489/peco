@@ -1,4 +1,4 @@
-import {ChangeDetectionStrategy, Component, inject, signal} from '@angular/core';
+import {ChangeDetectionStrategy, Component, computed, inject, signal} from '@angular/core';
 import {ChangelogStore} from '@core/stores/changelog.store';
 import {AppIconComponent} from '@shared/components';
 
@@ -14,6 +14,11 @@ export class ChangelogSettingsComponent {
   protected readonly loading = this.changelogStore.loading;
   protected readonly error = this.changelogStore.error;
   protected readonly lastChanges = this.changelogStore.lastChanges;
+
+  /** Newest published release; drafts never take the `Última versión` badge. */
+  protected readonly latestPublishedVersion = computed(
+    () => this.lastChanges().find((release) => release._draft !== true)?.version ?? null,
+  );
 
   protected readonly openIndex = signal(0);
 

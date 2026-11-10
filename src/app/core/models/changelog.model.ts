@@ -3,6 +3,6 @@ export interface ChangelogRelease {
   /** Release date in `YYYY-MM-DD`; drafts are not dated until they are published. */
   fecha?: string;
   highlights: string[];
-  /** A draft is tracked in the changelog file but never rendered in the view. */
+  /** Drafts are only rendered outside production, with a `Siguiente versión` badge. */
   _draft?: boolean;
 }

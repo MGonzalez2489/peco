@@ -14,6 +14,7 @@ export * from './color-palette.constant';
 export * from './default-account-color.constant';
 export * from './default-category-color.constant';
 export * from './default-user-preferences.constant';
+export * from './is-production.constant';
 export * from './local-storage-keys.constant';
 export * from './max-visible-releases.constant';
 export * from './movement-type-label.constant';

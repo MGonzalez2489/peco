@@ -8,6 +8,7 @@ import {
 } from '@angular-architects/ngrx-toolkit';
 import {patchState, signalStore, withComputed, withMethods, withState} from '@ngrx/signals';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
+import {IS_PRODUCTION} from '../constants/is-production.constant';
 import {MAX_VISIBLE_RELEASES} from '../constants/max-visible-releases.constant';
 import {ChangelogRelease} from '../models/changelog.model';
 import {ChangelogApiService} from '../services/changelog-api.service';
@@ -24,13 +25,19 @@ export const ChangelogStore = signalStore(
   {providedIn: 'root'},
   withState(INITIAL_STATE),
   withCallState(),
-  withComputed(({releases}) => ({
-    lastChanges: computed(() =>
-      releases()
-        .filter((release) => release._draft !== true)
-        .slice(0, MAX_VISIBLE_RELEASES),
-    ),
-  })),
+  withComputed(({releases}) => {
+    const isProduction = inject(IS_PRODUCTION);
+
+    return {
+      lastChanges: computed(() =>
+        releases()
+          // Drafts stay visible outside production so they can be reviewed
+          // locally or in a non-production environment.
+          .filter((release) => release._draft !== true || !isProduction)
+          .slice(0, MAX_VISIBLE_RELEASES),
+      ),
+    };
+  }),
   withMethods((store) => {
     const api = inject(ChangelogApiService);
     const destroyRef = inject(DestroyRef);
