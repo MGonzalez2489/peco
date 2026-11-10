@@ -1,7 +1,8 @@
 [
   {
     "version": "v0.0.11-a",
-    "_draft": true,
+    "fecha": "2026-11-10",
+    "_draft": false,
     "highlights": [
       "Nueva Funcionalidad: cierre automático de periodos mensuales con snapshots históricos inmutables que agrupan los totales globales y el desglose de saldos por cuenta",
       "Nueva Funcionalidad: filtro global de período en la barra de navegación que adapta Resumen, Movimientos, Programados y el detalle de cuentas al mes seleccionado",

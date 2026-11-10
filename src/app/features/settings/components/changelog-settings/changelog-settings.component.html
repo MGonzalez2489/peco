@@ -108,7 +108,7 @@
                         >
                           {{ release.fecha }}
                         </time>
-                      } @else {
+                      } @else if (release._draft) {
                         <span class="text-sm font-medium text-amber-600 dark:text-amber-400">
                           En preparación
                         </span>
