@@ -1,5 +1,14 @@
 [
   {
+    "version": "v0.0.12-a",
+    "_draft": true,
+    "highlights": [
+      "Mejora de UX: los íconos de categoría y cuenta en el detalle del movimiento usan el contenedor suave estandarizado de entidad",
+      "Mejora de UX: encabezado del detalle del movimiento más limpio al eliminar el ícono de categoría redundante",
+      "Mejora de UX: el botón Cerrar del detalle del movimiento adopta un estilo de enlace para diferenciarlo de la acción principal de edición"
+    ]
+  },
+  {
     "version": "v0.0.11-a",
     "fecha": "2026-11-10",
     "_draft": false,

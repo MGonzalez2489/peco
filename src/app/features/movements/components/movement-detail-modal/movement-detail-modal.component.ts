@@ -191,6 +191,9 @@ export class MovementDetailModalComponent {
   protected readonly isMounted = signal(false);
   protected readonly isClosing = signal(false);
 
+  /** Exposed for the soft entity icon tiles in the detail rows. */
+  protected readonly toSoftCategoryColor = toSoftCategoryColor;
+
   protected readonly displayedMovement = computed(() => this.movement() ?? this.lastMovement());
 
   private readonly accountsById = computed(
@@ -221,12 +224,6 @@ export class MovementDetailModalComponent {
   readonly typeIcon = computed<IconName>(
     () => this.movementTypesByKey().get(this.currentType())?.icon ?? 'arrow-left-right',
   );
-
-  readonly heroAccent = computed(
-    () => accountColor(this.movementTypesByKey().get(this.currentType())?.color).chip,
-  );
-
-  readonly heroBackground = computed(() => toSoftCategoryColor(this.heroAccent(), '20'));
 
   readonly formattedAmount = computed(() => {
     const movement = this.displayedMovement();
