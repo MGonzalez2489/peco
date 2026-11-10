@@ -1,14 +1,53 @@
 <section class="space-y-6">
   <div>
     <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Resumen</h1>
-    <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Así van tus finanzas hoy.</p>
+    <div class="mt-1 flex flex-wrap items-center gap-2">
+      <span
+        class="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+      >
+        <app-icon name="calendar" size="14" class="h-3.5 w-3.5 text-slate-500" />
+        <span class="hidden sm:inline">{{ formattedPeriodLabel() }}</span>
+        <span class="sm:hidden">{{ formattedPeriodLabelCompact() }}</span>
+      </span>
+      <span
+        class="rounded-md border px-2 py-1 text-[10px] font-semibold uppercase tracking-wide"
+        [class]="
+          isPastPeriod()
+            ? 'border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400'
+            : isFuturePeriod()
+              ? 'border-indigo-200 bg-indigo-50 text-indigo-600 dark:border-indigo-500/40 dark:bg-indigo-500/15 dark:text-indigo-300'
+              : 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-500/15 dark:text-emerald-300'
+        "
+      >
+        {{ periodStatusLabel() }}
+      </span>
+      <p class="text-sm text-slate-500 dark:text-slate-400">
+        {{ periodTransactionsCount() }} movimiento{{ periodTransactionsCount() === 1 ? '' : 's' }}
+        en el período
+      </p>
+    </div>
   </div>
 
-  <app-stat-card
-    title="Disponible para gastar"
-    [amount]="availableBalance()"
-    color="indigo"
-    subtext="Suma de tus apartados incluidos en el disponible"
+  <div class="grid gap-4 sm:grid-cols-2">
+    <app-stat-card
+      title="Disponible para gastar"
+      [amount]="availableAmount()"
+      color="indigo"
+      [subtext]="availableSubtext()"
+    />
+
+    <app-stat-card
+      title="Balance del período"
+      [amount]="periodNetBalance()"
+      [color]="periodNetBalance() < 0 ? 'rose' : 'emerald'"
+      [subtext]="periodTotalsSubtext()"
+    />
+  </div>
+
+  <app-period-flow-chart
+    [periodLabel]="formattedPeriodLabel()"
+    [inflows]="periodInflows()"
+    [outflows]="periodOutflows()"
   />
 
   <div class="mt-8">
@@ -78,7 +117,8 @@
     <app-movement-list
       [movements]="recentMovements()"
       [selectable]="true"
-      emptyMessage="Todavía no hay movimientos."
+      [readOnly]="isPastPeriod()"
+      emptyMessage="No hay movimientos en este período."
       (movementSelected)="openMovementDetail($event)"
       (movementEditRequested)="openEditMovement($event)"
     />
@@ -90,6 +130,7 @@
 <app-movement-detail-modal
   [movement]="selectedMovement()"
   [isOpen]="isMovementDetailOpen()"
+  [readOnly]="isPastPeriod()"
   (close)="closeMovementDetail()"
   (editRequested)="openEditMovement($event)"
 />

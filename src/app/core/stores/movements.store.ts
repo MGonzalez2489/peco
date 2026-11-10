@@ -178,6 +178,7 @@ export const MovementsStore = signalStore(
           amount: dto.amount,
           note: dto.note,
           targetAccountId: dto.targetAccountId,
+          scheduledTransactionId: dto.scheduledTransactionId,
         };
 
         commit([movement, ...store.movements()]);

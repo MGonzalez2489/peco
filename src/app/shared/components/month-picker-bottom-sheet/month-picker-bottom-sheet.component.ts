@@ -40,7 +40,11 @@ export class MonthPickerBottomSheetComponent {
 
   readonly align = input<'left' | 'right'>('left');
 
+  /** Shows the `Ir a hoy` shortcut in the sheet footer. */
+  readonly showTodayAction = input(false);
+
   readonly monthSelect = output<MonthPickerSelection>();
+  readonly todaySelected = output<void>();
   readonly close = output<void>();
 
   private readonly elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
@@ -180,6 +184,10 @@ export class MonthPickerBottomSheetComponent {
       year: this.currentYear(),
     });
     this.close.emit();
+  }
+
+  protected selectToday(): void {
+    this.todaySelected.emit();
   }
 
   protected dismiss(): void {

@@ -1,7 +1,9 @@
 <section class="mt-8">
   <div class="mb-4 flex items-center justify-between gap-4">
-    <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-      Próximos movimientos
+    <h2
+      class="mb-4 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+    >
+      {{ widgetTitle() }}
     </h2>
     <a
       [routerLink]="['/scheduled']"
@@ -11,12 +13,19 @@
     </a>
   </div>
 
-  @if (upcoming().length === 0) {
+  @if (isPastPeriod()) {
+    <app-movement-list
+      [movements]="appliedMovements()"
+      [selectable]="false"
+      [readOnly]="true"
+      emptyMessage="No hubo pagos programados aplicados en este período."
+    />
+  } @else if (upcoming().length === 0) {
     <div
       class="rounded-2xl border-2 border-dashed border-slate-300 p-4 text-center dark:border-slate-700"
     >
       <p class="text-sm font-medium text-slate-700 dark:text-slate-300">
-        No tienes pagos programados en los próximos {{ timeframeDays() }} días.
+        {{ emptyMessage() }}
       </p>
     </div>
   } @else {

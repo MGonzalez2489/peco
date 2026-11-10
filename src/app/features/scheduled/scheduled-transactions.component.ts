@@ -1,10 +1,12 @@
 import {ChangeDetectionStrategy, Component, computed, inject, signal} from '@angular/core';
-import {DistributionChartItem, ScheduledTransaction} from '@core/models';
+import {DistributionChartItem, Movement, ScheduledTransaction} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
+import {GlobalPeriodStore} from '@core/stores/global-period.store';
+import {MovementsStore} from '@core/stores/movements.store';
 import {ScheduledTransactionsStore} from '@core/stores/scheduled-transactions.store';
 import {MovementFilterType} from '@core/types';
-import {toSoftCategoryColor} from '@core/utils';
-import {AppIconComponent} from '@shared/components/app-icon/app-icon.component';
+import {toPeriod, toSoftCategoryColor} from '@core/utils';
+import {AppIconComponent, MovementListComponent} from '@shared/components';
 import {ExecuteScheduleModalComponent} from './components/execute-schedule-modal.component';
 import {ScheduledDistributionChartComponent} from './components/scheduled-distribution-chart/scheduled-distribution-chart.component';
 import {ScheduledFiltrosModalComponent} from './components/scheduled-filtros-modal/scheduled-filtros-modal.component';
@@ -20,6 +22,7 @@ type MobileSection = 'summary' | 'transactions';
   imports: [
     PrivacyCurrencyPipe,
     AppIconComponent,
+    MovementListComponent,
     ScheduledTransactionCardComponent,
     ScheduledTransactionFormModalComponent,
     ExecuteScheduleModalComponent,
@@ -32,11 +35,17 @@ type MobileSection = 'summary' | 'transactions';
 export class ScheduledTransactionsComponent {
   readonly scheduledStore = inject(ScheduledTransactionsStore);
   readonly accountsStore = inject(AccountsStore);
+  private readonly movementsStore = inject(MovementsStore);
+  private readonly globalPeriodStore = inject(GlobalPeriodStore);
+
+  readonly selectedPeriodKey = this.globalPeriodStore.selectedPeriodKey;
+  readonly formattedPeriodLabel = this.globalPeriodStore.formattedPeriodLabel;
+  readonly formattedPeriodLabelCompact = this.globalPeriodStore.formattedPeriodLabelCompact;
+  readonly isPastPeriod = this.globalPeriodStore.isPastPeriod;
 
   readonly summary = this.scheduledStore.monthlyCommitmentsSummary;
   readonly projectedBalance = this.scheduledStore.netImpact;
   readonly commitmentPercentage = this.scheduledStore.incomeCommitmentPercentage;
-  readonly filteredSchedules = this.scheduledStore.filteredSchedules;
   readonly hasFilters = computed(
     () =>
       this.scheduledStore.searchQuery().trim().length > 0 ||
@@ -45,6 +54,47 @@ export class ScheduledTransactionsComponent {
   );
 
   readonly toSoftCategoryColor = toSoftCategoryColor;
+
+  /** Scheduled payments that were actually applied inside the selected period. */
+  readonly appliedMovements = computed<Movement[]>(() =>
+    this.movementsStore
+      .visibleMovements()
+      .filter(
+        (movement) =>
+          Boolean(movement.scheduledTransactionId) &&
+          !movement.isCanceled &&
+          !movement.isReversal &&
+          toPeriod(movement.date) === this.selectedPeriodKey(),
+      ),
+  );
+
+  private readonly appliedScheduleIds = computed(
+    () => new Set(this.appliedMovements().map((movement) => movement.scheduledTransactionId)),
+  );
+
+  /**
+   * Pending schedules of the active period. Past months only keep schedules
+   * with an applied occurrence, the current month also keeps overdue items,
+   * and future months only keep their own projections.
+   */
+  readonly filteredSchedules = computed<ScheduledTransaction[]>(() => {
+    const periodKey = this.selectedPeriodKey();
+    const base = this.scheduledStore.filteredSchedules();
+    const applied = this.appliedScheduleIds();
+
+    if (this.isPastPeriod()) {
+      return base.filter((schedule) => applied.has(schedule.id));
+    }
+
+    return base.filter((schedule) => {
+      const schedulePeriod = toPeriod(schedule.nextExecutionDate);
+      if (!schedulePeriod) return false;
+
+      return this.globalPeriodStore.isCurrentPeriod()
+        ? schedulePeriod <= periodKey
+        : schedulePeriod === periodKey;
+    });
+  });
 
   readonly distributionType = signal<DistributionType>('EXPENSE');
 
@@ -80,7 +130,9 @@ export class ScheduledTransactionsComponent {
       : this.summary().totalIncome - this.summary().totalExpenses,
   );
 
-  readonly movementsCount = computed(() => this.filteredSchedules().length);
+  readonly movementsCount = computed(() =>
+    this.isPastPeriod() ? this.appliedMovements().length : this.filteredSchedules().length,
+  );
 
   readonly mobileSection = signal<MobileSection>('summary');
 
@@ -95,6 +147,12 @@ export class ScheduledTransactionsComponent {
   });
 
   readonly listCounterLabel = computed(() => {
+    if (this.isPastPeriod()) {
+      return `${this.appliedMovements().length} pago${
+        this.appliedMovements().length === 1 ? '' : 's'
+      } aplicado${this.appliedMovements().length === 1 ? '' : 's'} en el período`;
+    }
+
     const shown = this.filteredSchedules().length;
     const total = this.scheduledStore.scheduledTransactions().length;
     return `Mostrando ${shown} de ${total} movimientos programados`;
@@ -116,11 +174,15 @@ export class ScheduledTransactionsComponent {
   });
 
   openCreate(): void {
+    if (this.isPastPeriod()) return;
+
     this.scheduleToEdit.set(null);
     this.formOpen.set(true);
   }
 
   openEdit(schedule: ScheduledTransaction): void {
+    if (this.isPastPeriod()) return;
+
     this.scheduleToEdit.set(schedule);
     this.formOpen.set(true);
   }
@@ -131,6 +193,8 @@ export class ScheduledTransactionsComponent {
   }
 
   openExecute(schedule: ScheduledTransaction): void {
+    if (this.isPastPeriod()) return;
+
     this.scheduleToExecute.set(schedule);
     this.executeOpen.set(true);
   }
@@ -142,13 +206,15 @@ export class ScheduledTransactionsComponent {
 
   applyExecution(amount: number): void {
     const schedule = this.scheduleToExecute();
-    if (!schedule) return;
+    if (!schedule || this.isPastPeriod()) return;
 
     this.scheduledStore.executeScheduledTransaction(schedule.id, amount);
     this.closeExecute();
   }
 
   cancelOccurrence(schedule: ScheduledTransaction): void {
+    if (this.isPastPeriod()) return;
+
     this.scheduledStore.cancelScheduledOccurrence(schedule.id);
   }
 

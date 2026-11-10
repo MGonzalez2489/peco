@@ -7,6 +7,7 @@ export * from './backup-data.model';
 export * from './category.model';
 export * from './changelog.model';
 export * from './distribution-chart-item.model';
+export * from './global-period-state.model';
 export * from './monthly-commitments.model';
 export * from './movement.model';
 export * from './movement-preferences.model';

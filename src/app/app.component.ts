@@ -1,6 +1,7 @@
-import {Component, inject, signal} from '@angular/core';
+import {Component, computed, inject, signal} from '@angular/core';
 import {RouterOutlet} from '@angular/router';
 import {PeriodSnapshotsStore} from '@core/stores/period-snapshots.store';
+import {GlobalPeriodStore} from '@core/stores/global-period.store';
 import {PwaInstallBannerComponent} from '@core/components/pwa-install-banner/pwa-install-banner.component';
 import {UpdateBannerComponent} from '@core/components/update-banner/update-banner.component';
 import {MovementFormModalComponent} from '@features/movements/components';
@@ -51,7 +52,11 @@ import {NavIconComponent, NavbarComponent, SidebarComponent} from '@shared/compo
       <button
         type="button"
         (click)="modalOpen.set(true)"
-        class="fixed bottom-6 right-6 z-30 inline-flex h-14 w-14 items-center justify-center rounded-full bg-indigo-600 text-white shadow-lg shadow-indigo-600/40 transition hover:bg-indigo-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 md:hidden dark:focus-visible:ring-offset-slate-950"
+        [disabled]="isPastPeriod()"
+        [attr.title]="
+          isPastPeriod() ? 'No puedes registrar movimientos en un período cerrado' : null
+        "
+        class="fixed bottom-6 right-6 z-30 inline-flex h-14 w-14 items-center justify-center rounded-full bg-indigo-600 text-white shadow-lg shadow-indigo-600/40 transition hover:bg-indigo-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-indigo-600 md:hidden dark:focus-visible:ring-offset-slate-950"
         aria-label="Registrar movimiento"
       >
         <app-nav-icon name="plus" sizeClass="h-6 w-6" />
@@ -70,6 +75,9 @@ export class AppComponent {
    * initialization, before the first page reads the period snapshots.
    */
   private readonly periodSnapshotsStore = inject(PeriodSnapshotsStore);
+  private readonly globalPeriodStore = inject(GlobalPeriodStore);
+
+  readonly isPastPeriod = computed(() => this.globalPeriodStore.isPastPeriod());
 
   readonly modalOpen = signal(false);
   readonly mobileMenuOpen = signal(false);

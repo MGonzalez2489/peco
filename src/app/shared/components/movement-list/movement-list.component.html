@@ -111,27 +111,29 @@
             </div>
 
             <div class="flex shrink-0 items-center gap-1 pr-3">
-              @if (canEdit(movement)) {
-                <button
-                  type="button"
-                  (click)="requestEdit(movement)"
-                  class="rounded-lg p-1.5 text-slate-400 transition hover:bg-indigo-50 hover:text-indigo-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400"
-                  aria-label="Editar movimiento"
-                  title="Editar movimiento"
-                >
-                  <app-icon name="edit" size="16" class="h-4 w-4" />
-                </button>
-              }
+              @if (!readOnly()) {
+                @if (canEdit(movement)) {
+                  <button
+                    type="button"
+                    (click)="requestEdit(movement)"
+                    class="rounded-lg p-1.5 text-slate-400 transition hover:bg-indigo-50 hover:text-indigo-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400"
+                    aria-label="Editar movimiento"
+                    title="Editar movimiento"
+                  >
+                    <app-icon name="edit" size="16" class="h-4 w-4" />
+                  </button>
+                }
 
-              @if (!movement.isReversal) {
-                <button
-                  type="button"
-                  (click)="movementToRevert.set(movement)"
-                  class="rounded-lg p-1.5 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
-                  [attr.aria-label]="'Reversar movimiento de ' + accountName(movement.accountId)"
-                >
-                  <app-icon name="refresh-cw" size="16" class="h-4 w-4" />
-                </button>
+                @if (!movement.isReversal) {
+                  <button
+                    type="button"
+                    (click)="movementToRevert.set(movement)"
+                    class="rounded-lg p-1.5 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
+                    [attr.aria-label]="'Reversar movimiento de ' + accountName(movement.accountId)"
+                  >
+                    <app-icon name="refresh-cw" size="16" class="h-4 w-4" />
+                  </button>
+                }
               }
             </div>
           </div>

@@ -20,6 +20,7 @@ export * from './ensure-root-account.util';
 export * from './ensure-root-category.util';
 export * from './format-cents-to-currency.util';
 export * from './format-currency.util';
+export * from './format-period-label.util';
 export * from './format-local-date.util';
 export * from './from-cents.util';
 export * from './format-local-time.util';

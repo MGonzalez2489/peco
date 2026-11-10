@@ -1,13 +1,9 @@
 import {ChangeDetectionStrategy, Component, computed, inject, signal} from '@angular/core';
 import {Movement} from '@core/models';
+import {GlobalPeriodStore} from '@core/stores/global-period.store';
 import {MovementsStore} from '@core/stores/movements.store';
-import {calculateMovementTotals, isSameMonthAndYear} from '@core/utils';
-import {
-  AppIconComponent,
-  MonthPickerBottomSheetComponent,
-  MonthPickerSelection,
-  MovementListComponent,
-} from '@shared/components';
+import {calculateMovementTotals, toPeriod} from '@core/utils';
+import {AppIconComponent, MovementListComponent} from '@shared/components';
 import {PrivacyCurrencyPipe} from '@shared/pipes/privacy-currency.pipe';
 import {FiltroMovimientosModalComponent} from './components/filtro-movimientos-modal/filtro-movimientos-modal.component';
 import {MovementDetailModalComponent} from './components/movement-detail-modal/movement-detail-modal.component';
@@ -24,13 +20,13 @@ import {MovementsProgressionChartComponent} from './components/movements-progres
     FiltroMovimientosModalComponent,
     MovementsProgressionChartComponent,
     AppIconComponent,
-    MonthPickerBottomSheetComponent,
   ],
   templateUrl: './movements.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MovementsComponent {
   readonly movementsStore = inject(MovementsStore);
+  private readonly globalPeriodStore = inject(GlobalPeriodStore);
 
   readonly filtersOpen = signal(false);
 
@@ -42,55 +38,23 @@ export class MovementsComponent {
 
   readonly isEditFormOpen = computed(() => this.editingMovement() !== null);
 
-  readonly selectedPeriod = signal<MonthPickerSelection>({
-    month: new Date().getMonth() + 1,
-    year: new Date().getFullYear(),
-  });
+  readonly selectedPeriodKey = this.globalPeriodStore.selectedPeriodKey;
+  readonly isPastPeriod = this.globalPeriodStore.isPastPeriod;
 
-  readonly isMonthPickerOpen = signal(false);
+  readonly selectedPeriod = computed(() => ({
+    month: this.globalPeriodStore.selectedMonth(),
+    year: this.globalPeriodStore.selectedYear(),
+  }));
 
   readonly filteredMovements = computed(() =>
     this.movementsStore
       .filteredMovements()
-      .filter((movement) => isSameMonthAndYear(movement.date, this.selectedPeriod())),
+      .filter((movement) => toPeriod(movement.date) === this.selectedPeriodKey()),
   );
 
   readonly filteredTotals = computed(() => calculateMovementTotals(this.filteredMovements()));
 
   readonly activeFilterCount = this.movementsStore.activeFilterCount;
-
-  readonly minDate = computed(() => {
-    const movements = this.movementsStore.sortedMovements();
-    return movements.length > 0 ? movements[movements.length - 1].date : new Date().toISOString();
-  });
-
-  readonly maxDate = computed(() => new Date());
-
-  readonly formattedSelectedMonthDesktop = computed(() => {
-    const {month, year} = this.selectedPeriod();
-    const monthName = new Intl.DateTimeFormat('es-ES', {month: 'long'}).format(
-      new Date(year, month - 1, 1),
-    );
-    return `${monthName.charAt(0).toUpperCase()}${monthName.slice(1)} ${year}`;
-  });
-
-  readonly formattedSelectedMonthMobile = computed(() => {
-    const {month, year} = this.selectedPeriod();
-    return `${String(month).padStart(2, '0')} / ${year}`;
-  });
-
-  toggleMonthPicker(): void {
-    this.isMonthPickerOpen.update((isOpen) => !isOpen);
-  }
-
-  closeMonthPicker(): void {
-    this.isMonthPickerOpen.set(false);
-  }
-
-  onMonthSelected(selection: MonthPickerSelection): void {
-    this.selectedPeriod.set({month: selection.month, year: selection.year});
-    this.isMonthPickerOpen.set(false);
-  }
 
   openMovementDetail(movement: Movement): void {
     this.selectedMovement.set(movement);
@@ -101,6 +65,8 @@ export class MovementsComponent {
   }
 
   openEditMovement(movement: Movement): void {
+    if (this.isPastPeriod()) return;
+
     this.selectedMovement.set(null);
     this.editingMovement.set(movement);
   }
