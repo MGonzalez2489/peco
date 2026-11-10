@@ -1,5 +1,19 @@
 [
   {
+    "version": "v0.0.11-a",
+    "fecha": "2026-11-10",
+    "_draft": false,
+    "highlights": [
+      "Nueva Funcionalidad: cierre automático de periodos mensuales con snapshots históricos inmutables que agrupan los totales globales y el desglose de saldos por cuenta",
+      "Nueva Funcionalidad: filtro global de período en la barra de navegación que adapta Resumen, Movimientos, Programados y el detalle de cuentas al mes seleccionado",
+      "Nueva Funcionalidad: bloqueo de creación, edición y reversión de movimientos en períodos cerrados, usando las métricas históricas de los snapshots",
+      "Mejora de UX: las listas de Programados muestran pagos aplicados en meses pasados, pendientes en el mes actual y proyecciones en meses futuros",
+      "Mejora de UX: nuevo gráfico de flujo de ingresos y egresos por período en Resumen, con acceso «Ir a hoy» integrado en el selector de período",
+      "Mejora de UX: eliminación del filtro de período duplicado en Movimientos, centralizando la selección del mes en el selector global",
+      "Corrección de Error: el selector de período móvil se presenta como bottom-sheet completo y el logo vuelve a mostrarse junto al menú hamburguesa"
+    ]
+  },
+  {
     "version": "v0.0.10-a",
     "fecha": "2026-10-21",
     "highlights": [

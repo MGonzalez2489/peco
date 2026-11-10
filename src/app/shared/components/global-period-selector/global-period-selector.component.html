@@ -1,0 +1,27 @@
+<div class="relative flex items-center gap-2">
+  <button
+    type="button"
+    (click)="togglePicker()"
+    aria-label="Seleccionar período"
+    [attr.aria-expanded]="isPickerOpen()"
+    class="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 px-2.5 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-200/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 dark:focus-visible:ring-offset-slate-950 md:gap-2 md:px-3 md:py-2"
+  >
+    <app-icon name="calendar" size="16" class="h-4 w-4 text-slate-500 dark:text-slate-400" />
+    <span class="hidden md:inline">{{ formattedPeriodLabel() }}</span>
+    <span class="md:hidden">{{ formattedPeriodLabelCompact() }}</span>
+    <app-icon name="chevron-down" size="14" class="h-3.5 w-3.5 text-slate-400" />
+  </button>
+
+  <app-month-picker-bottom-sheet
+    [isOpen]="isPickerOpen()"
+    [selectedMonth]="selectedMonth()"
+    [selectedYear]="selectedYear()"
+    [minDate]="minDate()"
+    [maxDate]="maxDate()"
+    [showTodayAction]="!isCurrentPeriod()"
+    align="right"
+    (monthSelect)="onMonthSelected($event)"
+    (todaySelected)="goToToday()"
+    (close)="closePicker()"
+  />
+</div>

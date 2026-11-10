@@ -288,6 +288,7 @@ export const ScheduledTransactionsStore = signalStore(
         amount: actualAmount ?? item.estimatedAmount,
         targetAccountId: item.destinationAccountId,
         note: item.name,
+        scheduledTransactionId: item.id,
       });
 
       if (!movement) return false;

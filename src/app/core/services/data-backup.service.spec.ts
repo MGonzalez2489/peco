@@ -202,6 +202,23 @@ describe('DataBackupService selective import', () => {
     expect(localStorage.getItem(LOCAL_STORAGE_KEYS.schemaVersion)).toBe(AMOUNT_SCHEMA_VERSION);
   });
 
+  it('drops stale period snapshots when importing accounts', async () => {
+    localStorage.setItem(
+      LOCAL_STORAGE_KEYS.periodSnapshots,
+      JSON.stringify([{id: 'snap-2026-08', period: '2026-08'}]),
+    );
+
+    await service.importData(
+      buildFile({
+        [LOCAL_STORAGE_KEYS.accounts]: [{id: 'a'}],
+        [LOCAL_STORAGE_KEYS.movements]: [{id: 'm'}],
+      }),
+      {accounts: true, movements: true, scheduledTransactions: false, preferences: false},
+    );
+
+    expect(localStorage.getItem(LOCAL_STORAGE_KEYS.periodSnapshots)).toBe(null);
+  });
+
   it('keeps current movements when only accounts are selected', async () => {
     localStorage.setItem(LOCAL_STORAGE_KEYS.movements, JSON.stringify([{id: 'keep'}]));
 
@@ -220,10 +237,12 @@ describe('DataBackupService selective import', () => {
   it('never imports movements when accounts are not selected', async () => {
     localStorage.setItem(LOCAL_STORAGE_KEYS.movements, JSON.stringify([{id: 'keep'}]));
 
-    await service.importData(
-      buildFile({[LOCAL_STORAGE_KEYS.movements]: [{id: 'new'}]}),
-      {accounts: false, movements: true, scheduledTransactions: false, preferences: false},
-    );
+    await service.importData(buildFile({[LOCAL_STORAGE_KEYS.movements]: [{id: 'new'}]}), {
+      accounts: false,
+      movements: true,
+      scheduledTransactions: false,
+      preferences: false,
+    });
 
     expect(localStorage.getItem(LOCAL_STORAGE_KEYS.movements)).toBe('[{"id":"keep"}]');
   });

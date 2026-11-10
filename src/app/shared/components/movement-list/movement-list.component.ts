@@ -38,6 +38,8 @@ export class MovementListComponent {
   readonly movements = input<readonly Movement[]>([]);
   readonly emptyMessage = input('No hay movimientos para mostrar.');
   readonly selectable = input(false);
+  /** Closed periods are audit-only: edit and revert actions are hidden. */
+  readonly readOnly = input(false);
 
   readonly movementSelected = output<Movement>();
   readonly movementEditRequested = output<Movement>();
@@ -103,7 +105,8 @@ export class MovementListComponent {
   readonly movementTime = (movement: Movement): string => formatLocalTime(movement.date);
 
   /** Only same-day, non-reversed movements expose the edit action. */
-  readonly canEdit = (movement: Movement): boolean => movementEditBlockMessage(movement) === null;
+  readonly canEdit = (movement: Movement): boolean =>
+    !this.readOnly() && movementEditBlockMessage(movement) === null;
 
   selectMovement(movement: Movement): void {
     if (this.selectable()) {
@@ -118,6 +121,11 @@ export class MovementListComponent {
   }
 
   proceedToRevert(): void {
+    if (this.readOnly()) {
+      this.movementToRevert.set(null);
+      return;
+    }
+
     const movement = this.movementToRevert();
     if (movement) {
       this.movementsStore.revertMovement(movement.id);

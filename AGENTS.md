@@ -654,3 +654,16 @@ Before shipping a change that touches money:
 3. Money inputs reject a third decimal.
 4. Existing decimal `localStorage` data migrates exactly once and is not double-converted.
 5. `npm test` and `ng build` pass.
+
+## Period Snapshot & Wrapper Architecture (`PeriodSnapshot`)
+- **Period Wrapper Model (`PeriodSnapshot`):** Encapsulates all monthly financial data in a single wrapper per month (`period: 'YYYY-MM'`), containing global totals and an internal array of `AccountPeriodBalance` items (one per account card).
+- **Store Optimization:** Prevents flat array bloat by storing monthly containers instead of individual fragmented records per card.
+- **Automatic Period Closing:** Evaluates missing past periods on startup, filling temporal gaps sequentially and freezing immutable historical snapshots.
+- **Cents Currency Standard:** All monetary fields in `PeriodSnapshot` and `AccountPeriodBalance` MUST strictly store integer cents.
+
+## Global Period Filter Rules (`GlobalPeriodStore`)
+
+- **App-Wide Context:** The selected period (`selectedPeriodKey`: 'YYYY-MM') in `GlobalPeriodStore` acts as a global master context for all views.
+- **Past Period Behavior:** Past closed periods pull immutable metrics directly from `PeriodSnapshot`. Transaction creation and modification are locked.
+- **Scheduled Items Isolation:** Scheduled payment lists MUST strictly filter items by the active global period. Past months show only applied payments; future months show projected payments; current month shows applied + pending current month payments.
+- **Current Period Reset:** Users can return to the present month at any time via the quick reset action `resetToCurrentPeriod()`.

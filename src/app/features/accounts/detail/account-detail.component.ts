@@ -12,19 +12,13 @@ import {FormsModule} from '@angular/forms';
 import {map} from 'rxjs';
 import {Account, Movement, SelectOption} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
+import {GlobalPeriodStore} from '@core/stores/global-period.store';
 import {MovementsStore} from '@core/stores/movements.store';
-import {
-  formatCentsToCurrency,
-  getCreditUsage,
-  isSameMonthAndYear,
-  toAccountOption,
-} from '@core/utils';
+import {formatCentsToCurrency, getCreditUsage, toAccountOption, toPeriod} from '@core/utils';
 import {
   AppIconComponent,
   AppSelectComponent,
   ConfirmModalComponent,
-  MonthPickerBottomSheetComponent,
-  MonthPickerSelection,
   MovementListComponent,
 } from '@shared/components';
 import {MovementDetailModalComponent} from '@features/movements/components/movement-detail-modal/movement-detail-modal.component';
@@ -32,11 +26,6 @@ import {MovementFormModalComponent} from '@features/movements/components/movemen
 import {PrivacyCurrencyPipe} from '@shared/pipes/privacy-currency.pipe';
 import {AccountFormModalComponent} from '../components/account-form-modal.component';
 import {AccountProgressionChartComponent} from '../components/account-progression-chart/account-progression-chart.component';
-
-interface Period {
-  month: number;
-  year: number;
-}
 
 @Component({
   selector: 'app-account-detail',
@@ -48,7 +37,6 @@ interface Period {
     MovementListComponent,
     MovementDetailModalComponent,
     MovementFormModalComponent,
-    MonthPickerBottomSheetComponent,
     AccountFormModalComponent,
     AppIconComponent,
     PrivacyCurrencyPipe,
@@ -60,6 +48,7 @@ interface Period {
 export class AccountDetailComponent {
   readonly accountsStore = inject(AccountsStore);
   readonly movementsStore = inject(MovementsStore);
+  private readonly globalPeriodStore = inject(GlobalPeriodStore);
 
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
@@ -70,12 +59,13 @@ export class AccountDetailComponent {
     this.accountsStore.accounts().find((account) => account.id === this.id()),
   );
 
-  readonly selectedPeriod = signal<Period>({
-    month: new Date().getMonth() + 1,
-    year: new Date().getFullYear(),
-  });
+  readonly selectedPeriodKey = this.globalPeriodStore.selectedPeriodKey;
+  readonly isPastPeriod = this.globalPeriodStore.isPastPeriod;
 
-  readonly isMonthPickerOpen = signal(false);
+  readonly selectedPeriod = computed(() => ({
+    month: this.globalPeriodStore.selectedMonth(),
+    year: this.globalPeriodStore.selectedYear(),
+  }));
 
   readonly selectedMovement = signal<Movement | null>(null);
 
@@ -84,23 +74,6 @@ export class AccountDetailComponent {
   readonly editingMovement = signal<Movement | null>(null);
 
   readonly isEditFormOpen = computed(() => this.editingMovement() !== null);
-
-  readonly minDate = computed(() => this.account()?.createdAt ?? new Date().toISOString());
-
-  readonly maxDate = computed(() => new Date());
-
-  readonly formattedSelectedMonthDesktop = computed(() => {
-    const {month, year} = this.selectedPeriod();
-    const monthName = new Intl.DateTimeFormat('es-ES', {month: 'long'}).format(
-      new Date(year, month - 1, 1),
-    );
-    return `${monthName.charAt(0).toUpperCase()}${monthName.slice(1)} ${year}`;
-  });
-
-  readonly formattedSelectedMonthMobile = computed(() => {
-    const {month, year} = this.selectedPeriod();
-    return `${String(month).padStart(2, '0')} / ${year}`;
-  });
 
   readonly editOpen = signal(false);
 
@@ -130,8 +103,8 @@ export class AccountDetailComponent {
   );
 
   readonly filteredTransactions = computed(() =>
-    this.accountMovements().filter((movement) =>
-      isSameMonthAndYear(movement.date, this.selectedPeriod()),
+    this.accountMovements().filter(
+      (movement) => toPeriod(movement.date) === this.selectedPeriodKey(),
     ),
   );
 
@@ -157,19 +130,6 @@ export class AccountDetailComponent {
     return account ? getCreditUsage(account) : null;
   });
 
-  toggleMonthPicker(): void {
-    this.isMonthPickerOpen.update((isOpen) => !isOpen);
-  }
-
-  closeMonthPicker(): void {
-    this.isMonthPickerOpen.set(false);
-  }
-
-  onMonthSelected(selection: MonthPickerSelection): void {
-    this.selectedPeriod.set({month: selection.month, year: selection.year});
-    this.isMonthPickerOpen.set(false);
-  }
-
   openMovementDetail(movement: Movement): void {
     this.selectedMovement.set(movement);
   }
@@ -179,6 +139,8 @@ export class AccountDetailComponent {
   }
 
   openEditMovement(movement: Movement): void {
+    if (this.isPastPeriod()) return;
+
     this.selectedMovement.set(null);
     this.editingMovement.set(movement);
   }

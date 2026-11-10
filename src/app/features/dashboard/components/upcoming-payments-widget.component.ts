@@ -1,9 +1,11 @@
 import {ChangeDetectionStrategy, Component, computed, inject, signal} from '@angular/core';
 import {RouterLink} from '@angular/router';
 import {MOVEMENT_TYPE_PALETTE} from '@core/constants';
-import {ScheduledTransaction} from '@core/models';
+import {Movement, ScheduledTransaction} from '@core/models';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {CatalogStore} from '@core/stores/catalog.store';
+import {GlobalPeriodStore} from '@core/stores/global-period.store';
+import {MovementsStore} from '@core/stores/movements.store';
 import {ScheduledTransactionsStore} from '@core/stores/scheduled-transactions.store';
 import {ScheduledTransactionTypeKey} from '@core/types';
 import {
@@ -11,10 +13,11 @@ import {
   isScheduleDue,
   recurrenceLabel,
   toMovementType,
+  toPeriod,
   toSoftCategoryColor,
 } from '@core/utils';
 import {ExecuteScheduleModalComponent} from '@features/scheduled/components';
-import {AppIconComponent} from '@shared/components';
+import {AppIconComponent, MovementListComponent} from '@shared/components';
 import {PrivacyCurrencyPipe} from '@shared/pipes/privacy-currency.pipe';
 
 const MAX_UPCOMING_ITEMS = 5;
@@ -27,7 +30,13 @@ interface StatusPill {
 
 @Component({
   selector: 'app-upcoming-payments-widget',
-  imports: [RouterLink, PrivacyCurrencyPipe, ExecuteScheduleModalComponent, AppIconComponent],
+  imports: [
+    RouterLink,
+    PrivacyCurrencyPipe,
+    ExecuteScheduleModalComponent,
+    AppIconComponent,
+    MovementListComponent,
+  ],
   templateUrl: './upcoming-payments-widget.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -35,13 +44,45 @@ export class UpcomingPaymentsWidgetComponent {
   readonly scheduledStore = inject(ScheduledTransactionsStore);
   readonly accountsStore = inject(AccountsStore);
   readonly catalogStore = inject(CatalogStore);
+  private readonly movementsStore = inject(MovementsStore);
+  private readonly globalPeriodStore = inject(GlobalPeriodStore);
+
+  readonly selectedPeriodKey = this.globalPeriodStore.selectedPeriodKey;
+  readonly isPastPeriod = this.globalPeriodStore.isPastPeriod;
+  readonly isCurrentPeriod = this.globalPeriodStore.isCurrentPeriod;
+  readonly formattedPeriodLabel = this.globalPeriodStore.formattedPeriodLabel;
+
+  readonly appliedMovements = computed<Movement[]>(() =>
+    this.movementsStore
+      .visibleMovements()
+      .filter(
+        (movement) =>
+          Boolean(movement.scheduledTransactionId) &&
+          !movement.isCanceled &&
+          !movement.isReversal &&
+          toPeriod(movement.date) === this.selectedPeriodKey(),
+      ),
+  );
 
   readonly upcoming = computed<ScheduledTransaction[]>(() => {
-    const due = this.scheduledStore.dueTodayOrOverdue();
-    const future = this.scheduledStore.upcomingInTimeframe();
-    const merged = [...due, ...future].sort((first, second) =>
-      first.nextExecutionDate.localeCompare(second.nextExecutionDate),
-    );
+    if (this.isPastPeriod()) return [];
+
+    const periodKey = this.selectedPeriodKey();
+    const base = this.isCurrentPeriod()
+      ? [...this.scheduledStore.dueTodayOrOverdue(), ...this.scheduledStore.upcomingInTimeframe()]
+      : this.scheduledStore
+          .activeSchedules()
+          .filter((schedule) => toPeriod(schedule.nextExecutionDate) === periodKey);
+
+    const merged = [...base]
+      .filter((schedule) => {
+        const schedulePeriod = toPeriod(schedule.nextExecutionDate);
+        return this.isCurrentPeriod()
+          ? schedulePeriod !== '' && schedulePeriod <= periodKey
+          : schedulePeriod === periodKey;
+      })
+      .sort((first, second) => first.nextExecutionDate.localeCompare(second.nextExecutionDate));
+
     const seen = new Set<string>();
     const unique = merged.filter((item) => {
       if (seen.has(item.id)) return false;
@@ -53,6 +94,19 @@ export class UpcomingPaymentsWidgetComponent {
 
   readonly executeOpen = signal(false);
   readonly scheduleToExecute = signal<ScheduledTransaction | null>(null);
+
+  readonly widgetTitle = computed(() => {
+    if (this.isPastPeriod()) return 'Pagos aplicados';
+    if (this.isCurrentPeriod()) return 'Próximos movimientos';
+    return `Programados de ${this.formattedPeriodLabel()}`;
+  });
+
+  readonly emptyMessage = computed(() => {
+    if (this.isCurrentPeriod()) {
+      return `No tienes pagos programados en los próximos ${this.timeframeDays()} días.`;
+    }
+    return `No tienes pagos programados en ${this.formattedPeriodLabel()}.`;
+  });
 
   readonly timeframeDays = this.scheduledStore.timeframeFilterDays;
 

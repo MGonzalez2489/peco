@@ -168,6 +168,8 @@ interface CategoryView {
 export class MovementDetailModalComponent {
   readonly movement = input<Movement | null>(null);
   readonly isOpen = input(false);
+  /** Closed periods are audit-only: the edit action is unavailable. */
+  readonly readOnly = input(false);
 
   readonly close = output<void>();
   readonly editRequested = output<Movement>();
@@ -306,7 +308,7 @@ export class MovementDetailModalComponent {
   });
 
   readonly canEdit = computed(
-    () => this.displayedMovement() !== null && this.editBlockMessage() === null,
+    () => !this.readOnly() && this.displayedMovement() !== null && this.editBlockMessage() === null,
   );
 
   constructor() {

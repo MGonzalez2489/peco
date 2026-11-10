@@ -5,9 +5,11 @@ import {CreateScheduledTransactionDto} from '@core/dtos/create-scheduled-transac
 import {provideAppIcons} from '@core/icons/app-icons.provider';
 import {AccountsStore} from '@core/stores/accounts.store';
 import {CatalogStore} from '@core/stores/catalog.store';
+import {GlobalPeriodStore} from '@core/stores/global-period.store';
 import {MovementsStore} from '@core/stores/movements.store';
 import {ScheduledTransactionsStore} from '@core/stores/scheduled-transactions.store';
 import {ScheduledTransactionTypeKey} from '@core/types';
+import {shiftPeriod} from '@core/utils';
 import {UpcomingPaymentsWidgetComponent} from './upcoming-payments-widget.component';
 
 const MAX_ITEMS = 5;
@@ -91,5 +93,22 @@ describe('UpcomingPaymentsWidgetComponent', () => {
 
     const link = (fixture.nativeElement as HTMLElement).querySelector('a[href="/scheduled"]');
     expect(link).not.toBeNull();
+  });
+
+  it('shows only applied payments when a closed period is selected', () => {
+    const globalPeriodStore = TestBed.inject(GlobalPeriodStore);
+    const previousKey = shiftPeriod(globalPeriodStore.selectedPeriodKey(), -1);
+    const [year, month] = previousKey.split('-').map(Number);
+
+    globalPeriodStore.setPeriod(year, month);
+    create({name: 'Pendiente actual', nextExecutionDate: isoFromToday(1)});
+
+    const fixture = TestBed.createComponent(UpcomingPaymentsWidgetComponent);
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(fixture.componentInstance.upcoming().length).toBe(0);
+    expect(compiled.textContent).toContain('Pagos aplicados');
+    expect(compiled.textContent).toContain('No hubo pagos programados aplicados en este período.');
   });
 });

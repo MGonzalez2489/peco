@@ -9,4 +9,6 @@ export interface CreateMovementDTO {
   date?: string;
   note?: string;
   targetAccountId?: string;
+  /** Set when the movement is the application of a scheduled transaction. */
+  scheduledTransactionId?: string;
 }

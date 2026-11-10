@@ -6,6 +6,13 @@ describe('migrateBackupAmountsToCents', () => {
   it('converts legacy decimal backups and stamps the schema version', () => {
     const data: Record<string, unknown> = {
       [LOCAL_STORAGE_KEYS.accounts]: [{currentBalance: 1500.5, targetGoal: 2000}],
+      [LOCAL_STORAGE_KEYS.periodSnapshots]: [
+        {
+          globalInitialBalance: 10.5,
+          globalFinalBalance: 20.25,
+          accountBalances: [{initialBalance: 5.5, finalBalance: 10.25}],
+        },
+      ],
       [LOCAL_STORAGE_KEYS.movements]: [{amount: 25.1}],
       [LOCAL_STORAGE_KEYS.scheduledTransactions]: [{estimatedAmount: 99.99}],
     };
@@ -14,6 +21,13 @@ describe('migrateBackupAmountsToCents', () => {
 
     expect(result[LOCAL_STORAGE_KEYS.accounts]).toEqual([
       {currentBalance: 150050, targetGoal: 200000},
+    ]);
+    expect(result[LOCAL_STORAGE_KEYS.periodSnapshots]).toEqual([
+      {
+        globalInitialBalance: 1050,
+        globalFinalBalance: 2025,
+        accountBalances: [{initialBalance: 550, finalBalance: 1025}],
+      },
     ]);
     expect(result[LOCAL_STORAGE_KEYS.movements]).toEqual([{amount: 2510}]);
     expect(result[LOCAL_STORAGE_KEYS.scheduledTransactions]).toEqual([{estimatedAmount: 9999}]);

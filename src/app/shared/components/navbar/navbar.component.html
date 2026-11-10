@@ -4,7 +4,7 @@
   <div
     class="mx-auto flex max-w-5xl items-center justify-between gap-2 px-3 py-3 md:px-4 md:py-3.5"
   >
-    <div class="flex items-center gap-2 md:hidden">
+    <div class="flex min-w-0 items-center gap-2 md:hidden">
       <button
         type="button"
         (click)="toggleMenu.emit()"
@@ -21,7 +21,7 @@
         class="flex shrink-0 items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950"
         aria-label="Peco — Inicio"
       >
-        <img src="assets/icons/icon.svg" class="size-8 hidden md:block" alt="" />
+        <img src="assets/icons/icon.svg" class="hidden size-8 md:block" alt="" />
         <span class="text-lg font-bold tracking-tight text-slate-900 dark:text-white">Peco</span>
       </a>
     </div>
@@ -36,13 +36,21 @@
       <app-nav-icon name="menu" sizeClass="h-6 w-6" />
     </button>
 
-    <button
-      type="button"
-      (click)="capture.emit()"
-      class="hidden items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-indigo-600/30 transition hover:bg-indigo-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 md:inline-flex dark:focus-visible:ring-offset-slate-950"
-    >
-      <app-nav-icon name="plus" sizeClass="h-4 w-4" />
-      <span>Registrar</span>
-    </button>
+    <div class="ml-auto flex min-w-0 items-center gap-2">
+      <app-global-period-selector />
+
+      <button
+        type="button"
+        (click)="capture.emit()"
+        [disabled]="isPastPeriod()"
+        [attr.title]="
+          isPastPeriod() ? 'No puedes registrar movimientos en un período cerrado' : null
+        "
+        class="hidden items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-indigo-600/30 transition hover:bg-indigo-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-indigo-600 md:inline-flex dark:focus-visible:ring-offset-slate-950"
+      >
+        <app-nav-icon name="plus" sizeClass="h-4 w-4" />
+        <span>Registrar</span>
+      </button>
+    </div>
   </div>
 </nav>
