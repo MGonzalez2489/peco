@@ -74,4 +74,13 @@ export class MovementsComponent {
   closeEditMovement(): void {
     this.editingMovement.set(null);
   }
+
+  openEditMovement(movement: Movement): void {
+    this.selectedMovement.set(null);
+    this.editingMovement.set(movement);
+  }
+
+  closeEditMovement(): void {
+    this.editingMovement.set(null);
+  }
 }

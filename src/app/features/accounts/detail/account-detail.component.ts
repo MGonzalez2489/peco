@@ -149,6 +149,15 @@ export class AccountDetailComponent {
     this.editingMovement.set(null);
   }
 
+  openEditMovement(movement: Movement): void {
+    this.selectedMovement.set(null);
+    this.editingMovement.set(movement);
+  }
+
+  closeEditMovement(): void {
+    this.editingMovement.set(null);
+  }
+
   proceedToDeleteAccount(): void {
     const account = this.accountToDelete();
     if (!account) return;
