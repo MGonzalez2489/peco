@@ -1,0 +1,25 @@
+{
+  "compileOnSave": false,
+  "compilerOptions": {
+    "ignoreDeprecations": "6.0",
+    "experimentalDecorators": true,
+    "importHelpers": true,
+    "target": "ES2022",
+    "module": "preserve",
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@core/*": ["apps/web/src/app/core/*"],
+      "@shared/*": ["apps/web/src/app/shared/*"],
+      "@features/accounts/*": ["apps/web/src/app/features/accounts/*"],
+      "@features/categories/*": ["apps/web/src/app/features/categories/*"],
+      "@features/dashboard/*": ["apps/web/src/app/features/dashboard/*"],
+      "@features/movements/*": ["apps/web/src/app/features/movements/*"],
+      "@features/logs/*": ["apps/web/src/app/features/logs/*"],
+      "@features/preferences/*": ["apps/web/src/app/features/preferences/*"],
+      "@features/scheduled/*": ["apps/web/src/app/features/scheduled/*"],
+      "@peco/contracts": ["./libs/shared/contracts/src/index.ts"],
+      "@peco/utils": ["./libs/shared/utils/src/index.ts"]
+    }
+  }
+}

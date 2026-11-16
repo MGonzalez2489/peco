@@ -103,7 +103,7 @@ Use the Angular CLI to generate the code, then augment the code to meet the need
 
 ## Iconography & UI Standards
 
-### Rules for Icons Usage:
+### Rules for Icons Usage
 
 1. **NO Hardcoded Inline `<svg>` Tags:** Raw `<svg>` elements in Angular templates are strictly prohibited. Always use `<app-icon>`.
 2. **Centralized Icon Provider:** All icons MUST be registered in `src/app/core/icons/app-icons.provider.ts` to preserve tree-shaking efficiency.
@@ -112,6 +112,7 @@ Use the Angular CLI to generate the code, then augment the code to meet the need
    - Add it to the `ALLOWED_ICONS` object.
    - Update the `IconName` union type in `src/app/shared/components/app-icon/app-icon.component.ts`.
 4. **Usage Syntax:**
+
    ```html
    <app-icon name="search" size="18" class="text-gray-400" />
    ```
@@ -184,13 +185,13 @@ Each row item inside the list MUST be formatted as an interactive container with
 On mobile devices, each row MUST be a clean 2-side flex row:
 
 - **Left Side:**
-- 1. Entity Icon Tile (soft rounded container with the entity icon; see the *Entity Icon Tile* rule under *Iconography & UI Standards*). A plain color dot is only allowed when the entity has NO icon.
-- 2. Item Title (`text-sm font-semibold text-slate-900`).
-- 3. Optional Badges (`Base, Excluida,` 📌) placed inline with subtle borders/colors.
+- 1. Entity Icon Tile (soft rounded container with the entity icon; see the _Entity Icon Tile_ rule under _Iconography & UI Standards_). A plain color dot is only allowed when the entity has NO icon.
+- 1. Item Title (`text-sm font-semibold text-slate-900`).
+- 1. Optional Badges (`Base, Excluida,` 📌) placed inline with subtle borders/colors.
 
 - **Right Side:**
 - 1. Primary Value / Balance (`text-sm font-bold text-slate-900 or text-rose-600 if negative`).
-- 2. Action Indicator (`chevron-right SVG w-4 h-4 text-slate-300`).
+- 1. Action Indicator (`chevron-right SVG w-4 h-4 text-slate-300`).
 
 ### **B. Desktop View (`lg`: Breakpoint)** On desktop
 
@@ -201,13 +202,13 @@ lg:gap-4`):
   - Entity Icon Tile (soft rounded container with the entity icon).
   - Title + Inline Status Badges (`Base,` 📌, Excluida del total).
 
-- 2. **Columns 6 to 9 (Optional Metadata / Goal Progress Bar):
+- 1. **Columns 6 to 9 (Optional Metadata / Goal Progress Bar):
   - If a target goal exists (`targetGoal` \> 0), display a compact progress indicator:
   - Text label: "Meta: \$X,XXX.XX" \+ Percentage ("XX%").
   - Micro progress bar (`h-1.5 bg-slate-100  rounded-full overflow-hidden`).
   - If no goal exists, leave column space clean for visual breathability.
 
-- 3. **Columns 10 to 12 (Primary Value & Action Trigger):
+- 1. **Columns 10 to 12 (Primary Value & Action Trigger):
   - Formatted currency balance/amount (`text-sm font-bold`).
   - Hover Action Text: "Editar →" (`opacity-0 group-hover:opacity-100 text-xs font-semibold text-indigo-600 transition-opacity`).
   - Hide the chevron icon on desktop (`hidden lg:hidden`).
@@ -309,7 +310,7 @@ lg:gap-4`):
 </div>
 ```
 
-### Language Standards:
+### Language Standards
 
 - All code, types, inputs, and components MUST be in English.
 - Accessible labels (aria-label) on icon-only buttons MUST be in Spanish (e.g., aria-label="Buscar movimiento").
@@ -359,7 +360,10 @@ const mergeWithDefaults = (value: unknown): UserPreferences => {
   const candidate = value as Partial<UserPreferences> & {accounts?: unknown};
 
   return {
-    theme: typeof candidate.theme === 'string' ? normalizeTheme(candidate.theme) : DEFAULT_USER_PREFERENCES.theme,
+    theme:
+      typeof candidate.theme === 'string'
+        ? normalizeTheme(candidate.theme)
+        : DEFAULT_USER_PREFERENCES.theme,
     pwaBannerDismissedAt:
       typeof candidate.pwaBannerDismissedAt === 'string'
         ? normalizeDismissedAt(candidate.pwaBannerDismissedAt)
@@ -441,7 +445,13 @@ they hold no state; the parent view owns the store binding.
     <span class="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">{{ description() }}</span>
   </span>
   <span class="relative inline-flex shrink-0 items-center">
-    <input type="checkbox" role="switch" class="peer sr-only" [checked]="checked()" (change)="onCheckboxChange($event)" />
+    <input
+      type="checkbox"
+      role="switch"
+      class="peer sr-only"
+      [checked]="checked()"
+      (change)="onCheckboxChange($event)"
+    />
     <!-- slider track + thumb -->
   </span>
 </label>
@@ -502,16 +512,30 @@ pattern (a single rounded container per section with `divide-y` rows):
 
 ```html
 <!-- APARIENCIA -->
-<h3 class="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Apariencia</h3>
-<div class="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">
+<h3 class="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+  Apariencia
+</h3>
+<div
+  class="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900"
+>
   <div class="flex flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between">
-    <app-select controlId="pref-theme" ariaLabel="Tema" [options]="themeOptions" [value]="theme()" (valueChange)="onThemeChange($event)" />
+    <app-select
+      controlId="pref-theme"
+      ariaLabel="Tema"
+      [options]="themeOptions"
+      [value]="theme()"
+      (valueChange)="onThemeChange($event)"
+    />
   </div>
 </div>
 
 <!-- CUENTAS -->
-<h3 class="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Cuentas</h3>
-<div class="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">
+<h3 class="text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+  Cuentas
+</h3>
+<div
+  class="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900"
+>
   <app-setting-toggle-row
     title="Esconder balances"
     description="Muestra o esconde los balances de las cuentas en toda la aplicación."
@@ -567,7 +591,7 @@ the export/import specs still pass and that the new field round-trips.
 8. Cover it with specs: storage (round-trip + fallback when the field is missing), store
    (signal + persistence), and the settings view (render + interaction).
 
-### Language Standards:
+### Language Standards
 
 - All code, types, inputs, and components MUST be in English.
 - Accessible labels (aria-label) on icon-only buttons MUST be in Spanish (e.g., aria-label="Buscar movimiento").
@@ -592,12 +616,12 @@ formatted display strings).
 
 The conversion helpers live in `src/app/core/utils/` (one export per file, as always):
 
-| Utility | File | Behavior |
-| --- | --- | --- |
-| `toCents(amount)` | `to-cents.util.ts` | `Math.round(amount * 100)` |
-| `fromCents(cents)` | `from-cents.util.ts` | `cents / 100` |
-| `formatCentsToCurrency(cents)` | `format-cents-to-currency.util.ts` | Localized `$` string |
-| `formatCurrency(decimal)` | `format-currency.util.ts` | Decimal-only formatter |
+| Utility                        | File                               | Behavior                   |
+| ------------------------------ | ---------------------------------- | -------------------------- |
+| `toCents(amount)`              | `to-cents.util.ts`                 | `Math.round(amount * 100)` |
+| `fromCents(cents)`             | `from-cents.util.ts`               | `cents / 100`              |
+| `formatCentsToCurrency(cents)` | `format-cents-to-currency.util.ts` | Localized `$` string       |
+| `formatCurrency(decimal)`      | `format-currency.util.ts`          | Decimal-only formatter     |
 
 - Use `formatCentsToCurrency` for every value that comes from a model, store, or pipe.
 - `formatCurrency` is reserved for values already converted to decimal (e.g. before passing a
@@ -656,6 +680,7 @@ Before shipping a change that touches money:
 5. `npm test` and `ng build` pass.
 
 ## Period Snapshot & Wrapper Architecture (`PeriodSnapshot`)
+
 - **Period Wrapper Model (`PeriodSnapshot`):** Encapsulates all monthly financial data in a single wrapper per month (`period: 'YYYY-MM'`), containing global totals and an internal array of `AccountPeriodBalance` items (one per account card).
 - **Store Optimization:** Prevents flat array bloat by storing monthly containers instead of individual fragmented records per card.
 - **Automatic Period Closing:** Evaluates missing past periods on startup, filling temporal gaps sequentially and freezing immutable historical snapshots.
@@ -667,3 +692,22 @@ Before shipping a change that touches money:
 - **Past Period Behavior:** Past closed periods pull immutable metrics directly from `PeriodSnapshot`. Transaction creation and modification are locked.
 - **Scheduled Items Isolation:** Scheduled payment lists MUST strictly filter items by the active global period. Past months show only applied payments; future months show projected payments; current month shows applied + pending current month payments.
 - **Current Period Reset:** Users can return to the present month at any time via the quick reset action `resetToCurrentPeriod()`.
+
+## Architecture & Backend Migration Governance (Mandatory)
+
+Before executing any task involving the Nx workspace, shared libraries (`libs/shared/*`), or the NestJS backend (`apps/api`), you **MUST** read and strictly comply with `docs/backend/plan.md`.
+
+### Non-Negotiable Architectural Rules (Summary from `docs/backend/plan.md`)
+
+1. **Gatekeeper (US-100):** Do NOT write a single line of NestJS API code until the Nx 24 workspace migration (`apps/web`, `apps/api`, `libs/shared/contracts`, `libs/shared/utils`) is complete and passing `nx test` and `nx build`.
+2. **Module Boundaries:** `libs/shared/*` MUST remain 100% framework-agnostic (zero `@angular/*` or `@nestjs/*` imports). Apps never import directly from each other.
+3. **Database & Types:**
+   - Timestamps: `VARCHAR(24)` ISO-8601 UTC (`M1`).
+   - IDs: `CHAR(36)` `ascii_bin` generated via `crypto.randomUUID()` (`M2`).
+   - Money: Signed `BIGINT` in integer cents (`>= 0` enforced in app), named without `Cents` suffix (`amount`, `currentBalance`, etc.) (`M6`).
+   - Timezone: Everything in UTC; period boundaries resolved in UTC (`M19`).
+4. **Concurrency & Immutability:**
+   - Accounts use optimistic locking (`version` column + `409 Conflict` on mismatch) (`M11`).
+   - Closed monthly periods are strictly immutable (`D34` / Section 11).
+   - No v1 data migration: users start from zero, no legacy `localStorage` importers (`Q15 = B`).
+5. **Tracking & Handoff:** Always update Section 19 (Decision Log), Section 20 (Current Step), and Section 22 (Session Handoff) in `docs/backend/plan.md` when completing milestones or making architectural changes.
