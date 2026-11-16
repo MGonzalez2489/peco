@@ -4,14 +4,22 @@
   "scripts": {
     "ng": "ng",
     "start": "nx serve web",
+    "start:dev": "docker compose up -d mysql && nx serve api",
+    "start:dev:api": "nx serve api",
     "build": "nx build web",
+    "build:api": "nx build api",
     "watch": "nx build web --watch --configuration development",
     "test": "nx test web --watch=false",
+    "test:api": "nx test api",
     "create-test-data": "node tools/scripts/test-data.js",
     "prepare": "husky"
   },
   "private": true,
   "packageManager": "npm@12.0.2",
+  "engines": {
+    "node": ">=22.0.0",
+    "npm": ">=10.0.0"
+  },
   "dependencies": {
     "@angular-architects/ngrx-toolkit": "^22.0.0",
     "@angular/common": "^22.0.0",
@@ -28,6 +36,7 @@
     "apexcharts": "^7.8.0",
     "axios": "^1.6.0",
     "lucide-angular": "^0.577.0",
+    "mysql2": "^3.24.6",
     "ng-apexcharts": "^3.1.0",
     "reflect-metadata": "^0.2.0",
     "rxjs": "~7.8.0",

@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, backend]
   pull_request:
 
 permissions:
@@ -12,6 +12,27 @@ permissions:
 jobs:
   main:
     runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: peco
+          MYSQL_USER: peco
+          MYSQL_PASSWORD: peco
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_NAME: peco
+      DB_USER: peco
+      DB_PASSWORD: peco
     steps:
       - uses: actions/checkout@v4
         with:
@@ -27,5 +48,5 @@ jobs:
 
       - uses: nrwl/nx-set-shas@v4
 
-      - run: npx nx affected -t lint test build --base=origin/main
+      - run: npx nx affected -t lint typecheck test build --base=origin/main
       - run: npx nx format:check --base=origin/main

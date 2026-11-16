@@ -1,0 +1,16 @@
+.git
+.github
+.nx/cache
+.nx/workspace-data
+node_modules
+dist
+tmp
+out-tsc
+coverage
+test-output
+.agents
+.angular/cache
+**/*.log
+.env
+.env.*
+!.env.example

@@ -80,3 +80,6 @@ vitest.config.*.timestamp*
 .cache
 logs
 package-lock.json.bak
+
+# Local environment
+.env.local

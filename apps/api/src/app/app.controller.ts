@@ -10,11 +10,3 @@ export class AppController {
     return this.appService.getData();
   }
 }
-
-@Controller('health')
-export class HealthController {
-  @Get()
-  check() {
-    return {status: 'ok', uptime: process.uptime(), db: 'up'};
-  }
-}
