@@ -1,0 +1,32 @@
+import type {ApiErrorCode} from '@peco/contracts';
+
+/** Default Spanish message per stable error code (8.3). */
+export const API_ERROR_MESSAGES: Record<ApiErrorCode, string> = {
+  VALIDATION_ERROR: 'Revisa los datos enviados.',
+  INVALID_RESET_TOKEN: 'El enlace de recuperación no es válido o ya expiró.',
+  UNAUTHORIZED: 'Debes iniciar sesión para continuar.',
+  TOKEN_EXPIRED: 'Tu sesión expiró. Vuelve a iniciar sesión.',
+  INVALID_CREDENTIALS: 'El correo o la contraseña no son correctos.',
+  REFRESH_TOKEN_REUSED: 'Tu sesión fue invalidada por seguridad. Vuelve a iniciar sesión.',
+  FORBIDDEN: 'No tienes permiso para realizar esta acción.',
+  NOT_FOUND: 'El recurso solicitado no existe.',
+  EMAIL_ALREADY_REGISTERED: 'Ese correo ya está registrado.',
+  VERSION_CONFLICT: 'El recurso fue modificado por otra operación.',
+  IDEMPOTENCY_KEY_REUSED: 'La clave de idempotencia ya fue usada con otros datos.',
+  PERIOD_CLOSED: 'El período está cerrado y no admite cambios.',
+  MOVEMENT_LOCKED: 'El movimiento está bloqueado y no se puede modificar.',
+  ROOT_ACCOUNT_PROTECTED: 'La cuenta principal no se puede eliminar.',
+  CATEGORY_SYSTEM_PROTECTED: 'La categoría del sistema no se puede modificar.',
+  CATEGORY_NAME_TAKEN: 'Ya existe una categoría activa con ese nombre.',
+  TRANSFER_REQUIRED: 'Transfiere el saldo antes de eliminar la cuenta.',
+  NEGATIVE_BALANCE_NOT_ALLOWED: 'Solo las tarjetas de crédito pueden tener saldo negativo.',
+  PERIOD_NOT_CLOSABLE: 'Solo se pueden cerrar períodos anteriores al actual.',
+  PERIOD_BEFORE_ACTIVITY: 'El período es anterior al primer movimiento.',
+  SCHEDULE_NOT_DUE: 'El pago programado todavía no corresponde.',
+  SCHEDULE_INACTIVE: 'El pago programado está pausado.',
+  OCCURRENCE_ALREADY_PROCESSED: 'Esa ocurrencia ya fue procesada.',
+  UNPROCESSABLE_ENTITY: 'La operación no se puede completar con esos datos.',
+  CATEGORY_NOT_COMPATIBLE: 'La categoría no acepta ese tipo de movimiento.',
+  RATE_LIMITED: 'Demasiadas solicitudes. Intenta de nuevo en unos segundos.',
+  INTERNAL_ERROR: 'Ocurrió un error inesperado. Intenta de nuevo.',
+};

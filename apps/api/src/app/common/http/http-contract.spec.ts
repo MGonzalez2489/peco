@@ -1,0 +1,258 @@
+import {Body, Controller, Delete, Get, HttpCode, HttpStatus, Logger, Post} from '@nestjs/common';
+import {Test} from '@nestjs/testing';
+import {IsInt, IsString, Min, MinLength} from 'class-validator';
+import type {INestApplication} from '@nestjs/common';
+import request from 'supertest';
+import {HealthController} from '../../health/health.controller';
+import {HealthService} from '../../health/health.service';
+import {API_ERROR_MESSAGES} from './api-error-messages.constant';
+import {ApiException} from './api-exception';
+import {configureHttp} from './configure-http';
+import {EnvelopeResult} from './envelope-result';
+
+class CreateThingDto {
+  @IsString()
+  @MinLength(2)
+  name!: string;
+
+  @IsInt()
+  @Min(1)
+  amount!: number;
+}
+
+@Controller('test')
+class TestController {
+  @Get('single')
+  single(): {publicId: string; amount: number} {
+    return {publicId: 'resource-1', amount: 100};
+  }
+
+  @Get('list')
+  list(): EnvelopeResult<{publicId: string}[], {count: number; nextCursor: string}> {
+    return EnvelopeResult.withMeta([{publicId: 'resource-1'}, {publicId: 'resource-2'}], {
+      count: 2,
+      nextCursor: 'cursor-1',
+    });
+  }
+
+  @Get('failure')
+  failure(): never {
+    throw new ApiException(
+      HttpStatus.CONFLICT,
+      'VERSION_CONFLICT',
+      API_ERROR_MESSAGES.VERSION_CONFLICT,
+      {expectedVersion: 3, currentVersion: 4},
+    );
+  }
+
+  @Get('boom')
+  boom(): never {
+    throw new Error('SELECT password FROM users WHERE id = 1');
+  }
+
+  @Delete('resource')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  remove(): void {
+    // 204 responses are bodyless by contract (8.3)
+  }
+
+  @Post('validate')
+  create(@Body() dto: CreateThingDto): CreateThingDto {
+    return dto;
+  }
+}
+
+describe('HTTP contract (US-104)', () => {
+  let app: INestApplication;
+  let pingDatabase: jest.Mock;
+  let loggerError: jest.SpyInstance;
+
+  beforeEach(async () => {
+    pingDatabase = jest.fn().mockResolvedValue(undefined);
+    loggerError = jest.spyOn(Logger.prototype, 'error').mockImplementation();
+
+    const moduleRef = await Test.createTestingModule({
+      controllers: [TestController, HealthController],
+      providers: [{provide: HealthService, useValue: {pingDatabase}}],
+    }).compile();
+
+    app = moduleRef.createNestApplication();
+    configureHttp(app);
+    await app.init();
+  });
+
+  afterEach(async () => {
+    loggerError.mockRestore();
+    await app.close();
+  });
+
+  describe('success envelope', () => {
+    it('wraps a single resource in {data, meta}', async () => {
+      const response = await request(app.getHttpServer()).get('/test/single').expect(200);
+
+      expect(response.body).toEqual({
+        data: {publicId: 'resource-1', amount: 100},
+        meta: {correlationId: expect.any(String)},
+      });
+      expect(response.headers['x-correlation-id']).toBe(response.body.meta.correlationId);
+    });
+
+    it('keeps the collection in data and pagination in meta', async () => {
+      const response = await request(app.getHttpServer()).get('/test/list').expect(200);
+
+      expect(response.body).toEqual({
+        data: [{publicId: 'resource-1'}, {publicId: 'resource-2'}],
+        meta: {
+          correlationId: expect.any(String),
+          count: 2,
+          nextCursor: 'cursor-1',
+        },
+      });
+    });
+
+    it('keeps 204 responses bodyless', async () => {
+      const response = await request(app.getHttpServer()).delete('/test/resource').expect(204);
+
+      expect(response.text).toBe('');
+    });
+  });
+
+  describe('error envelope', () => {
+    it('renders a domain exception with code, Spanish message, details and correlation id', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/test/failure')
+        .set('x-correlation-id', '01JC7Z3Q9K')
+        .expect(409);
+
+      expect(response.body).toEqual({
+        error: {
+          statusCode: 409,
+          code: 'VERSION_CONFLICT',
+          message: API_ERROR_MESSAGES.VERSION_CONFLICT,
+          details: {expectedVersion: 3, currentVersion: 4},
+          correlationId: '01JC7Z3Q9K',
+        },
+      });
+    });
+
+    it('maps an unknown route to 404 NOT_FOUND', async () => {
+      const response = await request(app.getHttpServer()).get('/does-not-exist').expect(404);
+
+      expect(response.body.error).toMatchObject({
+        statusCode: 404,
+        code: 'NOT_FOUND',
+        message: API_ERROR_MESSAGES.NOT_FOUND,
+        correlationId: expect.any(String),
+      });
+    });
+
+    it('sanitizes an unhandled exception into 500 INTERNAL_ERROR', async () => {
+      const response = await request(app.getHttpServer()).get('/test/boom').expect(500);
+
+      expect(response.body).toEqual({
+        error: {
+          statusCode: 500,
+          code: 'INTERNAL_ERROR',
+          message: API_ERROR_MESSAGES.INTERNAL_ERROR,
+          correlationId: expect.any(String),
+        },
+      });
+      expect(response.text).not.toContain('SELECT');
+      expect(response.text).not.toContain('at ');
+      expect(loggerError).toHaveBeenCalledWith(
+        expect.stringContaining('500 INTERNAL_ERROR'),
+        expect.stringContaining('SELECT password FROM users'),
+      );
+    });
+  });
+
+  describe('correlation id', () => {
+    it('reuses a valid inbound correlation id', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/test/single')
+        .set('x-correlation-id', '01JC7Z3Q9K')
+        .expect(200);
+
+      expect(response.body.meta.correlationId).toBe('01JC7Z3Q9K');
+      expect(response.headers['x-correlation-id']).toBe('01JC7Z3Q9K');
+    });
+
+    it('generates a new id when the inbound header is invalid', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/test/single')
+        .set('x-correlation-id', 'short')
+        .expect(200);
+
+      expect(response.body.meta.correlationId).not.toBe('short');
+      expect(response.body.meta.correlationId).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+      );
+    });
+  });
+
+  describe('validation', () => {
+    it('accepts a valid body', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/test/validate')
+        .send({name: 'Café', amount: 1500})
+        .expect(201);
+
+      expect(response.body.data).toEqual({name: 'Café', amount: 1500});
+    });
+
+    it('rejects invalid fields with details.fields in Spanish', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/test/validate')
+        .send({name: 'a', amount: '1500'})
+        .expect(400);
+
+      expect(response.body.error).toEqual({
+        statusCode: 400,
+        code: 'VALIDATION_ERROR',
+        message: API_ERROR_MESSAGES.VALIDATION_ERROR,
+        details: {
+          fields: {
+            name: 'La longitud no es válida.',
+            amount: 'Debe ser un número entero.',
+          },
+        },
+        correlationId: expect.any(String),
+      });
+    });
+
+    it('rejects unknown fields instead of stripping them silently', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/test/validate')
+        .send({name: 'Café', amount: 1500, injected: true})
+        .expect(400);
+
+      expect(response.body.error.details.fields).toEqual({
+        injected: 'El campo no está permitido.',
+      });
+    });
+  });
+
+  describe('health exception', () => {
+    it('keeps /health flat on success', async () => {
+      const response = await request(app.getHttpServer()).get('/health').expect(200);
+
+      expect(response.body).toEqual({
+        status: 'ok',
+        uptime: expect.any(Number),
+        db: 'up',
+      });
+    });
+
+    it('keeps /health flat on failure', async () => {
+      pingDatabase.mockRejectedValue(new Error('db down'));
+
+      const response = await request(app.getHttpServer()).get('/health').expect(503);
+
+      expect(response.body).toEqual({
+        status: 'error',
+        uptime: expect.any(Number),
+        db: 'down',
+      });
+    });
+  });
+});

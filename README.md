@@ -142,6 +142,8 @@ This starts MySQL via Docker Compose and serves the API (`nx serve api`).
 
 - API: `http://localhost:3000/api`
 - Health: `http://localhost:3000/health` (`200` with `{status, uptime, db:"up"}` when DB is reachable, `503` when DB ping fails)
+- Responses: every client route returns `{data, meta}` on success and `{error: {statusCode, code, message, details?, correlationId}}` on failure; `/health` stays flat and `204` responses are bodyless (8.3)
+- Correlation: send `x-correlation-id` to trace a request; when absent the API generates one and echoes it in the header and in `meta.correlationId`
 
 ## Database migrations
 
@@ -165,14 +167,10 @@ npm run db:revert
 
 Expected tables after the initial migration: `users`, `refreshTokens`, `accounts`, `categories`, `movements`, `scheduledTransactions`, `scheduledExecutions`, `periodSnapshots`, `accountPeriodBalances`, `userPreferences`, `idempotencyKeys`, `auditLogs` (plus TypeORM's `migrations` bookkeeping table).
 
-To generate a new migration after changing an entity:
-
-```bash
-npm run db:show
-# create the file under apps/api/src/app/database/migrations/ and review it by hand
-```
-
-Never edit an already released migration; add a new one instead.
+To change the schema, add a new migration under
+`apps/api/src/app/database/migrations/`, export it from `migrations/index.ts` and
+register it in `TYPEORM_MIGRATIONS` (`database.config.ts`); review the generated
+SQL by hand. Never edit an already released migration; add a new one instead.
 
 ## Quality checks
 

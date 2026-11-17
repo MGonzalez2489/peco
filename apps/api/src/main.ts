@@ -1,6 +1,7 @@
 import {Logger} from '@nestjs/common';
 import {NestFactory} from '@nestjs/core';
 import {AppModule} from './app/app.module';
+import {configureHttp} from './app/common/http/configure-http';
 import {ConfigService} from './app/config/config.service';
 import {forceUtcTimezone} from './app/config/force-utc-timezone';
 
@@ -11,6 +12,7 @@ async function bootstrap(): Promise<void> {
   const {port} = app.get(ConfigService).config;
   const globalPrefix = 'api';
   app.setGlobalPrefix(globalPrefix, {exclude: ['health']});
+  configureHttp(app);
   await app.listen(port);
   // Set when Nx waits for this server to be ready
   if (process.env.NX_READY_SIGNAL_SOCKET) {
