@@ -25,13 +25,33 @@ Peco is an Nx 24 integrated monorepo with:
 npm ci
 ```
 
+## Configuration (US-102)
+
+The API parses and validates its environment **once at boot** into a typed object
+(`ConfigService`). A missing or invalid variable aborts startup with an error that
+names the variable; production has no silent fallbacks. `TZ` is forced to `UTC`.
+
+`.env.example` is the committed source of truth for every supported variable and
+its documented default. Copy it to `.env` for local runs; never commit `.env`.
+
+- **Required in production:** `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_USER`,
+  `DATABASE_PASSWORD`, `DATABASE_NAME`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`
+  (the two secrets must be at least 32 characters and distinct).
+- **Development fallbacks:** the `DATABASE_*` connection values and JWT secrets
+  have development-only defaults so the API boots against the Dockerized MySQL.
+- **Durations:** token TTLs, cron expressions, `IDEMPOTENCY_TTL_HOURS`,
+  `INACTIVE_USER_DAYS` and `MAX_BACKFILL_MONTHS` are all configuration values with
+  documented defaults, never literals at the call site.
+- Legacy `DB_*` names were replaced by `DATABASE_*` to match the plan. Update an
+  existing local `.env` accordingly.
+
 ## Run with Docker
 
 All Docker commands below must be run from the repository root. Compose uses `docker-compose.yml` and reads variables from `.env` when present (you can start from `.env.example`).
 
 Optional ports/credentials (defaults shown):
 
-- `DB_PORT=3306`, `DB_NAME=peco`, `DB_USER=peco`, `DB_PASSWORD=peco`, `DB_ROOT_PASSWORD=root`
+- `DATABASE_PORT=3306`, `DATABASE_NAME=peco`, `DATABASE_USER=peco`, `DATABASE_PASSWORD=peco`, `DATABASE_ROOT_PASSWORD=root`
 - `API_PORT=3000`, `WEB_PORT=8080`
 
 ### MySQL (database)
@@ -48,8 +68,9 @@ docker compose stop mysql
 
 ### API (`apps/api`)
 
-- **Image/build:** `apps/api/Dockerfile` (multi-stage: `npm ci` + `nx run api:build:production`, runs `node main.js`)
-- **Runtime env:** `PORT`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_LOGGING` (Compose sets `DB_HOST=mysql` and waits for MySQL health)
+- **Image/build:** `apps/api/Dockerfile` (multi-stage: `npm ci --legacy-peer-deps` + `nx run api:build:production`, then production deps in the runner stage, runs `node main.js`)
+- **Runtime env:** `NODE_ENV`, `PORT`, `TZ`, `DATABASE_*`, `JWT_*_SECRET`, `CORS_ORIGINS`, `LOG_LEVEL`, `MAIL_TRANSPORT`, `RATE_LIMIT_ENABLED` (Compose sets `DATABASE_HOST=mysql`, `TZ=UTC` and waits for MySQL health)
+- **Secrets:** Compose uses development placeholder JWT secrets by default; override `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET` for any real deployment
 - **Ports:** `http://localhost:3000` (`/api`, `/health`)
 
 ```bash

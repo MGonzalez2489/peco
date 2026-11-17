@@ -1,17 +1,16 @@
-/**
- * This is not a production server yet!
- * This is only a minimal backend to get started.
- */
-
 import {Logger} from '@nestjs/common';
 import {NestFactory} from '@nestjs/core';
 import {AppModule} from './app/app.module';
+import {ConfigService} from './app/config/config.service';
+import {forceUtcTimezone} from './app/config/force-utc-timezone';
 
-async function bootstrap() {
+async function bootstrap(): Promise<void> {
+  forceUtcTimezone();
+
   const app = await NestFactory.create(AppModule);
+  const {port} = app.get(ConfigService).config;
   const globalPrefix = 'api';
   app.setGlobalPrefix(globalPrefix, {exclude: ['health']});
-  const port = process.env.PORT || 3000;
   await app.listen(port);
   // Set when Nx waits for this server to be ready
   if (process.env.NX_READY_SIGNAL_SOCKET) {
@@ -28,4 +27,4 @@ async function bootstrap() {
   Logger.log(`🚀 Application is running on: http://localhost:${port}/${globalPrefix}`);
 }
 
-bootstrap();
+void bootstrap();

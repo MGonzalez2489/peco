@@ -1,20 +1,24 @@
 import {Injectable, OnModuleDestroy} from '@nestjs/common';
 import mysql, {Pool} from 'mysql2/promise';
+import {ConfigService} from '../config/config.service';
 
 @Injectable()
 export class HealthService implements OnModuleDestroy {
   private pool?: Pool;
 
+  constructor(private readonly configService: ConfigService) {}
+
   private getPool(): Pool {
     if (!this.pool) {
+      const {database} = this.configService.config;
       this.pool = mysql.createPool({
-        host: process.env.DB_HOST || 'localhost',
-        port: Number(process.env.DB_PORT || 3306),
-        user: process.env.DB_USER || 'peco',
-        password: process.env.DB_PASSWORD || 'peco',
-        database: process.env.DB_NAME || 'peco',
+        host: database.host,
+        port: database.port,
+        user: database.user,
+        password: database.password,
+        database: database.name,
         connectionLimit: 1,
-        connectTimeout: 2000,
+        connectTimeout: database.healthPingTimeoutMs,
       });
     }
 

@@ -28,11 +28,13 @@ jobs:
           --health-timeout=5s
           --health-retries=10
     env:
-      DB_HOST: 127.0.0.1
-      DB_PORT: 3306
-      DB_NAME: peco
-      DB_USER: peco
-      DB_PASSWORD: peco
+      NODE_ENV: test
+      TZ: UTC
+      DATABASE_HOST: 127.0.0.1
+      DATABASE_PORT: 3306
+      DATABASE_NAME: peco
+      DATABASE_USER: peco
+      DATABASE_PASSWORD: peco
     steps:
       - uses: actions/checkout@v4
         with:
