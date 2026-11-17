@@ -143,6 +143,37 @@ This starts MySQL via Docker Compose and serves the API (`nx serve api`).
 - API: `http://localhost:3000/api`
 - Health: `http://localhost:3000/health` (`200` with `{status, uptime, db:"up"}` when DB is reachable, `503` when DB ping fails)
 
+## Database migrations
+
+The API **never** creates or alters tables at boot: `synchronize` and `migrationsRun` are `false`. The schema changes only through reviewed migrations executed as a release step (D77).
+
+The CLI scripts load `.env` from the repository root, so `DATABASE_HOST` must point to the MySQL instance reachable **from your machine** (`localhost` when the container publishes `3306`).
+
+```bash
+# 1. Start MySQL 8
+docker compose up -d mysql
+
+# 2. Inspect pending/applied migrations
+npm run db:show
+
+# 3. Apply every pending migration
+npm run db:migrate
+
+# 4. Revert the last applied migration
+npm run db:revert
+```
+
+Expected tables after the initial migration: `users`, `refreshTokens`, `accounts`, `categories`, `movements`, `scheduledTransactions`, `scheduledExecutions`, `periodSnapshots`, `accountPeriodBalances`, `userPreferences`, `idempotencyKeys`, `auditLogs` (plus TypeORM's `migrations` bookkeeping table).
+
+To generate a new migration after changing an entity:
+
+```bash
+npm run db:show
+# create the file under apps/api/src/app/database/migrations/ and review it by hand
+```
+
+Never edit an already released migration; add a new one instead.
+
 ## Quality checks
 
 ```bash
