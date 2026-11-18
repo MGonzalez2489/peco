@@ -3,11 +3,14 @@ import {
   ApiBadRequestResponse,
   ApiConflictResponse,
   ApiCreatedResponse,
+  ApiOkResponse,
   ApiOperation,
   ApiTags,
+  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import {AuthService} from './auth.service';
 import {AuthResponseDto} from './dto/auth-response.dto';
+import {LoginRequestDto} from './dto/login-request.dto';
 import {RegisterRequestDto} from './dto/register-request.dto';
 
 @ApiTags('auth')
@@ -23,5 +26,15 @@ export class AuthController {
   @ApiConflictResponse({description: 'El correo ya está registrado.'})
   register(@Body() body: RegisterRequestDto): Promise<AuthResponseDto> {
     return this.authService.register(body);
+  }
+
+  @Post('login')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({summary: 'Iniciar sesión con correo y contraseña'})
+  @ApiOkResponse({type: AuthResponseDto, description: 'Sesión iniciada.'})
+  @ApiBadRequestResponse({description: 'Datos de inicio de sesión no válidos.'})
+  @ApiUnauthorizedResponse({description: 'El correo o la contraseña no son correctos.'})
+  login(@Body() body: LoginRequestDto): Promise<AuthResponseDto> {
+    return this.authService.login(body);
   }
 }

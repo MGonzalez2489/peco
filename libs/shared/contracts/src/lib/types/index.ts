@@ -5,6 +5,7 @@ export * from './api-success.type';
 export * from './app-theme.type';
 export * from './auth-response.type';
 export * from './category-apply-type.type';
+export * from './login-request.type';
 export * from './movement-type.type';
 export * from './recurrence-frequency.type';
 export * from './register-request.type';

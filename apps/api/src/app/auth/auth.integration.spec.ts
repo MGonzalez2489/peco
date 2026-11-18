@@ -2,11 +2,13 @@ import {createHash} from 'node:crypto';
 import {JwtService} from '@nestjs/jwt';
 import {MySqlContainer, StartedMySqlContainer} from '@testcontainers/mysql';
 import {DataSource, DataSourceOptions} from 'typeorm';
+import {API_ERROR_MESSAGES} from '../common/http/api-error-messages.constant';
 import type {ConfigService} from '../config/config.service';
 import {createTypeOrmOptions} from '../database/database.config';
 import {UtcClock} from '../database/clock/utc-clock';
 import {AccountEntity, RefreshTokenEntity, UserEntity} from '../database/entities';
 import {AuthService} from './auth.service';
+import {AuthLoginRepository} from './services/auth-login.repository';
 import {AuthRegistrationRepository} from './services/auth-registration.repository';
 import {PasswordHasher} from './services/password-hasher';
 import {TokenService} from './services/token-service';
@@ -20,7 +22,7 @@ const VALID_REGISTRATION = {
   name: 'Manuel',
 };
 
-describe('registration transaction (MySQL 8, US-201)', () => {
+describe('auth flows (MySQL 8, US-201/US-202)', () => {
   let container: StartedMySqlContainer;
   let dataSource: DataSource;
   let service: AuthService;
@@ -58,6 +60,7 @@ describe('registration transaction (MySQL 8, US-201)', () => {
     hasher = new PasswordHasher();
     service = new AuthService(
       new AuthRegistrationRepository(dataSource),
+      new AuthLoginRepository(dataSource),
       hasher,
       new TokenService(new JwtService(), configService, new UtcClock()),
     );
@@ -150,5 +153,88 @@ describe('registration transaction (MySQL 8, US-201)', () => {
     } finally {
       await dataSource.query('ALTER TABLE accounts DROP CHECK chk_accounts_no_root');
     }
+  });
+
+  describe('login (US-202)', () => {
+    it('logs in with a normalized email and stores a fresh hashed refresh token', async () => {
+      const registered = await service.register(VALID_REGISTRATION);
+
+      const response = await service.login({
+        email: '  USER@EXAMPLE.COM ',
+        password: VALID_REGISTRATION.password,
+      });
+
+      expect(response.user).toEqual(registered.user);
+      expect(response.expiresIn).toBe(900);
+      expect(response.refreshExpiresIn).toBe(1800);
+
+      const payload = new JwtService().verify<{sub: string; id?: number}>(response.accessToken, {
+        secret: ACCESS_SECRET,
+      });
+      expect(payload.sub).toBe(response.user.publicId);
+      expect(payload.id).toBeUndefined();
+
+      const refreshTokens = await dataSource.getRepository(RefreshTokenEntity).find();
+      expect(refreshTokens).toHaveLength(2);
+      expect(refreshTokens.map((token) => token.tokenHash)).toContain(
+        createHash('sha256').update(response.refreshToken).digest('hex'),
+      );
+      expect(refreshTokens.every((token) => token.tokenHash !== response.refreshToken)).toBe(true);
+      expect(await dataSource.getRepository(UserEntity).count()).toBe(1);
+      expect(await dataSource.getRepository(AccountEntity).count()).toBe(1);
+    });
+
+    it('rejects an unknown email with the same 401 and without creating a session', async () => {
+      await service.register(VALID_REGISTRATION);
+
+      const failure = await service
+        .login({email: 'missing@example.com', password: VALID_REGISTRATION.password})
+        .catch((error: unknown) => error);
+
+      expect(failure).toMatchObject({
+        code: 'INVALID_CREDENTIALS',
+        status: 401,
+        userMessage: API_ERROR_MESSAGES.INVALID_CREDENTIALS,
+      });
+      expect(await dataSource.getRepository(RefreshTokenEntity).count()).toBe(1);
+    });
+
+    it('rejects a wrong password with the same 401 and without creating a session', async () => {
+      await service.register(VALID_REGISTRATION);
+
+      const failure = await service
+        .login({email: VALID_REGISTRATION.email, password: 'definitely-wrong'})
+        .catch((error: unknown) => error);
+
+      expect(failure).toMatchObject({
+        code: 'INVALID_CREDENTIALS',
+        status: 401,
+        userMessage: API_ERROR_MESSAGES.INVALID_CREDENTIALS,
+      });
+      expect(await dataSource.getRepository(RefreshTokenEntity).count()).toBe(1);
+    });
+
+    it('rejects a soft-deleted user and keeps the email reserved', async () => {
+      await service.register(VALID_REGISTRATION);
+      await dataSource
+        .getRepository(UserEntity)
+        .update({email: VALID_REGISTRATION.email}, {deletedAt: '2026-11-18T13:00:00.000Z'});
+
+      const failure = await service
+        .login({email: VALID_REGISTRATION.email, password: VALID_REGISTRATION.password})
+        .catch((error: unknown) => error);
+
+      expect(failure).toMatchObject({
+        code: 'INVALID_CREDENTIALS',
+        status: 401,
+        userMessage: API_ERROR_MESSAGES.INVALID_CREDENTIALS,
+      });
+      expect(await dataSource.getRepository(RefreshTokenEntity).count()).toBe(1);
+
+      const reRegister = await service
+        .register(VALID_REGISTRATION)
+        .catch((error: unknown) => error);
+      expect(reRegister).toMatchObject({code: 'EMAIL_ALREADY_REGISTERED', status: 409});
+    });
   });
 });

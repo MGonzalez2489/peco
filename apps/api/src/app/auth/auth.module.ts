@@ -5,6 +5,7 @@ import {DatabaseModule} from '../database/database.module';
 import {UtcClock} from '../database/clock/utc-clock';
 import {AuthController} from './auth.controller';
 import {AuthService} from './auth.service';
+import {AuthLoginRepository} from './services/auth-login.repository';
 import {AuthRegistrationRepository} from './services/auth-registration.repository';
 import {PasswordHasher} from './services/password-hasher';
 import {TokenService} from './services/token-service';
@@ -19,6 +20,13 @@ import {TokenService} from './services/token-service';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, AuthRegistrationRepository, PasswordHasher, TokenService, UtcClock],
+  providers: [
+    AuthService,
+    AuthRegistrationRepository,
+    AuthLoginRepository,
+    PasswordHasher,
+    TokenService,
+    UtcClock,
+  ],
 })
 export class AuthModule {}

@@ -7,11 +7,26 @@ import {ApiException} from '../common/http/api-exception';
 import {configureHttp} from '../common/http/configure-http';
 import {AuthController} from './auth.controller';
 import {AuthService} from './auth.service';
+import {invalidCredentialsException} from './utils/invalid-credentials.exception';
 
 const VALID_BODY = {
   email: 'user@example.com',
   password: 'correct horse battery',
   name: 'Manuel',
+};
+
+const AUTH_RESPONSE = {
+  user: {
+    publicId: 'user-public-id',
+    email: 'user@example.com',
+    name: 'Manuel',
+    createdAt: '2026-11-18T12:00:00.000Z',
+    updatedAt: '2026-11-18T12:00:00.000Z',
+  },
+  accessToken: 'jwt',
+  refreshToken: 'refresh',
+  expiresIn: 900,
+  refreshExpiresIn: 1800,
 };
 
 const SILENT_LOGGER: LoggerService = {
@@ -23,28 +38,18 @@ const SILENT_LOGGER: LoggerService = {
   fatal: jest.fn(),
 };
 
-describe('AuthController HTTP contract (US-201)', () => {
+describe('AuthController HTTP contract (US-201/US-202)', () => {
   let app: INestApplication;
   let register: jest.Mock;
+  let login: jest.Mock;
 
   beforeEach(async () => {
-    register = jest.fn().mockResolvedValue({
-      user: {
-        publicId: 'user-public-id',
-        email: 'user@example.com',
-        name: 'Manuel',
-        createdAt: '2026-11-18T12:00:00.000Z',
-        updatedAt: '2026-11-18T12:00:00.000Z',
-      },
-      accessToken: 'jwt',
-      refreshToken: 'refresh',
-      expiresIn: 900,
-      refreshExpiresIn: 1800,
-    });
+    register = jest.fn().mockResolvedValue(AUTH_RESPONSE);
+    login = jest.fn().mockResolvedValue(AUTH_RESPONSE);
 
     const moduleRef = await Test.createTestingModule({
       controllers: [AuthController],
-      providers: [{provide: AuthService, useValue: {register}}],
+      providers: [{provide: AuthService, useValue: {register, login}}],
     }).compile();
 
     app = moduleRef.createNestApplication({bodyParser: false});
@@ -62,22 +67,7 @@ describe('AuthController HTTP contract (US-201)', () => {
       .send({...VALID_BODY, email: '  USER@Example.COM '})
       .expect(201);
 
-    expect(response.body).toEqual({
-      data: {
-        user: {
-          publicId: 'user-public-id',
-          email: 'user@example.com',
-          name: 'Manuel',
-          createdAt: '2026-11-18T12:00:00.000Z',
-          updatedAt: '2026-11-18T12:00:00.000Z',
-        },
-        accessToken: 'jwt',
-        refreshToken: 'refresh',
-        expiresIn: 900,
-        refreshExpiresIn: 1800,
-      },
-      meta: {correlationId: expect.any(String)},
-    });
+    expect(response.body).toEqual({data: AUTH_RESPONSE, meta: {correlationId: expect.any(String)}});
     expect(register).toHaveBeenCalledWith(
       expect.objectContaining({email: 'user@example.com', name: 'Manuel'}),
     );
@@ -116,6 +106,50 @@ describe('AuthController HTTP contract (US-201)', () => {
       statusCode: 409,
       code: 'EMAIL_ALREADY_REGISTERED',
       message: API_ERROR_MESSAGES.EMAIL_ALREADY_REGISTERED,
+      correlationId: expect.any(String),
+    });
+  });
+
+  it('returns 200 with the same payload for login and normalizes the email', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({email: '  USER@Example.COM ', password: 'correct horse battery'})
+      .expect(200);
+
+    expect(response.body).toEqual({data: AUTH_RESPONSE, meta: {correlationId: expect.any(String)}});
+    expect(login).toHaveBeenCalledWith({
+      email: 'user@example.com',
+      password: 'correct horse battery',
+    });
+    expect(register).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 with details.fields for malformed login input', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({email: 'not-an-email', password: 'short'})
+      .expect(400);
+
+    expect(response.body.error).toMatchObject({
+      statusCode: 400,
+      code: 'VALIDATION_ERROR',
+      details: {fields: {email: expect.any(String), password: expect.any(String)}},
+    });
+    expect(login).not.toHaveBeenCalled();
+  });
+
+  it('returns 401 INVALID_CREDENTIALS with the shared error envelope', async () => {
+    login.mockRejectedValue(invalidCredentialsException());
+
+    const response = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({email: VALID_BODY.email, password: 'wrong-password'})
+      .expect(401);
+
+    expect(response.body.error).toMatchObject({
+      statusCode: 401,
+      code: 'INVALID_CREDENTIALS',
+      message: API_ERROR_MESSAGES.INVALID_CREDENTIALS,
       correlationId: expect.any(String),
     });
   });
