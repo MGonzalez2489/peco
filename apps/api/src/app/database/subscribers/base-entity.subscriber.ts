@@ -1,9 +1,10 @@
 import {Injectable} from '@nestjs/common';
 import {randomUUID} from 'node:crypto';
-import {EntitySubscriberInterface, InsertEvent, UpdateEvent} from 'typeorm';
+import {EntitySubscriberInterface, EventSubscriber, InsertEvent, UpdateEvent} from 'typeorm';
 import {UtcClock} from '../clock/utc-clock';
 
 /** Writes application-owned identifiers and timestamps; never touches deletedAt (D8, D28). */
+@EventSubscriber()
 @Injectable()
 export class BaseEntitySubscriber implements EntitySubscriberInterface {
   constructor(private readonly clock: UtcClock = new UtcClock()) {}
