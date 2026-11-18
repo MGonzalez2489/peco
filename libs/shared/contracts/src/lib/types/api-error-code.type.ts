@@ -4,6 +4,7 @@
  */
 export type ApiErrorCode =
   | 'VALIDATION_ERROR'
+  | 'PAYLOAD_TOO_LARGE'
   | 'INVALID_RESET_TOKEN'
   | 'UNAUTHORIZED'
   | 'TOKEN_EXPIRED'

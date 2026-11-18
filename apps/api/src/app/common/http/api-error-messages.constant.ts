@@ -3,6 +3,7 @@ import type {ApiErrorCode} from '@peco/contracts';
 /** Default Spanish message per stable error code (8.3). */
 export const API_ERROR_MESSAGES: Record<ApiErrorCode, string> = {
   VALIDATION_ERROR: 'Revisa los datos enviados.',
+  PAYLOAD_TOO_LARGE: 'El cuerpo de la solicitud es demasiado grande.',
   INVALID_RESET_TOKEN: 'El enlace de recuperación no es válido o ya expiró.',
   UNAUTHORIZED: 'Debes iniciar sesión para continuar.',
   TOKEN_EXPIRED: 'Tu sesión expiró. Vuelve a iniciar sesión.',

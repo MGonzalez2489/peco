@@ -10,6 +10,7 @@ export const API_ERROR_CODE_BY_STATUS: Partial<Record<number, ApiErrorCode>> = {
   403: 'FORBIDDEN',
   404: 'NOT_FOUND',
   409: 'VERSION_CONFLICT',
+  413: 'PAYLOAD_TOO_LARGE',
   422: 'UNPROCESSABLE_ENTITY',
   429: 'RATE_LIMITED',
 };

@@ -1,14 +1,34 @@
-import {Body, Controller, Delete, Get, HttpCode, HttpStatus, Logger, Post} from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Logger,
+  Post,
+  Query,
+} from '@nestjs/common';
+import type {INestApplication, LoggerService} from '@nestjs/common';
 import {Test} from '@nestjs/testing';
 import {IsInt, IsString, Min, MinLength} from 'class-validator';
-import type {INestApplication} from '@nestjs/common';
 import request from 'supertest';
 import {HealthController} from '../../health/health.controller';
 import {HealthService} from '../../health/health.service';
+import {ListQueryDto} from '../dto/list-query.dto';
 import {API_ERROR_MESSAGES} from './api-error-messages.constant';
 import {ApiException} from './api-exception';
 import {configureHttp} from './configure-http';
 import {EnvelopeResult} from './envelope-result';
+
+const createSilentLogger = (): LoggerService => ({
+  log: jest.fn(),
+  error: jest.fn(),
+  warn: jest.fn(),
+  debug: jest.fn(),
+  verbose: jest.fn(),
+  fatal: jest.fn(),
+});
 
 class CreateThingDto {
   @IsString()
@@ -60,6 +80,11 @@ class TestController {
   create(@Body() dto: CreateThingDto): CreateThingDto {
     return dto;
   }
+
+  @Get('items')
+  items(@Query() query: ListQueryDto): ListQueryDto {
+    return query;
+  }
 }
 
 describe('HTTP contract (US-104)', () => {
@@ -76,8 +101,8 @@ describe('HTTP contract (US-104)', () => {
       providers: [{provide: HealthService, useValue: {pingDatabase}}],
     }).compile();
 
-    app = moduleRef.createNestApplication();
-    configureHttp(app);
+    app = moduleRef.createNestApplication({bodyParser: false});
+    configureHttp(app, {logger: createSilentLogger()});
     await app.init();
   });
 
@@ -164,6 +189,20 @@ describe('HTTP contract (US-104)', () => {
         expect.stringContaining('SELECT password FROM users'),
       );
     });
+
+    it('rejects a JSON body over 1 MB with 413 PAYLOAD_TOO_LARGE', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/test/validate')
+        .send({name: 'Café', amount: 1500, padding: 'x'.repeat(1024 * 1024)})
+        .expect(413);
+
+      expect(response.body.error).toEqual({
+        statusCode: 413,
+        code: 'PAYLOAD_TOO_LARGE',
+        message: API_ERROR_MESSAGES.PAYLOAD_TOO_LARGE,
+        correlationId: expect.any(String),
+      });
+    });
   });
 
   describe('correlation id', () => {
@@ -228,6 +267,22 @@ describe('HTTP contract (US-104)', () => {
 
       expect(response.body.error.details.fields).toEqual({
         injected: 'El campo no está permitido.',
+      });
+    });
+
+    it('accepts a list limit within the D25 bound', async () => {
+      const response = await request(app.getHttpServer()).get('/test/items?limit=100').expect(200);
+
+      expect(response.body.data).toEqual({limit: 100});
+    });
+
+    it('rejects a list limit above 100 instead of clamping it', async () => {
+      const response = await request(app.getHttpServer()).get('/test/items?limit=101').expect(400);
+
+      expect(response.body.error).toMatchObject({
+        statusCode: 400,
+        code: 'VALIDATION_ERROR',
+        details: {fields: {limit: expect.any(String)}},
       });
     });
   });

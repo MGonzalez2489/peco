@@ -12,15 +12,11 @@ import {getCorrelationId} from '../middleware/correlation-id.context';
 import type {CorrelatedRequest} from '../types/correlated-request.type';
 import {API_ERROR_CODE_BY_STATUS} from './api-error-code-by-status.constant';
 import {API_ERROR_MESSAGES} from './api-error-messages.constant';
+import {renderApiError, type RenderableApiError} from './api-error-renderer';
 import {ApiException} from './api-exception';
 import {isHealthRequest} from './is-health-request';
 
-interface NormalizedError {
-  statusCode: number;
-  code: ApiErrorCode;
-  message: string;
-  details?: unknown;
-}
+type NormalizedError = RenderableApiError;
 
 /**
  * Renders every failure as `{error: {...}}` with a stable code, a Spanish
@@ -54,15 +50,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       );
     }
 
-    response.status(error.statusCode).json({
-      error: {
-        statusCode: error.statusCode,
-        code: error.code,
-        message: error.message,
-        ...(error.details === undefined ? {} : {details: error.details}),
-        correlationId,
-      },
-    });
+    renderApiError(response, error, correlationId);
   }
 
   private normalize(exception: unknown): NormalizedError {

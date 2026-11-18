@@ -71,7 +71,7 @@ docker compose stop mysql
 - **Image/build:** `apps/api/Dockerfile` (multi-stage: `npm ci --legacy-peer-deps` + `nx run api:build:production`, then production deps in the runner stage, runs `node main.js`)
 - **Runtime env:** `NODE_ENV`, `PORT`, `TZ`, `DATABASE_*`, `JWT_*_SECRET`, `CORS_ORIGINS`, `LOG_LEVEL`, `MAIL_TRANSPORT`, `RATE_LIMIT_ENABLED` (Compose sets `DATABASE_HOST=mysql`, `TZ=UTC` and waits for MySQL health)
 - **Secrets:** Compose uses development placeholder JWT secrets by default; override `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET` for any real deployment
-- **Ports:** `http://localhost:3000` (`/api`, `/health`)
+- **Ports:** `http://localhost:3000` (`/api`, `/health`, `/docs`, `/docs-json`)
 
 ```bash
 # Build and run API + MySQL
@@ -142,8 +142,11 @@ This starts MySQL via Docker Compose and serves the API (`nx serve api`).
 
 - API: `http://localhost:3000/api`
 - Health: `http://localhost:3000/health` (`200` with `{status, uptime, db:"up"}` when DB is reachable, `503` when DB ping fails)
+- API docs: `http://localhost:3000/docs` (Swagger UI) and `http://localhost:3000/docs-json` (OpenAPI JSON generated from the DTOs)
 - Responses: every client route returns `{data, meta}` on success and `{error: {statusCode, code, message, details?, correlationId}}` on failure; `/health` stays flat and `204` responses are bodyless (8.3)
 - Correlation: send `x-correlation-id` to trace a request; when absent the API generates one and echoes it in the header and in `meta.correlationId`
+- Logs: one structured JSON line per request with `correlationId`, optional `userId`, stable `route`, `statusCode` and `durationMs`. `LOG_LEVEL` defaults to `info`; production never logs request bodies, and passwords, tokens and authorization headers are redacted.
+- Limits: JSON bodies over 1 MB return `413 PAYLOAD_TOO_LARGE`; `limit > 100` on a list endpoint returns `400 VALIDATION_ERROR` instead of being clamped.
 
 ## Database migrations
 

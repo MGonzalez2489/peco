@@ -1,16 +1,47 @@
-import type {INestApplication} from '@nestjs/common';
+import type {INestApplication, LoggerService} from '@nestjs/common';
+import {json, type ErrorRequestHandler} from 'express';
+import {MAX_JSON_BODY_SIZE} from '../constants/max-json-body-size.constant';
+import {createRequestLogger} from '../logging/request-logger.middleware';
+import {correlationIdMiddleware} from '../middleware/correlation-id.middleware';
+import type {CorrelatedRequest} from '../types/correlated-request.type';
+import {createValidationPipe} from '../validation/validation.pipe';
+import {API_ERROR_MESSAGES} from './api-error-messages.constant';
+import {renderApiError} from './api-error-renderer';
 import {AllExceptionsFilter} from './all-exceptions.filter';
 import {ResponseEnvelopeInterceptor} from './response-envelope.interceptor';
-import {correlationIdMiddleware} from '../middleware/correlation-id.middleware';
-import {createValidationPipe} from '../validation/validation.pipe';
+
+const bodyLimitErrorHandler: ErrorRequestHandler = (error, request, response, next) => {
+  const status =
+    typeof error === 'object' && error !== null && 'status' in error ? error.status : undefined;
+  const type =
+    typeof error === 'object' && error !== null && 'type' in error ? error.type : undefined;
+
+  if (status === 413 || type === 'entity.too.large') {
+    renderApiError(
+      response,
+      {
+        statusCode: 413,
+        code: 'PAYLOAD_TOO_LARGE',
+        message: API_ERROR_MESSAGES.PAYLOAD_TOO_LARGE,
+      },
+      (request as CorrelatedRequest).correlationId ?? 'unavailable',
+    );
+    return;
+  }
+
+  next(error);
+};
 
 /**
- * Applies the cross-cutting HTTP contract once for the whole API (US-104):
- * correlation id, `{data, meta}` / `{error}` envelopes and global validation.
+ * Applies the cross-cutting HTTP contract once for the whole API: correlation
+ * id, bounded JSON bodies, request logging, envelopes and global validation.
  * `main.ts` and the HTTP contract tests use this same function.
  */
-export function configureHttp(app: INestApplication): void {
+export function configureHttp(app: INestApplication, options: {logger: LoggerService}): void {
   app.use(correlationIdMiddleware);
+  app.use(json({limit: MAX_JSON_BODY_SIZE}));
+  app.use(bodyLimitErrorHandler);
+  app.use(createRequestLogger(options.logger));
   app.useGlobalPipes(createValidationPipe());
   app.useGlobalFilters(new AllExceptionsFilter());
   app.useGlobalInterceptors(new ResponseEnvelopeInterceptor());
