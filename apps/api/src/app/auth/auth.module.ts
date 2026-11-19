@@ -2,6 +2,7 @@ import {Module} from '@nestjs/common';
 import {JwtModule} from '@nestjs/jwt';
 import {APP_GUARD} from '@nestjs/core';
 import {ThrottlerModule} from '@nestjs/throttler';
+import {RATE_LIMITS} from '../common/constants/rate-limits.constant';
 import {ConfigService} from '../config/config.service';
 import {DatabaseModule} from '../database/database.module';
 import {UtcClock} from '../database/clock/utc-clock';
@@ -34,6 +35,11 @@ import {TokenService} from './services/token-service';
         throttlers: [
           {name: 'ip', limit: 1, ttl: 60_000},
           {name: 'identity', limit: 1, ttl: 60_000},
+          {
+            name: 'user',
+            limit: RATE_LIMITS.mutation.user.limit,
+            ttl: RATE_LIMITS.mutation.user.ttl,
+          },
         ],
         setHeaders: false,
         skipIf: () => !config.config.rateLimitEnabled,
@@ -56,5 +62,7 @@ import {TokenService} from './services/token-service';
     UtcClock,
     {provide: MAIL_SERVICE, useClass: CaptureMailService},
   ],
+  // UsersModule reuses the same throttler storage and error adapter (D88).
+  exports: [ThrottlerModule, AuthRateLimitGuard],
 })
 export class AuthModule {}

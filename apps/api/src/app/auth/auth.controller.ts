@@ -26,6 +26,8 @@ import {ResetPasswordRequestDto} from './dto/reset-password-request.dto';
 @ApiTags('auth')
 @Controller('auth')
 @UseGuards(AuthRateLimitGuard)
+// Public routes keep their own IP/identity buckets; no principal exists for a user bucket.
+@SkipThrottle({user: true})
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 

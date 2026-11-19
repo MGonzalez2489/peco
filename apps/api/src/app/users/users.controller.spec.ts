@@ -12,7 +12,9 @@ import {API_ERROR_MESSAGES} from '../common/http/api-error-messages.constant';
 import {ApiException} from '../common/http/api-exception';
 import {configureHttp} from '../common/http/configure-http';
 import type {AuthenticatedRequest} from '../common/types/authenticated-request.type';
+import {AuthRateLimitGuard} from '../auth/guards/auth-rate-limit.guard';
 import {invalidCredentialsException} from '../auth/utils/invalid-credentials.exception';
+import {incorrectPasswordException} from './utils/incorrect-password.exception';
 import {UsersController} from './users.controller';
 import {UsersService} from './users.service';
 import {userNotFoundException} from './utils/user-not-found.exception';
@@ -34,10 +36,11 @@ const SILENT_LOGGER: LoggerService = {
   fatal: jest.fn(),
 };
 
-describe('UsersController HTTP contract (US-207)', () => {
+describe('UsersController HTTP contract (US-207/US-208)', () => {
   let app: INestApplication;
   let update: jest.Mock;
   let remove: jest.Mock;
+  let changePassword: jest.Mock;
   let authenticated = true;
 
   const authGuard: CanActivate = {
@@ -54,14 +57,18 @@ describe('UsersController HTTP contract (US-207)', () => {
     authenticated = true;
     update = jest.fn().mockResolvedValue(USER_RESPONSE);
     remove = jest.fn().mockResolvedValue(undefined);
+    changePassword = jest.fn().mockResolvedValue(undefined);
 
     const moduleRef = await Test.createTestingModule({
       controllers: [UsersController],
       providers: [
-        {provide: UsersService, useValue: {update, remove}},
+        {provide: UsersService, useValue: {update, remove, changePassword}},
         {provide: APP_GUARD, useValue: authGuard},
       ],
-    }).compile();
+    })
+      .overrideGuard(AuthRateLimitGuard)
+      .useValue({canActivate: () => true})
+      .compile();
 
     app = moduleRef.createNestApplication({bodyParser: false});
     configureHttp(app, {logger: SILENT_LOGGER});
@@ -144,6 +151,74 @@ describe('UsersController HTTP contract (US-207)', () => {
       message: API_ERROR_MESSAGES.UNAUTHORIZED,
     });
     expect(update).not.toHaveBeenCalled();
+  });
+
+  it('returns 204 with no body when the password change succeeds', async () => {
+    const response = await request(app.getHttpServer())
+      .patch('/users/me/password')
+      .send({currentPassword: 'correct horse battery', newPassword: 'a new correct horse'})
+      .expect(204);
+
+    expect(response.text).toBe('');
+    expect(response.body).toEqual({});
+    expect(changePassword).toHaveBeenCalledWith('user-public-id', {
+      currentPassword: 'correct horse battery',
+      newPassword: 'a new correct horse',
+    });
+  });
+
+  it.each([
+    {currentPassword: 'short', newPassword: 'a new correct horse'},
+    {currentPassword: 'correct horse battery', newPassword: ''},
+    {currentPassword: 42, newPassword: 'a new correct horse'},
+    {currentPassword: 'correct horse battery'},
+  ])('returns 400 VALIDATION_ERROR for the invalid password change %p', async (body) => {
+    const response = await request(app.getHttpServer())
+      .patch('/users/me/password')
+      .send(body)
+      .expect(400);
+
+    expect(response.body.error).toMatchObject({
+      statusCode: 400,
+      code: 'VALIDATION_ERROR',
+      details: {fields: expect.any(Object)},
+    });
+    expect(changePassword).not.toHaveBeenCalled();
+  });
+
+  it('returns 401 UNAUTHORIZED for a wrong current password', async () => {
+    changePassword.mockRejectedValue(incorrectPasswordException());
+
+    const response = await request(app.getHttpServer())
+      .patch('/users/me/password')
+      .send({currentPassword: 'wrong-password', newPassword: 'a new correct horse'})
+      .expect(401);
+
+    expect(response.body.error).toMatchObject({
+      statusCode: 401,
+      code: 'UNAUTHORIZED',
+      message: API_ERROR_MESSAGES.UNAUTHORIZED,
+    });
+  });
+
+  it('returns 404 NOT_FOUND when the authenticated user is gone', async () => {
+    changePassword.mockRejectedValue(userNotFoundException());
+
+    await request(app.getHttpServer())
+      .patch('/users/me/password')
+      .send({currentPassword: 'correct horse battery', newPassword: 'a new correct horse'})
+      .expect(404);
+  });
+
+  it('returns 401 UNAUTHORIZED when the guard did not attach a principal', async () => {
+    authenticated = false;
+
+    await request(app.getHttpServer())
+      .patch('/users/me/password')
+      .send({currentPassword: 'correct horse battery', newPassword: 'a new correct horse'})
+      .expect(401);
+
+    expect(changePassword).not.toHaveBeenCalled();
   });
 
   it('returns 204 with no body for a password-confirmed deletion', async () => {

@@ -18,9 +18,10 @@ import type {AuthenticatedRequest} from '../../common/types/authenticated-reques
 import {normalizeEmail} from '../utils/normalize-email.util';
 
 /**
- * Adapts `@nestjs/throttler` to the API contract (13.1, D86): only routes
+ * Adapts `@nestjs/throttler` to the API contract (13.1, D86/D88): only routes
  * explicitly marked `@RateLimited()` are counted, identity buckets use a hash
- * of the normalized submitted email, and rejections keep the error envelope.
+ * of the normalized submitted email, user buckets use the authenticated
+ * `publicId`, and rejections keep the error envelope.
  */
 @Injectable()
 export class AuthRateLimitGuard extends ThrottlerGuard {
@@ -42,6 +43,15 @@ export class AuthRateLimitGuard extends ThrottlerGuard {
   }
 
   protected override generateKey(context: ExecutionContext, tracker: string, name: string): string {
+    if (name === 'user') {
+      const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
+      const publicIdHash = createHash('sha256')
+        .update(request.auth?.publicId ?? '')
+        .digest('hex');
+
+      // Ignore the IP tracker so one user shares a bucket across devices.
+      return super.generateKey(context, publicIdHash, name);
+    }
     if (name !== 'identity') {
       return super.generateKey(context, tracker, name);
     }

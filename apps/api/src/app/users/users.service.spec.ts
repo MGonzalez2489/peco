@@ -1,6 +1,7 @@
 import type {PasswordHasher} from '../auth/services/password-hasher';
 import type {UserEntity} from '../database/entities';
 import {UserDeletionRepository} from './services/user-deletion.repository';
+import {UserPasswordRepository} from './services/user-password.repository';
 import {UserProfileRepository} from './services/user-profile.repository';
 import {UsersService} from './users.service';
 
@@ -14,11 +15,12 @@ const ACTIVE_USER = {
   updatedAt: '2026-11-19T12:00:00.000Z',
 } as UserEntity;
 
-describe('UsersService (US-207)', () => {
+describe('UsersService (US-207/US-208)', () => {
   let service: UsersService;
   let profile: {findActiveByPublicId: jest.Mock; updateName: jest.Mock};
   let deletion: {delete: jest.Mock};
-  let passwordHasher: {verify: jest.Mock};
+  let passwords: {change: jest.Mock};
+  let passwordHasher: {verify: jest.Mock; hash: jest.Mock};
 
   beforeEach(() => {
     profile = {
@@ -26,11 +28,16 @@ describe('UsersService (US-207)', () => {
       updateName: jest.fn().mockResolvedValue({...ACTIVE_USER, name: 'Ana'}),
     };
     deletion = {delete: jest.fn().mockResolvedValue(true)};
-    passwordHasher = {verify: jest.fn().mockResolvedValue(true)};
+    passwords = {change: jest.fn().mockResolvedValue(true)};
+    passwordHasher = {
+      verify: jest.fn().mockResolvedValue(true),
+      hash: jest.fn().mockResolvedValue('new-argon2-hash'),
+    };
 
     service = new UsersService(
       profile as unknown as UserProfileRepository,
       deletion as unknown as UserDeletionRepository,
+      passwords as unknown as UserPasswordRepository,
       passwordHasher as unknown as PasswordHasher,
     );
   });
@@ -64,6 +71,55 @@ describe('UsersService (US-207)', () => {
       status: 404,
       code: 'NOT_FOUND',
     });
+  });
+
+  it('returns 404 without hashing when the password-change principal is absent', async () => {
+    profile.findActiveByPublicId.mockResolvedValue(null);
+
+    await expect(
+      service.changePassword('user-public-id', {
+        currentPassword: 'correct horse battery',
+        newPassword: 'a new correct horse',
+      }),
+    ).rejects.toMatchObject({status: 404, code: 'NOT_FOUND'});
+    expect(passwordHasher.verify).not.toHaveBeenCalled();
+    expect(passwordHasher.hash).not.toHaveBeenCalled();
+    expect(passwords.change).not.toHaveBeenCalled();
+  });
+
+  it('returns 401 UNAUTHORIZED and changes nothing for a wrong current password', async () => {
+    passwordHasher.verify.mockResolvedValue(false);
+
+    await expect(
+      service.changePassword('user-public-id', {
+        currentPassword: 'wrong-password',
+        newPassword: 'a new correct horse',
+      }),
+    ).rejects.toMatchObject({status: 401, code: 'UNAUTHORIZED'});
+    expect(passwordHasher.verify).toHaveBeenCalledWith('argon2-hash', 'wrong-password');
+    expect(passwordHasher.hash).not.toHaveBeenCalled();
+    expect(passwords.change).not.toHaveBeenCalled();
+  });
+
+  it('hashes the new password and revokes every session through the repository', async () => {
+    await service.changePassword('user-public-id', {
+      currentPassword: 'correct horse battery',
+      newPassword: 'a new correct horse',
+    });
+
+    expect(passwordHasher.hash).toHaveBeenCalledWith('a new correct horse');
+    expect(passwords.change).toHaveBeenCalledWith('user-public-id', 'new-argon2-hash');
+  });
+
+  it('returns 404 when the account disappears before the password change commits', async () => {
+    passwords.change.mockResolvedValue(false);
+
+    await expect(
+      service.changePassword('user-public-id', {
+        currentPassword: 'correct horse battery',
+        newPassword: 'a new correct horse',
+      }),
+    ).rejects.toMatchObject({status: 404, code: 'NOT_FOUND'});
   });
 
   it('returns 404 without hashing when the profile to delete is absent', async () => {

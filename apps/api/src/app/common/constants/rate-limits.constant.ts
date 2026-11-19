@@ -1,6 +1,7 @@
 /**
- * Auth rate limits from 13.1, in milliseconds for `@nestjs/throttler` (D86).
- * `identity` buckets use the normalized submitted email as their key.
+ * Rate limits from 13.1, in milliseconds for `@nestjs/throttler` (D86/D88).
+ * `identity` buckets key on the normalized submitted email; `user` buckets key
+ * on the authenticated `publicId`.
  */
 export const RATE_LIMITS = {
   login: {
@@ -17,5 +18,8 @@ export const RATE_LIMITS = {
   },
   resetPassword: {
     ip: {limit: 5, ttl: 60 * 60 * 1000},
+  },
+  mutation: {
+    user: {limit: 120, ttl: 60 * 1000},
   },
 } as const;

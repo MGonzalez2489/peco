@@ -1,8 +1,17 @@
+import {JwtService} from '@nestjs/jwt';
 import {MySqlContainer, StartedMySqlContainer} from '@testcontainers/mysql';
 import {DataSource, DataSourceOptions} from 'typeorm';
+import {AuthService} from '../auth/auth.service';
+import {AuthLoginRepository} from '../auth/services/auth-login.repository';
+import {AuthLogoutRepository} from '../auth/services/auth-logout.repository';
+import {AuthPasswordResetRepository} from '../auth/services/auth-password-reset.repository';
+import {AuthRefreshRepository} from '../auth/services/auth-refresh.repository';
 import {AuthRegistrationRepository} from '../auth/services/auth-registration.repository';
 import {PasswordHasher} from '../auth/services/password-hasher';
+import {TokenService} from '../auth/services/token-service';
+import type {ConfigService} from '../config/config.service';
 import {UtcClock} from '../database/clock/utc-clock';
+import type {MailService} from '../mail/mail-service';
 import {createTypeOrmOptions} from '../database/database.config';
 import {
   AuditLogEntity,
@@ -15,20 +24,27 @@ import {ANONYMIZED_USER_NAME} from './constants/anonymized-user-name.constant';
 import {USER_AUDIT_ENTITY} from './constants/user-audit-entity.constant';
 import {USER_DELETE_AUDIT_ACTION} from './constants/user-delete-audit-action.constant';
 import {UserDeletionRepository} from './services/user-deletion.repository';
+import {UserPasswordRepository} from './services/user-password.repository';
 import {UserProfileRepository} from './services/user-profile.repository';
 import {UsersService} from './users.service';
 
 jest.setTimeout(180_000);
 
 const DELETION_AT = '2026-11-19T18:45:00.000Z';
+const CHANGE_AT = '2026-11-19T19:00:00.000Z';
 const PASSWORD = 'correct horse battery';
+const NEW_PASSWORD = 'a new correct horse';
+const ACCESS_SECRET = 'integration-access-secret-at-least-32-chars';
+const REFRESH_SECRET = 'integration-refresh-secret-at-least-32-chars';
 
-describe('user profile and deletion flows (MySQL 8, US-207/D87)', () => {
+describe('user profile, password and deletion flows (MySQL 8, US-207/US-208)', () => {
   let container: StartedMySqlContainer;
   let dataSource: DataSource;
   let service: UsersService;
+  let authService: AuthService;
   let hasher: PasswordHasher;
-  const clock = {now: () => DELETION_AT} as unknown as UtcClock;
+  const now = jest.fn(() => DELETION_AT);
+  const clock = {now} as unknown as UtcClock;
 
   const seedUser = async (email: string, name: string): Promise<UserEntity> => {
     const user = await dataSource.getRepository(UserEntity).save(
@@ -85,10 +101,30 @@ describe('user profile and deletion flows (MySQL 8, US-207/D87)', () => {
     await dataSource.initialize();
     await dataSource.runMigrations();
 
+    const configService = {
+      config: {
+        jwt: {accessSecret: ACCESS_SECRET, refreshSecret: REFRESH_SECRET},
+        tokens: {access: '15m', refresh: '30m', reset: '45m'},
+      },
+    } as unknown as ConfigService;
+    const mail = {sendPasswordReset: jest.fn()} as unknown as MailService;
+    const tokens = new TokenService(new JwtService(), configService, new UtcClock());
+
     hasher = new PasswordHasher();
+    authService = new AuthService(
+      new AuthRegistrationRepository(dataSource),
+      new AuthLoginRepository(dataSource),
+      new AuthRefreshRepository(dataSource, new UtcClock()),
+      new AuthLogoutRepository(dataSource, new UtcClock()),
+      new AuthPasswordResetRepository(dataSource, new UtcClock()),
+      hasher,
+      tokens,
+      mail,
+    );
     service = new UsersService(
       new UserProfileRepository(dataSource),
       new UserDeletionRepository(dataSource, clock),
+      new UserPasswordRepository(dataSource, clock),
       hasher,
     );
   });
@@ -99,6 +135,7 @@ describe('user profile and deletion flows (MySQL 8, US-207/D87)', () => {
   });
 
   beforeEach(async () => {
+    now.mockReturnValue(DELETION_AT);
     await dataSource.query('DELETE FROM auditLogs');
     await dataSource.query('DELETE FROM refreshTokens');
     await dataSource.query('DELETE FROM userPreferences');
@@ -235,5 +272,95 @@ describe('user profile and deletion flows (MySQL 8, US-207/D87)', () => {
     ).toMatchObject({deletedAt: null});
     expect((await service.update(second.publicId, {name: 'Ana Maria'})).name).toBe('Ana Maria');
     expect(await dataSource.getRepository(AuditLogEntity).count()).toBe(1);
+  });
+
+  it('rejects a wrong current password without changing credentials or sessions', async () => {
+    const user = await seedUser('user@example.com', 'Manuel');
+
+    await expect(
+      service.changePassword(user.publicId, {
+        currentPassword: 'wrong-password',
+        newPassword: NEW_PASSWORD,
+      }),
+    ).rejects.toMatchObject({status: 401, code: 'UNAUTHORIZED'});
+
+    const stored = await storedUser(user.id);
+    expect(stored?.passwordHash).toBe(user.passwordHash);
+    expect(await hasher.verify(stored?.passwordHash ?? '', NEW_PASSWORD)).toBe(false);
+    expect(
+      await dataSource.getRepository(RefreshTokenEntity).findOneByOrFail({userId: user.id}),
+    ).toMatchObject({revokedAt: null});
+    expect(await dataSource.getRepository(AuditLogEntity).count()).toBe(0);
+  });
+
+  it('returns 404 when changing the password of a soft-deleted user', async () => {
+    const user = await seedUser('user@example.com', 'Manuel');
+    await service.remove(user.publicId, {password: PASSWORD});
+
+    await expect(
+      service.changePassword(user.publicId, {
+        currentPassword: PASSWORD,
+        newPassword: NEW_PASSWORD,
+      }),
+    ).rejects.toMatchObject({status: 404, code: 'NOT_FOUND'});
+    expect((await storedUser(user.id))?.passwordHash).toBe(ANONYMIZED_PASSWORD_HASH);
+  });
+
+  it('changes the hash, revokes every session and accepts only the new password (flow 32)', async () => {
+    const user = await seedUser('user@example.com', 'Manuel');
+    const session = await authService.login({email: user.email, password: PASSWORD});
+    now.mockReturnValue(CHANGE_AT);
+
+    await service.changePassword(user.publicId, {
+      currentPassword: PASSWORD,
+      newPassword: NEW_PASSWORD,
+    });
+
+    const stored = await storedUser(user.id);
+    expect(stored?.passwordHash).not.toBe(user.passwordHash);
+    expect(await hasher.verify(stored?.passwordHash ?? '', NEW_PASSWORD)).toBe(true);
+    expect(await hasher.verify(stored?.passwordHash ?? '', PASSWORD)).toBe(false);
+
+    const tokens = await dataSource.getRepository(RefreshTokenEntity).find({
+      where: {userId: user.id},
+    });
+    expect(tokens).toHaveLength(2);
+    expect(tokens.every((token) => token.revokedAt === CHANGE_AT)).toBe(true);
+
+    await expect(authService.refresh({refreshToken: session.refreshToken})).rejects.toMatchObject({
+      status: 401,
+      code: 'REFRESH_TOKEN_REUSED',
+    });
+    await expect(authService.login({email: user.email, password: PASSWORD})).rejects.toMatchObject({
+      status: 401,
+      code: 'INVALID_CREDENTIALS',
+    });
+    await expect(
+      authService.login({email: user.email, password: NEW_PASSWORD}),
+    ).resolves.toMatchObject({user: {publicId: user.publicId}});
+  });
+
+  it('leaves other users and their sessions untouched', async () => {
+    const first = await seedUser('first@example.com', 'Manuel');
+    const other = await seedUser('second@example.com', 'Ana');
+    const otherSession = await authService.login({email: other.email, password: PASSWORD});
+
+    await service.changePassword(first.publicId, {
+      currentPassword: PASSWORD,
+      newPassword: NEW_PASSWORD,
+    });
+
+    expect((await storedUser(other.id))?.passwordHash).toBe(other.passwordHash);
+    expect(
+      await dataSource.getRepository(RefreshTokenEntity).findOneByOrFail({userId: other.id}),
+    ).toMatchObject({revokedAt: null});
+    await expect(
+      authService.refresh({refreshToken: otherSession.refreshToken}),
+    ).resolves.toMatchObject({
+      user: {publicId: other.publicId},
+    });
+    await expect(
+      authService.login({email: other.email, password: PASSWORD}),
+    ).resolves.toMatchObject({user: {publicId: other.publicId}});
   });
 });
