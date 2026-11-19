@@ -48,4 +48,10 @@ describe('TokenService', () => {
   it('never repeats a refresh token', () => {
     expect(service.createRefreshToken().token).not.toBe(service.createRefreshToken().token);
   });
+
+  it('hashes a presented token with the same digest used at creation', () => {
+    const issued = service.createRefreshToken();
+
+    expect(service.hashRefreshToken(issued.token)).toBe(issued.tokenHash);
+  });
 });

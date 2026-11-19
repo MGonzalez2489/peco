@@ -39,9 +39,14 @@ export class TokenService {
 
     return {
       token,
-      tokenHash: createHash('sha256').update(token).digest('hex'),
+      tokenHash: this.hashRefreshToken(token),
       expiresAt: this.clock.plusSeconds(this.refreshExpiresIn),
       expiresIn: this.refreshExpiresIn,
     };
+  }
+
+  /** Same digest used at creation and at lookup; the raw token never reaches storage. */
+  hashRefreshToken(token: string): string {
+    return createHash('sha256').update(token).digest('hex');
   }
 }

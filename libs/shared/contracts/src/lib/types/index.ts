@@ -8,6 +8,7 @@ export * from './category-apply-type.type';
 export * from './login-request.type';
 export * from './movement-type.type';
 export * from './recurrence-frequency.type';
+export * from './refresh-request.type';
 export * from './register-request.type';
 export * from './scheduled-execution-status.type';
 export * from './scheduled-transaction-type.type';

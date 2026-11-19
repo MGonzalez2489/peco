@@ -9,6 +9,7 @@ export const API_ERROR_MESSAGES: Record<ApiErrorCode, string> = {
   TOKEN_EXPIRED: 'Tu sesión expiró. Vuelve a iniciar sesión.',
   INVALID_CREDENTIALS: 'El correo o la contraseña no son correctos.',
   REFRESH_TOKEN_REUSED: 'Tu sesión fue invalidada por seguridad. Vuelve a iniciar sesión.',
+  REFRESH_TOKEN_EXPIRED: 'Tu sesión de renovación expiró. Vuelve a iniciar sesión.',
   FORBIDDEN: 'No tienes permiso para realizar esta acción.',
   NOT_FOUND: 'El recurso solicitado no existe.',
   EMAIL_ALREADY_REGISTERED: 'Ese correo ya está registrado.',

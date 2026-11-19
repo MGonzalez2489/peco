@@ -5,6 +5,7 @@ import {API_ERROR_MESSAGES} from '../common/http/api-error-messages.constant';
 import {DUMMY_PASSWORD_HASH} from './constants/dummy-password-hash.constant';
 import {AuthService} from './auth.service';
 import type {AuthLoginRepository} from './services/auth-login.repository';
+import type {AuthRefreshRepository} from './services/auth-refresh.repository';
 import type {AuthRegistrationRepository} from './services/auth-registration.repository';
 import type {PasswordHasher} from './services/password-hasher';
 import type {TokenService} from './services/token-service';
@@ -39,8 +40,13 @@ const publicFailure = (error: unknown) => {
 describe('AuthService', () => {
   let registration: {create: jest.Mock};
   let loginRepository: {findActiveByEmail: jest.Mock; storeRefreshToken: jest.Mock};
+  let refreshRepository: {rotate: jest.Mock};
   let hasher: {hash: jest.Mock; verify: jest.Mock};
-  let tokens: {createRefreshToken: jest.Mock; issueAccessToken: jest.Mock};
+  let tokens: {
+    createRefreshToken: jest.Mock;
+    hashRefreshToken: jest.Mock;
+    issueAccessToken: jest.Mock;
+  };
   let service: AuthService;
 
   beforeEach(() => {
@@ -49,6 +55,7 @@ describe('AuthService', () => {
       findActiveByEmail: jest.fn().mockResolvedValue(USER),
       storeRefreshToken: jest.fn().mockResolvedValue(undefined),
     };
+    refreshRepository = {rotate: jest.fn().mockResolvedValue({status: 'rotated', user: USER})};
     hasher = {
       hash: jest.fn().mockResolvedValue('argon2-hash'),
       verify: jest.fn().mockResolvedValue(true),
@@ -60,12 +67,14 @@ describe('AuthService', () => {
         expiresAt: '2026-11-18T12:30:00.000Z',
         expiresIn: 1800,
       }),
+      hashRefreshToken: jest.fn().mockReturnValue('presented-hash'),
       issueAccessToken: jest.fn().mockResolvedValue({token: 'jwt', expiresIn: 900}),
     };
 
     service = new AuthService(
       registration as unknown as AuthRegistrationRepository,
       loginRepository as unknown as AuthLoginRepository,
+      refreshRepository as unknown as AuthRefreshRepository,
       hasher as unknown as PasswordHasher,
       tokens as unknown as TokenService,
     );
@@ -176,5 +185,67 @@ describe('AuthService', () => {
     const wrongPassword = await service.login(LOGIN_REQUEST).catch((error: unknown) => error);
 
     expect(publicFailure(unknownEmail)).toEqual(publicFailure(wrongPassword));
+  });
+
+  describe('refresh (US-203)', () => {
+    const REFRESH_REQUEST = {refreshToken: 'raw-refresh-token'};
+
+    it('rotates the token and returns the same auto-login DTO', async () => {
+      const response = await service.refresh(REFRESH_REQUEST);
+
+      expect(tokens.hashRefreshToken).toHaveBeenCalledWith('raw-refresh-token');
+      expect(refreshRepository.rotate).toHaveBeenCalledWith({
+        presentedTokenHash: 'presented-hash',
+        nextTokenHash: 'refresh-hash',
+        nextExpiresAt: '2026-11-18T12:30:00.000Z',
+      });
+      expect(tokens.issueAccessToken).toHaveBeenCalledWith('user-public-id');
+      expect(response).toMatchObject({
+        user: {publicId: 'user-public-id', email: 'user@example.com'},
+        accessToken: 'jwt',
+        refreshToken: 'raw-refresh-token',
+        expiresIn: 900,
+        refreshExpiresIn: 1800,
+      });
+    });
+
+    it('rejects an unknown token with 401 UNAUTHORIZED and issues nothing', async () => {
+      refreshRepository.rotate.mockResolvedValue({status: 'invalid'});
+
+      const failure = await service.refresh(REFRESH_REQUEST).catch((error: unknown) => error);
+
+      expect(publicFailure(failure)).toEqual({
+        code: 'UNAUTHORIZED',
+        status: HttpStatus.UNAUTHORIZED,
+        message: API_ERROR_MESSAGES.UNAUTHORIZED,
+      });
+      expect(tokens.issueAccessToken).not.toHaveBeenCalled();
+    });
+
+    it('rejects an expired token with 401 REFRESH_TOKEN_EXPIRED', async () => {
+      refreshRepository.rotate.mockResolvedValue({status: 'expired'});
+
+      const failure = await service.refresh(REFRESH_REQUEST).catch((error: unknown) => error);
+
+      expect(publicFailure(failure)).toEqual({
+        code: 'REFRESH_TOKEN_EXPIRED',
+        status: HttpStatus.UNAUTHORIZED,
+        message: API_ERROR_MESSAGES.REFRESH_TOKEN_EXPIRED,
+      });
+      expect(tokens.issueAccessToken).not.toHaveBeenCalled();
+    });
+
+    it('rejects a replayed token with 401 REFRESH_TOKEN_REUSED', async () => {
+      refreshRepository.rotate.mockResolvedValue({status: 'reused'});
+
+      const failure = await service.refresh(REFRESH_REQUEST).catch((error: unknown) => error);
+
+      expect(publicFailure(failure)).toEqual({
+        code: 'REFRESH_TOKEN_REUSED',
+        status: HttpStatus.UNAUTHORIZED,
+        message: API_ERROR_MESSAGES.REFRESH_TOKEN_REUSED,
+      });
+      expect(tokens.issueAccessToken).not.toHaveBeenCalled();
+    });
   });
 });

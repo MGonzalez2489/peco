@@ -38,18 +38,20 @@ const SILENT_LOGGER: LoggerService = {
   fatal: jest.fn(),
 };
 
-describe('AuthController HTTP contract (US-201/US-202)', () => {
+describe('AuthController HTTP contract (US-201/US-202/US-203)', () => {
   let app: INestApplication;
   let register: jest.Mock;
   let login: jest.Mock;
+  let refresh: jest.Mock;
 
   beforeEach(async () => {
     register = jest.fn().mockResolvedValue(AUTH_RESPONSE);
     login = jest.fn().mockResolvedValue(AUTH_RESPONSE);
+    refresh = jest.fn().mockResolvedValue(AUTH_RESPONSE);
 
     const moduleRef = await Test.createTestingModule({
       controllers: [AuthController],
-      providers: [{provide: AuthService, useValue: {register, login}}],
+      providers: [{provide: AuthService, useValue: {register, login, refresh}}],
     }).compile();
 
     app = moduleRef.createNestApplication({bodyParser: false});
@@ -150,6 +152,67 @@ describe('AuthController HTTP contract (US-201/US-202)', () => {
       statusCode: 401,
       code: 'INVALID_CREDENTIALS',
       message: API_ERROR_MESSAGES.INVALID_CREDENTIALS,
+      correlationId: expect.any(String),
+    });
+  });
+
+  it('rejects injected identity fields instead of refreshing another session', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .send({refreshToken: 'raw-refresh-token', userId: 99, publicId: 'other-user'})
+      .expect(400);
+
+    expect(response.body.error).toMatchObject({
+      statusCode: 400,
+      code: 'VALIDATION_ERROR',
+      details: {fields: {userId: expect.any(String), publicId: expect.any(String)}},
+    });
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it('returns 200 with the same payload for a valid refresh', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .send({refreshToken: 'raw-refresh-token'})
+      .expect(200);
+
+    expect(response.body).toEqual({data: AUTH_RESPONSE, meta: {correlationId: expect.any(String)}});
+    expect(refresh).toHaveBeenCalledWith({refreshToken: 'raw-refresh-token'});
+    expect(login).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 with details.fields for malformed refresh input', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .send({refreshToken: 42})
+      .expect(400);
+
+    expect(response.body.error).toMatchObject({
+      statusCode: 400,
+      code: 'VALIDATION_ERROR',
+      details: {fields: {refreshToken: expect.any(String)}},
+    });
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it('returns 401 REFRESH_TOKEN_REUSED with the shared error envelope', async () => {
+    refresh.mockRejectedValue(
+      new ApiException(
+        HttpStatus.UNAUTHORIZED,
+        'REFRESH_TOKEN_REUSED',
+        API_ERROR_MESSAGES.REFRESH_TOKEN_REUSED,
+      ),
+    );
+
+    const response = await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .send({refreshToken: 'replayed-token'})
+      .expect(401);
+
+    expect(response.body.error).toMatchObject({
+      statusCode: 401,
+      code: 'REFRESH_TOKEN_REUSED',
+      message: API_ERROR_MESSAGES.REFRESH_TOKEN_REUSED,
       correlationId: expect.any(String),
     });
   });

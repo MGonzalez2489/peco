@@ -11,6 +11,7 @@ import {
 import {AuthService} from './auth.service';
 import {AuthResponseDto} from './dto/auth-response.dto';
 import {LoginRequestDto} from './dto/login-request.dto';
+import {RefreshRequestDto} from './dto/refresh-request.dto';
 import {RegisterRequestDto} from './dto/register-request.dto';
 
 @ApiTags('auth')
@@ -36,5 +37,17 @@ export class AuthController {
   @ApiUnauthorizedResponse({description: 'El correo o la contraseña no son correctos.'})
   login(@Body() body: LoginRequestDto): Promise<AuthResponseDto> {
     return this.authService.login(body);
+  }
+
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({summary: 'Renovar el par de tokens con un token de renovación'})
+  @ApiOkResponse({type: AuthResponseDto, description: 'Nuevo par de tokens emitido.'})
+  @ApiBadRequestResponse({description: 'Datos de renovación no válidos.'})
+  @ApiUnauthorizedResponse({
+    description: 'Token desconocido, expirado o reutilizado; la familia queda revocada.',
+  })
+  refresh(@Body() body: RefreshRequestDto): Promise<AuthResponseDto> {
+    return this.authService.refresh(body);
   }
 }

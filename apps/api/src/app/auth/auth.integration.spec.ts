@@ -9,6 +9,7 @@ import {UtcClock} from '../database/clock/utc-clock';
 import {AccountEntity, RefreshTokenEntity, UserEntity} from '../database/entities';
 import {AuthService} from './auth.service';
 import {AuthLoginRepository} from './services/auth-login.repository';
+import {AuthRefreshRepository} from './services/auth-refresh.repository';
 import {AuthRegistrationRepository} from './services/auth-registration.repository';
 import {PasswordHasher} from './services/password-hasher';
 import {TokenService} from './services/token-service';
@@ -22,7 +23,7 @@ const VALID_REGISTRATION = {
   name: 'Manuel',
 };
 
-describe('auth flows (MySQL 8, US-201/US-202)', () => {
+describe('auth flows (MySQL 8, US-201/US-202/US-203)', () => {
   let container: StartedMySqlContainer;
   let dataSource: DataSource;
   let service: AuthService;
@@ -61,6 +62,7 @@ describe('auth flows (MySQL 8, US-201/US-202)', () => {
     service = new AuthService(
       new AuthRegistrationRepository(dataSource),
       new AuthLoginRepository(dataSource),
+      new AuthRefreshRepository(dataSource, new UtcClock()),
       hasher,
       new TokenService(new JwtService(), configService, new UtcClock()),
     );
@@ -235,6 +237,133 @@ describe('auth flows (MySQL 8, US-201/US-202)', () => {
         .register(VALID_REGISTRATION)
         .catch((error: unknown) => error);
       expect(reRegister).toMatchObject({code: 'EMAIL_ALREADY_REGISTERED', status: 409});
+    });
+  });
+
+  describe('refresh rotation and reuse detection (US-203)', () => {
+    const hashOf = (token: string): string => createHash('sha256').update(token).digest('hex');
+
+    it('revokes the presented token and stores a fresh hashed pair', async () => {
+      const registered = await service.register(VALID_REGISTRATION);
+
+      const rotated = await service.refresh({refreshToken: registered.refreshToken});
+
+      expect(rotated.user).toEqual(registered.user);
+      expect(rotated.refreshToken).not.toBe(registered.refreshToken);
+      const tokens = await dataSource.getRepository(RefreshTokenEntity).find();
+      expect(tokens).toHaveLength(2);
+      expect(
+        tokens.find((token) => token.tokenHash === hashOf(registered.refreshToken))?.revokedAt,
+      ).toEqual(expect.any(String));
+      const fresh = tokens.find((token) => token.tokenHash === hashOf(rotated.refreshToken));
+      expect(fresh?.revokedAt).toBeNull();
+      expect(fresh?.tokenHash).not.toBe(rotated.refreshToken);
+
+      const payload = new JwtService().verify<{sub: string; id?: number}>(rotated.accessToken, {
+        secret: ACCESS_SECRET,
+      });
+      expect(payload.sub).toBe(registered.user.publicId);
+      expect(payload.id).toBeUndefined();
+    });
+
+    it('revokes the whole family on replay and rejects the rotated token too', async () => {
+      const registered = await service.register(VALID_REGISTRATION);
+      const rotated = await service.refresh({refreshToken: registered.refreshToken});
+
+      const replay = await service
+        .refresh({refreshToken: registered.refreshToken})
+        .catch((error: unknown) => error);
+      expect(replay).toMatchObject({
+        code: 'REFRESH_TOKEN_REUSED',
+        status: 401,
+        userMessage: API_ERROR_MESSAGES.REFRESH_TOKEN_REUSED,
+      });
+
+      const tokens = await dataSource.getRepository(RefreshTokenEntity).find();
+      expect(tokens).toHaveLength(2);
+      expect(tokens.every((token) => token.revokedAt !== null)).toBe(true);
+
+      const rotatedReplay = await service
+        .refresh({refreshToken: rotated.refreshToken})
+        .catch((error: unknown) => error);
+      expect(rotatedReplay).toMatchObject({code: 'REFRESH_TOKEN_REUSED', status: 401});
+    });
+
+    it('rejects an expired token with its own stable code', async () => {
+      const registered = await service.register(VALID_REGISTRATION);
+      await dataSource
+        .getRepository(RefreshTokenEntity)
+        .createQueryBuilder()
+        .update()
+        .set({expiresAt: '2020-01-01T00:00:00.000Z'})
+        .execute();
+
+      const failure = await service
+        .refresh({refreshToken: registered.refreshToken})
+        .catch((error: unknown) => error);
+
+      expect(failure).toMatchObject({
+        code: 'REFRESH_TOKEN_EXPIRED',
+        status: 401,
+        userMessage: API_ERROR_MESSAGES.REFRESH_TOKEN_EXPIRED,
+      });
+    });
+
+    it('rejects an unknown token without touching any session', async () => {
+      await service.register(VALID_REGISTRATION);
+
+      const failure = await service
+        .refresh({refreshToken: 'never-issued-token'})
+        .catch((error: unknown) => error);
+
+      expect(failure).toMatchObject({
+        code: 'UNAUTHORIZED',
+        status: 401,
+        userMessage: API_ERROR_MESSAGES.UNAUTHORIZED,
+      });
+      const tokens = await dataSource.getRepository(RefreshTokenEntity).find();
+      expect(tokens).toHaveLength(1);
+      expect(tokens[0].revokedAt).toBeNull();
+    });
+
+    it('refreshes only the session owned by the presented token', async () => {
+      const owner = await service.register(VALID_REGISTRATION);
+      const other = await service.register({
+        ...VALID_REGISTRATION,
+        email: 'other@example.com',
+      });
+
+      const rotated = await service.refresh({refreshToken: other.refreshToken});
+
+      expect(rotated.user.publicId).toBe(other.user.publicId);
+      expect(rotated.user.email).toBe(other.user.email);
+      expect(rotated.user.publicId).not.toBe(owner.user.publicId);
+      const tokens = await dataSource.getRepository(RefreshTokenEntity).find();
+      expect(
+        tokens.find((token) => token.tokenHash === hashOf(owner.refreshToken))?.revokedAt,
+      ).toBeNull();
+    });
+
+    it('serializes concurrent refreshes to one success and one reuse rejection', async () => {
+      const registered = await service.register(VALID_REGISTRATION);
+      const settle = (promise: Promise<unknown>) =>
+        promise.then(
+          (value) => ({status: 'fulfilled', value}),
+          (reason) => ({status: 'rejected', reason}),
+        );
+
+      const results = await Promise.all([
+        settle(service.refresh({refreshToken: registered.refreshToken})),
+        settle(service.refresh({refreshToken: registered.refreshToken})),
+      ]);
+
+      expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+      const rejections = results.filter((result) => result.status === 'rejected');
+      expect(rejections).toHaveLength(1);
+      expect(rejections[0]).toMatchObject({
+        reason: {code: 'REFRESH_TOKEN_REUSED', status: 401},
+      });
+      expect(await dataSource.getRepository(RefreshTokenEntity).count()).toBe(2);
     });
   });
 });

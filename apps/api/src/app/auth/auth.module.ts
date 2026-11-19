@@ -6,6 +6,7 @@ import {UtcClock} from '../database/clock/utc-clock';
 import {AuthController} from './auth.controller';
 import {AuthService} from './auth.service';
 import {AuthLoginRepository} from './services/auth-login.repository';
+import {AuthRefreshRepository} from './services/auth-refresh.repository';
 import {AuthRegistrationRepository} from './services/auth-registration.repository';
 import {PasswordHasher} from './services/password-hasher';
 import {TokenService} from './services/token-service';
@@ -24,6 +25,7 @@ import {TokenService} from './services/token-service';
     AuthService,
     AuthRegistrationRepository,
     AuthLoginRepository,
+    AuthRefreshRepository,
     PasswordHasher,
     TokenService,
     UtcClock,
