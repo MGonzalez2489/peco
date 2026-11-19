@@ -187,7 +187,7 @@ const COLUMNS: Record<TableName, string[]> = {
   ],
   userPreferences: [
     ...BASE_COLUMNS,
-    ...TIMESTAMP_COLUMNS,
+    ...SOFT_DELETE_COLUMNS,
     'userId',
     'theme',
     'pwaBannerDismissedAt',
@@ -355,7 +355,7 @@ const UTC_COLUMNS: Record<TableName, string[]> = {
   scheduledExecutions: ['createdAt'],
   periodSnapshots: ['createdAt'],
   accountPeriodBalances: [],
-  userPreferences: ['createdAt', 'updatedAt', 'pwaBannerDismissedAt'],
+  userPreferences: ['createdAt', 'updatedAt', 'deletedAt', 'pwaBannerDismissedAt'],
   auditLogs: ['createdAt'],
   idempotencyKeys: ['createdAt', 'updatedAt', 'expiresAt'],
 };

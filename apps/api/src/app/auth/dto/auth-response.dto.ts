@@ -1,6 +1,6 @@
 import type {AuthResponse} from '@peco/contracts';
 import {ApiProperty} from '@nestjs/swagger';
-import {UserResponseDto} from './user-response.dto';
+import {UserResponseDto} from '../../common/dto/user-response.dto';
 
 /** Auto-login payload returned by registration (8.6/D44). */
 export class AuthResponseDto implements AuthResponse {

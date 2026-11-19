@@ -265,6 +265,7 @@ export class InitialSchema1794873600000 implements MigrationInterface {
         \`publicId\` ${PUBLIC_ID} NOT NULL,
         \`createdAt\` ${TIMESTAMP} NOT NULL,
         \`updatedAt\` ${TIMESTAMP} NOT NULL,
+        \`deletedAt\` ${TIMESTAMP} NULL,
         \`userId\` BIGINT UNSIGNED NOT NULL,
         \`theme\` VARCHAR(20) NOT NULL,
         \`pwaBannerDismissedAt\` ${TIMESTAMP} NULL,

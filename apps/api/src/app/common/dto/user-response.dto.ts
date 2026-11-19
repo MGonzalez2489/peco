@@ -1,7 +1,7 @@
 import type {UserResponse} from '@peco/contracts';
 import {ApiProperty} from '@nestjs/swagger';
 
-/** Public user shape; the internal numeric `id` is never included (D9). */
+/** Public user shape; the internal numeric `id` is never included (D9/D87). */
 export class UserResponseDto implements UserResponse {
   @ApiProperty({description: 'Identificador público del usuario.'})
   readonly publicId: string;

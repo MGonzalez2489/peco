@@ -24,15 +24,11 @@ const SOFT_DELETABLE_TABLES = [
   'categories',
   'movements',
   'scheduledTransactions',
+  'userPreferences',
   'users',
 ] as const;
 
-const TIMESTAMPED_TABLES = [
-  'idempotencyKeys',
-  'passwordResetTokens',
-  'refreshTokens',
-  'userPreferences',
-] as const;
+const TIMESTAMPED_TABLES = ['idempotencyKeys', 'passwordResetTokens', 'refreshTokens'] as const;
 
 const CREATED_ONLY_TABLES = ['auditLogs', 'periodSnapshots', 'scheduledExecutions'] as const;
 
@@ -64,6 +60,7 @@ const UTC_TIMESTAMP_COLUMNS: ReadonlyArray<readonly [string, string]> = [
   ['passwordResetTokens', 'usedAt'],
   ['userPreferences', 'createdAt'],
   ['userPreferences', 'updatedAt'],
+  ['userPreferences', 'deletedAt'],
   ['userPreferences', 'pwaBannerDismissedAt'],
   ['idempotencyKeys', 'createdAt'],
   ['idempotencyKeys', 'updatedAt'],

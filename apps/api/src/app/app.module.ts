@@ -4,6 +4,7 @@ import {AppService} from './app.service';
 import {AuthModule} from './auth/auth.module';
 import {ConfigModule} from './config/config.module';
 import {HealthModule} from './health/health.module';
+import {UsersModule} from './users/users.module';
 
 /**
  * `AuthModule` imports `DatabaseModule`, so the first data-access feature opens
@@ -11,7 +12,7 @@ import {HealthModule} from './health/health.module';
  * `/health` with `503` while MySQL is down.
  */
 @Module({
-  imports: [ConfigModule, HealthModule, AuthModule],
+  imports: [ConfigModule, HealthModule, AuthModule, UsersModule],
   controllers: [AppController],
   providers: [AppService],
 })

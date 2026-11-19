@@ -3,13 +3,13 @@ import {Column, Entity, Index, JoinColumn, ManyToOne, Unique} from 'typeorm';
 import {BIGINT_COLUMN} from '../constants/bigint-column.constant';
 import {ENUM_COLUMN} from '../constants/enum-column.constant';
 import {UTC_TIMESTAMP_COLUMN} from '../constants/utc-timestamp-column.constant';
-import {TimestampedEntity} from './timestamped.entity';
+import {SoftDeletableEntity} from './soft-deletable.entity';
 import {UserEntity} from './user.entity';
 
 @Entity('userPreferences')
 @Index('UQUserPreferencesPublicId', ['publicId'], {unique: true})
 @Unique('UQUserPreferencesUserId', ['userId'])
-export class UserPreferencesEntity extends TimestampedEntity {
+export class UserPreferencesEntity extends SoftDeletableEntity {
   @Column({...BIGINT_COLUMN, unsigned: true})
   userId!: number;
 
