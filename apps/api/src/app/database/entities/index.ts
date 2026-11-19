@@ -6,6 +6,7 @@ export * from './category.entity';
 export * from './created.entity';
 export * from './idempotency-key.entity';
 export * from './movement.entity';
+export * from './password-reset-token.entity';
 export * from './period-snapshot.entity';
 export * from './refresh-token.entity';
 export * from './scheduled-execution.entity';

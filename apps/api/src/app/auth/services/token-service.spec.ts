@@ -13,7 +13,7 @@ describe('TokenService', () => {
   const configService = {
     config: {
       jwt: {accessSecret: ACCESS_SECRET},
-      tokens: {access: '15m', refresh: '30m'},
+      tokens: {access: '15m', refresh: '30m', reset: '45m'},
     },
   } as unknown as ConfigService;
   const service = new TokenService(jwtService, configService, clock);
@@ -53,5 +53,23 @@ describe('TokenService', () => {
     const issued = service.createRefreshToken();
 
     expect(service.hashRefreshToken(issued.token)).toBe(issued.tokenHash);
+  });
+
+  it('creates a single-use reset token with the configured lifetime', () => {
+    const issued = service.createResetToken();
+
+    expect(issued.tokenHash).toBe(createHash('sha256').update(issued.token).digest('hex'));
+    expect(issued.tokenHash).toMatch(/^[0-9a-f]{64}$/);
+    expect(issued.expiresAt).toBe(FIXED_EXPIRY);
+    expect(issued.expiresIn).toBe(2700);
+    expect(clock.plusSeconds).toHaveBeenCalledWith(2700);
+  });
+
+  it('never repeats a reset token and hashes it like a refresh token', () => {
+    const issued = service.createResetToken();
+
+    expect(service.createResetToken().token).not.toBe(issued.token);
+    expect(service.hashResetToken(issued.token)).toBe(issued.tokenHash);
+    expect(service.hashResetToken(issued.token)).toBe(service.hashRefreshToken(issued.token));
   });
 });

@@ -3,10 +3,12 @@ import {RefreshRotationStatusEnum} from '@peco/enums';
 import type {UserEntity} from '../database/entities';
 import type {ApiException} from '../common/http/api-exception';
 import {API_ERROR_MESSAGES} from '../common/http/api-error-messages.constant';
+import type {MailService} from '../mail/mail-service';
 import {DUMMY_PASSWORD_HASH} from './constants/dummy-password-hash.constant';
 import {AuthService} from './auth.service';
 import type {AuthLoginRepository} from './services/auth-login.repository';
 import type {AuthLogoutRepository} from './services/auth-logout.repository';
+import type {AuthPasswordResetRepository} from './services/auth-password-reset.repository';
 import type {AuthRefreshRepository} from './services/auth-refresh.repository';
 import type {AuthRegistrationRepository} from './services/auth-registration.repository';
 import type {PasswordHasher} from './services/password-hasher';
@@ -39,17 +41,21 @@ const publicFailure = (error: unknown) => {
   };
 };
 
-describe('AuthService (US-201/US-202/US-203/US-204)', () => {
+describe('AuthService (US-201/US-202/US-203/US-204/US-205)', () => {
   let registration: {create: jest.Mock};
   let loginRepository: {findActiveByEmail: jest.Mock; storeRefreshToken: jest.Mock};
   let refreshRepository: {rotate: jest.Mock};
   let logoutRepository: {revoke: jest.Mock};
+  let passwordResetRepository: {issue: jest.Mock; consume: jest.Mock};
   let hasher: {hash: jest.Mock; verify: jest.Mock};
   let tokens: {
     createRefreshToken: jest.Mock;
+    createResetToken: jest.Mock;
     hashRefreshToken: jest.Mock;
+    hashResetToken: jest.Mock;
     issueAccessToken: jest.Mock;
   };
+  let mail: {sendPasswordReset: jest.Mock};
   let service: AuthService;
 
   beforeEach(() => {
@@ -64,6 +70,11 @@ describe('AuthService (US-201/US-202/US-203/US-204)', () => {
         .mockResolvedValue({status: RefreshRotationStatusEnum.ROTATED.toString(), user: USER}),
     };
     logoutRepository = {revoke: jest.fn().mockResolvedValue(undefined)};
+    passwordResetRepository = {
+      issue: jest.fn().mockResolvedValue(undefined),
+      consume: jest.fn().mockResolvedValue(true),
+    };
+    mail = {sendPasswordReset: jest.fn().mockResolvedValue(undefined)};
     hasher = {
       hash: jest.fn().mockResolvedValue('argon2-hash'),
       verify: jest.fn().mockResolvedValue(true),
@@ -75,7 +86,14 @@ describe('AuthService (US-201/US-202/US-203/US-204)', () => {
         expiresAt: '2026-11-18T12:30:00.000Z',
         expiresIn: 1800,
       }),
+      createResetToken: jest.fn().mockReturnValue({
+        token: 'raw-reset-token',
+        tokenHash: 'reset-hash',
+        expiresAt: '2026-11-18T13:00:00.000Z',
+        expiresIn: 2700,
+      }),
       hashRefreshToken: jest.fn().mockReturnValue('presented-hash'),
+      hashResetToken: jest.fn().mockReturnValue('presented-reset-hash'),
       issueAccessToken: jest.fn().mockResolvedValue({token: 'jwt', expiresIn: 900}),
     };
 
@@ -84,8 +102,10 @@ describe('AuthService (US-201/US-202/US-203/US-204)', () => {
       loginRepository as unknown as AuthLoginRepository,
       refreshRepository as unknown as AuthRefreshRepository,
       logoutRepository as unknown as AuthLogoutRepository,
+      passwordResetRepository as unknown as AuthPasswordResetRepository,
       hasher as unknown as PasswordHasher,
       tokens as unknown as TokenService,
+      mail as unknown as MailService,
     );
   });
 
@@ -283,6 +303,67 @@ describe('AuthService (US-201/US-202/US-203/US-204)', () => {
 
       expect(logoutRepository.revoke).toHaveBeenCalledTimes(2);
       expect(refreshRepository.rotate).not.toHaveBeenCalled();
+      expect(tokens.issueAccessToken).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('forgot and reset password (US-205)', () => {
+    it('issues a hashed reset token and hands the raw one to the mail port', async () => {
+      await expect(
+        service.forgotPassword({email: '  USER@Example.COM  '}),
+      ).resolves.toBeUndefined();
+
+      expect(loginRepository.findActiveByEmail).toHaveBeenCalledWith('user@example.com');
+      expect(tokens.createResetToken).toHaveBeenCalledTimes(1);
+      expect(passwordResetRepository.issue).toHaveBeenCalledWith(
+        USER.id,
+        'reset-hash',
+        '2026-11-18T13:00:00.000Z',
+      );
+      expect(mail.sendPasswordReset).toHaveBeenCalledWith({
+        to: USER.email,
+        token: 'raw-reset-token',
+        expiresAt: '2026-11-18T13:00:00.000Z',
+      });
+      expect(tokens.issueAccessToken).not.toHaveBeenCalled();
+    });
+
+    it('returns 204 without issuing or mailing anything for an unknown email', async () => {
+      loginRepository.findActiveByEmail.mockResolvedValue(null);
+
+      await expect(service.forgotPassword({email: 'missing@example.com'})).resolves.toBeUndefined();
+
+      expect(tokens.createResetToken).not.toHaveBeenCalled();
+      expect(passwordResetRepository.issue).not.toHaveBeenCalled();
+      expect(mail.sendPasswordReset).not.toHaveBeenCalled();
+    });
+
+    it('changes the password hash and revokes sessions for a valid token', async () => {
+      await expect(
+        service.resetPassword({token: 'raw-reset-token', newPassword: 'new-password'}),
+      ).resolves.toBeUndefined();
+
+      expect(hasher.hash).toHaveBeenCalledWith('new-password');
+      expect(tokens.hashResetToken).toHaveBeenCalledWith('raw-reset-token');
+      expect(passwordResetRepository.consume).toHaveBeenCalledWith(
+        'presented-reset-hash',
+        'argon2-hash',
+      );
+      expect(tokens.issueAccessToken).not.toHaveBeenCalled();
+    });
+
+    it('rejects an invalid, used or expired token with 400 INVALID_RESET_TOKEN', async () => {
+      passwordResetRepository.consume.mockResolvedValue(false);
+
+      const failure = await service
+        .resetPassword({token: 'raw-reset-token', newPassword: 'new-password'})
+        .catch((error: unknown) => error);
+
+      expect(publicFailure(failure)).toEqual({
+        code: 'INVALID_RESET_TOKEN',
+        status: HttpStatus.BAD_REQUEST,
+        message: API_ERROR_MESSAGES.INVALID_RESET_TOKEN,
+      });
       expect(tokens.issueAccessToken).not.toHaveBeenCalled();
     });
   });

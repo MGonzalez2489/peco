@@ -37,6 +37,7 @@ const TABLES = [
   'categories',
   'idempotencyKeys',
   'movements',
+  'passwordResetTokens',
   'periodSnapshots',
   'refreshTokens',
   'scheduledExecutions',
@@ -60,6 +61,14 @@ const COLUMNS: Record<TableName, string[]> = {
     'tokenHash',
     'expiresAt',
     'revokedAt',
+  ],
+  passwordResetTokens: [
+    ...BASE_COLUMNS,
+    ...TIMESTAMP_COLUMNS,
+    'userId',
+    'tokenHash',
+    'expiresAt',
+    'usedAt',
   ],
   accounts: [
     ...BASE_COLUMNS,
@@ -214,6 +223,10 @@ const UNIQUE_KEYS: Record<TableName, Record<string, string[]>> = {
     UQUsersPublicId: ['publicId'],
   },
   refreshTokens: {UQRefreshTokensPublicId: ['publicId']},
+  passwordResetTokens: {
+    UQPasswordResetTokensPublicId: ['publicId'],
+    UQPasswordResetTokensTokenHash: ['tokenHash'],
+  },
   accounts: {
     UQAccountsPublicId: ['publicId'],
     UQAccountsRootKey: ['rootKey'],
@@ -253,6 +266,9 @@ const UNIQUE_KEYS: Record<TableName, Record<string, string[]>> = {
 const INDEXES: Record<TableName, Record<string, string[]>> = {
   users: {IDXUsersLastActiveAt: ['lastActiveAt']},
   refreshTokens: {IDXRefreshTokensUserIdExpiresAt: ['userId', 'expiresAt']},
+  passwordResetTokens: {
+    IDXPasswordResetTokensUserIdExpiresAt: ['userId', 'expiresAt'],
+  },
   accounts: {IDXAccountsUserIdDeletedAt: ['userId', 'deletedAt']},
   categories: {},
   movements: {
@@ -287,6 +303,7 @@ const INDEXES: Record<TableName, Record<string, string[]>> = {
 const ENUM_COLUMNS: Record<TableName, string[]> = {
   users: [],
   refreshTokens: [],
+  passwordResetTokens: [],
   accounts: ['type'],
   categories: ['applyType'],
   movements: ['type'],
@@ -302,6 +319,7 @@ const ENUM_COLUMNS: Record<TableName, string[]> = {
 const MONEY_COLUMNS: Record<TableName, string[]> = {
   users: [],
   refreshTokens: [],
+  passwordResetTokens: [],
   accounts: ['initialBalance', 'currentBalance', 'targetGoal', 'creditLimit'],
   categories: [],
   movements: ['amount'],
@@ -329,6 +347,7 @@ const MONEY_COLUMNS: Record<TableName, string[]> = {
 const UTC_COLUMNS: Record<TableName, string[]> = {
   users: ['createdAt', 'updatedAt', 'deletedAt', 'lastActiveAt'],
   refreshTokens: ['createdAt', 'updatedAt', 'expiresAt', 'revokedAt'],
+  passwordResetTokens: ['createdAt', 'updatedAt', 'expiresAt', 'usedAt'],
   accounts: ['createdAt', 'updatedAt', 'deletedAt'],
   categories: ['createdAt', 'updatedAt', 'deletedAt'],
   movements: ['createdAt', 'updatedAt', 'deletedAt', 'date'],
@@ -344,6 +363,7 @@ const UTC_COLUMNS: Record<TableName, string[]> = {
 const GENERATED_COLUMNS: Record<TableName, string[]> = {
   users: [],
   refreshTokens: [],
+  passwordResetTokens: [],
   accounts: ['rootKey'],
   categories: ['activeName', 'ownerKey'],
   movements: [],
@@ -429,7 +449,7 @@ describe('initial schema migration (MySQL 8)', () => {
     return result;
   };
 
-  it('creates exactly the twelve camelCase tables of plan 7.3', async () => {
+  it('creates exactly the thirteen camelCase tables of plan 7.3', async () => {
     const rows = await dataSource.query<{TABLE_NAME: string}[]>(`
       SELECT TABLE_NAME
       FROM information_schema.TABLES

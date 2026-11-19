@@ -8,6 +8,7 @@ import {configureHttp} from '../common/http/configure-http';
 import {AuthController} from './auth.controller';
 import {AuthService} from './auth.service';
 import {invalidCredentialsException} from './utils/invalid-credentials.exception';
+import {invalidResetTokenException} from './utils/invalid-reset-token.exception';
 
 const VALID_BODY = {
   email: 'user@example.com',
@@ -38,22 +39,31 @@ const SILENT_LOGGER: LoggerService = {
   fatal: jest.fn(),
 };
 
-describe('AuthController HTTP contract (US-201/US-202/US-203/US-204)', () => {
+describe('AuthController HTTP contract (US-201/US-202/US-203/US-204/US-205)', () => {
   let app: INestApplication;
   let register: jest.Mock;
   let login: jest.Mock;
   let refresh: jest.Mock;
   let logout: jest.Mock;
+  let forgotPassword: jest.Mock;
+  let resetPassword: jest.Mock;
 
   beforeEach(async () => {
     register = jest.fn().mockResolvedValue(AUTH_RESPONSE);
     login = jest.fn().mockResolvedValue(AUTH_RESPONSE);
     refresh = jest.fn().mockResolvedValue(AUTH_RESPONSE);
     logout = jest.fn().mockResolvedValue(undefined);
+    forgotPassword = jest.fn().mockResolvedValue(undefined);
+    resetPassword = jest.fn().mockResolvedValue(undefined);
 
     const moduleRef = await Test.createTestingModule({
       controllers: [AuthController],
-      providers: [{provide: AuthService, useValue: {register, login, refresh, logout}}],
+      providers: [
+        {
+          provide: AuthService,
+          useValue: {register, login, refresh, logout, forgotPassword, resetPassword},
+        },
+      ],
     }).compile();
 
     app = moduleRef.createNestApplication({bodyParser: false});
@@ -257,5 +267,74 @@ describe('AuthController HTTP contract (US-201/US-202/US-203/US-204)', () => {
       details: {fields: {userId: expect.any(String), publicId: expect.any(String)}},
     });
     expect(logout).not.toHaveBeenCalled();
+  });
+
+  it('returns 204 with no body for forgot-password and normalizes the email', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/auth/forgot-password')
+      .send({email: '  USER@Example.COM '})
+      .expect(204);
+
+    expect(response.text).toBe('');
+    expect(response.body).toEqual({});
+    expect(forgotPassword).toHaveBeenCalledWith({email: 'user@example.com'});
+  });
+
+  it('returns 400 with details.fields for a malformed forgot-password email', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/auth/forgot-password')
+      .send({email: 'not-an-email'})
+      .expect(400);
+
+    expect(response.body.error).toMatchObject({
+      statusCode: 400,
+      code: 'VALIDATION_ERROR',
+      details: {fields: {email: expect.any(String)}},
+    });
+    expect(forgotPassword).not.toHaveBeenCalled();
+  });
+
+  it('returns 204 with no body for a valid reset-password request', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/auth/reset-password')
+      .send({token: 'single-use-token', newPassword: 'correct horse battery'})
+      .expect(204);
+
+    expect(response.text).toBe('');
+    expect(response.body).toEqual({});
+    expect(resetPassword).toHaveBeenCalledWith({
+      token: 'single-use-token',
+      newPassword: 'correct horse battery',
+    });
+  });
+
+  it('returns 400 INVALID_RESET_TOKEN for an unusable link', async () => {
+    resetPassword.mockRejectedValue(invalidResetTokenException());
+
+    const response = await request(app.getHttpServer())
+      .post('/auth/reset-password')
+      .send({token: 'used-token', newPassword: 'correct horse battery'})
+      .expect(400);
+
+    expect(response.body.error).toMatchObject({
+      statusCode: 400,
+      code: 'INVALID_RESET_TOKEN',
+      message: API_ERROR_MESSAGES.INVALID_RESET_TOKEN,
+      correlationId: expect.any(String),
+    });
+  });
+
+  it('returns 400 with details.fields for a short reset password', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/auth/reset-password')
+      .send({token: 'single-use-token', newPassword: 'short'})
+      .expect(400);
+
+    expect(response.body.error).toMatchObject({
+      statusCode: 400,
+      code: 'VALIDATION_ERROR',
+      details: {fields: {newPassword: expect.any(String)}},
+    });
+    expect(resetPassword).not.toHaveBeenCalled();
   });
 });

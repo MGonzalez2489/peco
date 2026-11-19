@@ -11,9 +11,11 @@ import {
 } from '@nestjs/swagger';
 import {AuthService} from './auth.service';
 import {AuthResponseDto} from './dto/auth-response.dto';
+import {ForgotPasswordRequestDto} from './dto/forgot-password-request.dto';
 import {LoginRequestDto} from './dto/login-request.dto';
 import {RefreshRequestDto} from './dto/refresh-request.dto';
 import {RegisterRequestDto} from './dto/register-request.dto';
+import {ResetPasswordRequestDto} from './dto/reset-password-request.dto';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -59,5 +61,23 @@ export class AuthController {
   @ApiBadRequestResponse({description: 'Datos de cierre de sesión no válidos.'})
   logout(@Body() body: RefreshRequestDto): Promise<void> {
     return this.authService.logout(body);
+  }
+
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({summary: 'Solicitar un enlace de recuperación de contraseña'})
+  @ApiNoContentResponse({description: 'Solicitud aceptada. Respuesta sin cuerpo.'})
+  @ApiBadRequestResponse({description: 'Datos de recuperación no válidos.'})
+  forgotPassword(@Body() body: ForgotPasswordRequestDto): Promise<void> {
+    return this.authService.forgotPassword(body);
+  }
+
+  @Post('reset-password')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({summary: 'Restablecer la contraseña con un token de un solo uso'})
+  @ApiNoContentResponse({description: 'Contraseña actualizada. Respuesta sin cuerpo.'})
+  @ApiBadRequestResponse({description: 'Token no válido, usado o expirado, o datos no válidos.'})
+  resetPassword(@Body() body: ResetPasswordRequestDto): Promise<void> {
+    return this.authService.resetPassword(body);
   }
 }

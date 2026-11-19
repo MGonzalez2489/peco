@@ -10,6 +10,7 @@ const EXPECTED_TABLES = [
   'categories',
   'idempotencyKeys',
   'movements',
+  'passwordResetTokens',
   'periodSnapshots',
   'refreshTokens',
   'scheduledExecutions',
@@ -26,7 +27,12 @@ const SOFT_DELETABLE_TABLES = [
   'users',
 ] as const;
 
-const TIMESTAMPED_TABLES = ['idempotencyKeys', 'refreshTokens', 'userPreferences'] as const;
+const TIMESTAMPED_TABLES = [
+  'idempotencyKeys',
+  'passwordResetTokens',
+  'refreshTokens',
+  'userPreferences',
+] as const;
 
 const CREATED_ONLY_TABLES = ['auditLogs', 'periodSnapshots', 'scheduledExecutions'] as const;
 
@@ -52,6 +58,10 @@ const UTC_TIMESTAMP_COLUMNS: ReadonlyArray<readonly [string, string]> = [
   ['refreshTokens', 'updatedAt'],
   ['refreshTokens', 'expiresAt'],
   ['refreshTokens', 'revokedAt'],
+  ['passwordResetTokens', 'createdAt'],
+  ['passwordResetTokens', 'updatedAt'],
+  ['passwordResetTokens', 'expiresAt'],
+  ['passwordResetTokens', 'usedAt'],
   ['userPreferences', 'createdAt'],
   ['userPreferences', 'updatedAt'],
   ['userPreferences', 'pwaBannerDismissedAt'],
@@ -87,6 +97,11 @@ const EXPECTED_INDICES: Readonly<
   refreshTokens: [
     ['UQRefreshTokensPublicId', ['publicId']],
     ['IDXRefreshTokensUserIdExpiresAt', ['userId', 'expiresAt']],
+  ],
+  passwordResetTokens: [
+    ['UQPasswordResetTokensPublicId', ['publicId']],
+    ['UQPasswordResetTokensTokenHash', ['tokenHash']],
+    ['IDXPasswordResetTokensUserIdExpiresAt', ['userId', 'expiresAt']],
   ],
   accounts: [
     ['UQAccountsPublicId', ['publicId']],
@@ -150,6 +165,7 @@ const EXPECTED_FOREIGN_KEYS: Readonly<
   Record<string, ReadonlyArray<readonly [string, string, string, string]>>
 > = {
   refreshTokens: [['FKRefreshTokensUserId', 'userId', 'users', 'RESTRICT']],
+  passwordResetTokens: [['FKPasswordResetTokensUserId', 'userId', 'users', 'RESTRICT']],
   accounts: [['FKAccountsUserId', 'userId', 'users', 'RESTRICT']],
   categories: [['FKCategoriesUserId', 'userId', 'users', 'RESTRICT']],
   scheduledTransactions: [
@@ -228,7 +244,7 @@ describe('database schema metadata (US-103)', () => {
     return found;
   };
 
-  it('declares exactly the 12 tables of plan 7.3', () => {
+  it('declares exactly the 13 tables of plan 7.3', () => {
     expect(metadata.map((item) => item.tableName).sort()).toEqual([...EXPECTED_TABLES].sort());
   });
 

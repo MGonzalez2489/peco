@@ -5,13 +5,15 @@ import {ConfigService} from '../../config/config.service';
 import {UtcClock} from '../../database/clock/utc-clock';
 import type {IssuedAccessToken} from '../types/issued-access-token.type';
 import type {IssuedRefreshToken} from '../types/issued-refresh-token.type';
+import type {IssuedResetToken} from '../types/issued-reset-token.type';
 import {durationToSeconds} from '../utils/duration-to-seconds.util';
 
-/** Issues access JWTs and opaque, hashed refresh tokens (D22). */
+/** Issues access JWTs and opaque, hashed refresh and reset tokens (D22, D85). */
 @Injectable()
 export class TokenService {
   private readonly accessExpiresIn: number;
   private readonly refreshExpiresIn: number;
+  private readonly resetExpiresIn: number;
 
   constructor(
     private readonly jwtService: JwtService,
@@ -20,6 +22,7 @@ export class TokenService {
   ) {
     this.accessExpiresIn = durationToSeconds(this.configService.config.tokens.access);
     this.refreshExpiresIn = durationToSeconds(this.configService.config.tokens.refresh);
+    this.resetExpiresIn = durationToSeconds(this.configService.config.tokens.reset);
   }
 
   async issueAccessToken(publicId: string): Promise<IssuedAccessToken> {
@@ -45,8 +48,28 @@ export class TokenService {
     };
   }
 
+  /** Single-use reset token delivered by email; only its digest is persisted (D85). */
+  createResetToken(): IssuedResetToken {
+    const token = randomBytes(32).toString('base64url');
+
+    return {
+      token,
+      tokenHash: this.hashResetToken(token),
+      expiresAt: this.clock.plusSeconds(this.resetExpiresIn),
+      expiresIn: this.resetExpiresIn,
+    };
+  }
+
   /** Same digest used at creation and at lookup; the raw token never reaches storage. */
   hashRefreshToken(token: string): string {
+    return this.digest(token);
+  }
+
+  hashResetToken(token: string): string {
+    return this.digest(token);
+  }
+
+  private digest(token: string): string {
     return createHash('sha256').update(token).digest('hex');
   }
 }

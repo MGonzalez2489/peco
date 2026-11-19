@@ -39,7 +39,7 @@ describe('createTypeOrmOptions', () => {
     expect(options['migrationsRun']).toBe(false);
     expect(options['entities']).toBe(TYPEORM_ENTITIES);
     expect(options['migrations']).toBe(TYPEORM_MIGRATIONS);
-    expect(TYPEORM_ENTITIES).toHaveLength(12);
+    expect(TYPEORM_ENTITIES).toHaveLength(13);
     expect(TYPEORM_MIGRATIONS).toHaveLength(1);
     expect(options['subscribers']).toEqual([BaseEntitySubscriber]);
   });

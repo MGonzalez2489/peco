@@ -7,10 +7,18 @@ import {API_ERROR_MESSAGES} from '../common/http/api-error-messages.constant';
 import type {ConfigService} from '../config/config.service';
 import {createTypeOrmOptions} from '../database/database.config';
 import {UtcClock} from '../database/clock/utc-clock';
-import {AccountEntity, RefreshTokenEntity, UserEntity} from '../database/entities';
+import {
+  AccountEntity,
+  PasswordResetTokenEntity,
+  RefreshTokenEntity,
+  UserEntity,
+} from '../database/entities';
+import type {MailService} from '../mail/mail-service';
+import type {PasswordResetMail} from '../mail/types/password-reset-mail.type';
 import {AuthService} from './auth.service';
 import {AuthLoginRepository} from './services/auth-login.repository';
 import {AuthLogoutRepository} from './services/auth-logout.repository';
+import {AuthPasswordResetRepository} from './services/auth-password-reset.repository';
 import {AuthRefreshRepository} from './services/auth-refresh.repository';
 import {AuthRegistrationRepository} from './services/auth-registration.repository';
 import {PasswordHasher} from './services/password-hasher';
@@ -25,11 +33,24 @@ const VALID_REGISTRATION = {
   name: 'Manuel',
 };
 
-describe('auth flows (MySQL 8, US-201/US-202/US-203/US-204)', () => {
+describe('auth flows (MySQL 8, US-201/US-202/US-203/US-204/US-205)', () => {
   let container: StartedMySqlContainer;
   let dataSource: DataSource;
   let service: AuthService;
   let hasher: PasswordHasher;
+  const sentMails: PasswordResetMail[] = [];
+  const mail: MailService = {
+    sendPasswordReset: async (message) => {
+      sentMails.push(message);
+    },
+  };
+  const capturedMail = (index: number): PasswordResetMail => {
+    const message = sentMails[index];
+    if (!message) {
+      throw new Error(`Missing captured mail at index ${index}`);
+    }
+    return message;
+  };
 
   beforeAll(async () => {
     container = await new MySqlContainer('mysql:8.4')
@@ -66,8 +87,10 @@ describe('auth flows (MySQL 8, US-201/US-202/US-203/US-204)', () => {
       new AuthLoginRepository(dataSource),
       new AuthRefreshRepository(dataSource, new UtcClock()),
       new AuthLogoutRepository(dataSource, new UtcClock()),
+      new AuthPasswordResetRepository(dataSource, new UtcClock()),
       hasher,
       new TokenService(new JwtService(), configService, new UtcClock()),
+      mail,
     );
   });
 
@@ -77,6 +100,8 @@ describe('auth flows (MySQL 8, US-201/US-202/US-203/US-204)', () => {
   });
 
   beforeEach(async () => {
+    sentMails.length = 0;
+    await dataSource.query('DELETE FROM passwordResetTokens');
     await dataSource.query('DELETE FROM refreshTokens');
     await dataSource.query('DELETE FROM accounts');
     await dataSource.query('DELETE FROM users');
@@ -450,6 +475,164 @@ describe('auth flows (MySQL 8, US-201/US-202/US-203/US-204)', () => {
       await expect(
         service.refresh({refreshToken: secondSession.refreshToken}),
       ).resolves.toMatchObject({user: {publicId: registered.user.publicId}});
+    });
+  });
+
+  describe('forgot and reset password (US-205)', () => {
+    const hashOf = (token: string): string => createHash('sha256').update(token).digest('hex');
+
+    it('stores only the hash of the emailed token with the configured TTL', async () => {
+      await service.register(VALID_REGISTRATION);
+
+      await expect(service.forgotPassword({email: '  USER@EXAMPLE.COM '})).resolves.toBeUndefined();
+
+      expect(sentMails).toHaveLength(1);
+      const rows = await dataSource.getRepository(PasswordResetTokenEntity).find();
+      expect(rows).toHaveLength(1);
+      expect(rows[0].tokenHash).toBe(hashOf(capturedMail(0).token));
+      expect(rows[0].tokenHash).not.toBe(capturedMail(0).token);
+      expect(rows[0].usedAt).toBeNull();
+      expect(capturedMail(0).to).toBe(VALID_REGISTRATION.email);
+      expect(capturedMail(0).expiresAt).toBe(rows[0].expiresAt);
+
+      const ttlMs = Date.parse(rows[0].expiresAt) - Date.now();
+      expect(ttlMs).toBeGreaterThan(29 * 60 * 1000);
+      expect(ttlMs).toBeLessThanOrEqual(45 * 60 * 1000);
+    });
+
+    it('stays silent for an unknown email and creates nothing', async () => {
+      await expect(service.forgotPassword({email: 'missing@example.com'})).resolves.toBeUndefined();
+
+      expect(sentMails).toHaveLength(0);
+      expect(await dataSource.getRepository(PasswordResetTokenEntity).count()).toBe(0);
+    });
+
+    it('stays silent for a soft-deleted user', async () => {
+      await service.register(VALID_REGISTRATION);
+      await dataSource
+        .getRepository(UserEntity)
+        .update({email: VALID_REGISTRATION.email}, {deletedAt: '2026-11-19T12:00:00.000Z'});
+
+      await expect(
+        service.forgotPassword({email: VALID_REGISTRATION.email}),
+      ).resolves.toBeUndefined();
+
+      expect(sentMails).toHaveLength(0);
+      expect(await dataSource.getRepository(PasswordResetTokenEntity).count()).toBe(0);
+    });
+
+    it('changes the password, consumes the token and revokes every session', async () => {
+      const registered = await service.register(VALID_REGISTRATION);
+      const secondSession = await service.login({
+        email: VALID_REGISTRATION.email,
+        password: VALID_REGISTRATION.password,
+      });
+      await service.forgotPassword({email: VALID_REGISTRATION.email});
+      const token = capturedMail(0).token;
+
+      await expect(
+        service.resetPassword({token, newPassword: 'brand-new-password'}),
+      ).resolves.toBeUndefined();
+
+      const user = await dataSource
+        .getRepository(UserEntity)
+        .findOneByOrFail({email: VALID_REGISTRATION.email});
+      expect(await hasher.verify(user.passwordHash, 'brand-new-password')).toBe(true);
+      expect(await hasher.verify(user.passwordHash, VALID_REGISTRATION.password)).toBe(false);
+
+      const sessions = await dataSource.getRepository(RefreshTokenEntity).find();
+      expect(sessions).toHaveLength(2);
+      expect(sessions.every((session) => session.revokedAt !== null)).toBe(true);
+      for (const refreshToken of [registered.refreshToken, secondSession.refreshToken]) {
+        const failure = await service.refresh({refreshToken}).catch((error: unknown) => error);
+        expect(failure).toMatchObject({code: 'REFRESH_TOKEN_REUSED', status: 401});
+      }
+
+      const resetTokens = await dataSource.getRepository(PasswordResetTokenEntity).find();
+      expect(resetTokens).toHaveLength(1);
+      expect(resetTokens[0].usedAt).toEqual(expect.any(String));
+
+      const replay = await service
+        .resetPassword({token, newPassword: 'another-password'})
+        .catch((error: unknown) => error);
+      expect(replay).toMatchObject({
+        code: 'INVALID_RESET_TOKEN',
+        status: 400,
+        userMessage: API_ERROR_MESSAGES.INVALID_RESET_TOKEN,
+      });
+    });
+
+    it('rejects an unknown token without changing the password or sessions', async () => {
+      await service.register(VALID_REGISTRATION);
+      await service.forgotPassword({email: VALID_REGISTRATION.email});
+      const before = await dataSource
+        .getRepository(UserEntity)
+        .findOneByOrFail({email: VALID_REGISTRATION.email});
+
+      const failure = await service
+        .resetPassword({token: 'never-issued', newPassword: 'brand-new-password'})
+        .catch((error: unknown) => error);
+
+      expect(failure).toMatchObject({
+        code: 'INVALID_RESET_TOKEN',
+        status: 400,
+        userMessage: API_ERROR_MESSAGES.INVALID_RESET_TOKEN,
+      });
+      const after = await dataSource
+        .getRepository(UserEntity)
+        .findOneByOrFail({email: VALID_REGISTRATION.email});
+      expect(after.passwordHash).toBe(before.passwordHash);
+      const sessions = await dataSource.getRepository(RefreshTokenEntity).find();
+      expect(sessions[0].revokedAt).toBeNull();
+      const resetTokens = await dataSource.getRepository(PasswordResetTokenEntity).find();
+      expect(resetTokens[0].usedAt).toBeNull();
+    });
+
+    it('rejects an expired token with 400 INVALID_RESET_TOKEN', async () => {
+      await service.register(VALID_REGISTRATION);
+      await service.forgotPassword({email: VALID_REGISTRATION.email});
+      const repository = dataSource.getRepository(PasswordResetTokenEntity);
+      await repository.update(
+        {tokenHash: hashOf(capturedMail(0).token)},
+        {expiresAt: '2020-01-01T00:00:00.000Z'},
+      );
+
+      const failure = await service
+        .resetPassword({token: capturedMail(0).token, newPassword: 'brand-new-password'})
+        .catch((error: unknown) => error);
+
+      expect(failure).toMatchObject({
+        code: 'INVALID_RESET_TOKEN',
+        status: 400,
+        userMessage: API_ERROR_MESSAGES.INVALID_RESET_TOKEN,
+      });
+      const stillUnused = await repository.findOneByOrFail({
+        tokenHash: hashOf(capturedMail(0).token),
+      });
+      expect(stillUnused.usedAt).toBeNull();
+    });
+
+    it('invalidates an earlier token when a later request is made', async () => {
+      await service.register(VALID_REGISTRATION);
+      await service.forgotPassword({email: VALID_REGISTRATION.email});
+      const firstToken = capturedMail(0).token;
+
+      await service.forgotPassword({email: VALID_REGISTRATION.email});
+      const secondToken = capturedMail(1).token;
+      const resetTokens = await dataSource.getRepository(PasswordResetTokenEntity).find();
+      expect(resetTokens).toHaveLength(2);
+      expect(resetTokens.find((row) => row.tokenHash === hashOf(firstToken))?.usedAt).toEqual(
+        expect.any(String),
+      );
+      expect(resetTokens.find((row) => row.tokenHash === hashOf(secondToken))?.usedAt).toBeNull();
+
+      const stale = await service
+        .resetPassword({token: firstToken, newPassword: 'brand-new-password'})
+        .catch((error: unknown) => error);
+      expect(stale).toMatchObject({code: 'INVALID_RESET_TOKEN', status: 400});
+      await expect(
+        service.resetPassword({token: secondToken, newPassword: 'brand-new-password'}),
+      ).resolves.toBeUndefined();
     });
   });
 });

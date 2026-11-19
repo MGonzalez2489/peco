@@ -7,6 +7,7 @@ import {
   CategoryEntity,
   IdempotencyKeyEntity,
   MovementEntity,
+  PasswordResetTokenEntity,
   PeriodSnapshotEntity,
   RefreshTokenEntity,
   ScheduledExecutionEntity,
@@ -22,6 +23,7 @@ import {BaseEntitySubscriber} from './subscribers/base-entity.subscriber';
 export const TYPEORM_ENTITIES = [
   UserEntity,
   RefreshTokenEntity,
+  PasswordResetTokenEntity,
   AccountEntity,
   CategoryEntity,
   ScheduledTransactionEntity,

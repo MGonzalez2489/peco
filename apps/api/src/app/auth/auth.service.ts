@@ -1,13 +1,18 @@
-import {Injectable} from '@nestjs/common';
+import {Inject, Injectable} from '@nestjs/common';
 import {RefreshRotationStatusEnum} from '@peco/enums';
 import type {UserEntity} from '../database/entities';
+import {MAIL_SERVICE} from '../mail/constants/mail-service.token';
+import type {MailService} from '../mail/mail-service';
 import {DUMMY_PASSWORD_HASH} from './constants/dummy-password-hash.constant';
 import {AuthResponseDto} from './dto/auth-response.dto';
+import type {ForgotPasswordRequestDto} from './dto/forgot-password-request.dto';
 import type {LoginRequestDto} from './dto/login-request.dto';
 import type {RefreshRequestDto} from './dto/refresh-request.dto';
 import type {RegisterRequestDto} from './dto/register-request.dto';
+import type {ResetPasswordRequestDto} from './dto/reset-password-request.dto';
 import {AuthLoginRepository} from './services/auth-login.repository';
 import {AuthLogoutRepository} from './services/auth-logout.repository';
+import {AuthPasswordResetRepository} from './services/auth-password-reset.repository';
 import {AuthRefreshRepository} from './services/auth-refresh.repository';
 import {AuthRegistrationRepository} from './services/auth-registration.repository';
 import {PasswordHasher} from './services/password-hasher';
@@ -16,6 +21,7 @@ import type {IssuedAccessToken} from './types/issued-access-token.type';
 import type {IssuedRefreshToken} from './types/issued-refresh-token.type';
 import {invalidCredentialsException} from './utils/invalid-credentials.exception';
 import {invalidRefreshTokenException} from './utils/invalid-refresh-token.exception';
+import {invalidResetTokenException} from './utils/invalid-reset-token.exception';
 import {normalizeEmail} from './utils/normalize-email.util';
 import {refreshTokenExpiredException} from './utils/refresh-token-expired.exception';
 import {refreshTokenReusedException} from './utils/refresh-token-reused.exception';
@@ -28,8 +34,10 @@ export class AuthService {
     private readonly loginRepository: AuthLoginRepository,
     private readonly refreshRepository: AuthRefreshRepository,
     private readonly logoutRepository: AuthLogoutRepository,
+    private readonly passwordResetRepository: AuthPasswordResetRepository,
     private readonly passwordHasher: PasswordHasher,
     private readonly tokens: TokenService,
+    @Inject(MAIL_SERVICE) private readonly mail: MailService,
   ) {}
 
   async register(request: RegisterRequestDto): Promise<AuthResponseDto> {
@@ -100,6 +108,37 @@ export class AuthService {
    */
   async logout(request: RefreshRequestDto): Promise<void> {
     await this.logoutRepository.revoke(this.tokens.hashRefreshToken(request.refreshToken));
+  }
+
+  /**
+   * Forgot password never reveals whether the email exists (D44/D85). Unknown
+   * and soft-deleted users get the same 204 and receive no message.
+   */
+  async forgotPassword(request: ForgotPasswordRequestDto): Promise<void> {
+    const user = await this.loginRepository.findActiveByEmail(normalizeEmail(request.email));
+    if (!user) {
+      return;
+    }
+
+    const resetToken = this.tokens.createResetToken();
+    await this.passwordResetRepository.issue(user.id, resetToken.tokenHash, resetToken.expiresAt);
+    await this.mail.sendPasswordReset({
+      to: user.email,
+      token: resetToken.token,
+      expiresAt: resetToken.expiresAt,
+    });
+  }
+
+  /** A usable token changes the password and revokes every session atomically (D85). */
+  async resetPassword(request: ResetPasswordRequestDto): Promise<void> {
+    const passwordHash = await this.passwordHasher.hash(request.newPassword);
+    const consumed = await this.passwordResetRepository.consume(
+      this.tokens.hashResetToken(request.token),
+      passwordHash,
+    );
+    if (!consumed) {
+      throw invalidResetTokenException();
+    }
   }
 
   private toAuthResponse(

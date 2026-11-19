@@ -47,6 +47,24 @@ export class InitialSchema1794873600000 implements MigrationInterface {
     `);
 
     await queryRunner.query(`
+      CREATE TABLE \`passwordResetTokens\` (
+        \`id\` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+        \`publicId\` ${PUBLIC_ID} NOT NULL,
+        \`createdAt\` ${TIMESTAMP} NOT NULL,
+        \`updatedAt\` ${TIMESTAMP} NOT NULL,
+        \`userId\` BIGINT UNSIGNED NOT NULL,
+        \`tokenHash\` ${HASH_64} NOT NULL,
+        \`expiresAt\` ${TIMESTAMP} NOT NULL,
+        \`usedAt\` ${TIMESTAMP} NULL,
+        PRIMARY KEY (\`id\`),
+        CONSTRAINT \`UQPasswordResetTokensPublicId\` UNIQUE (\`publicId\`),
+        CONSTRAINT \`UQPasswordResetTokensTokenHash\` UNIQUE (\`tokenHash\`),
+        KEY \`IDXPasswordResetTokensUserIdExpiresAt\` (\`userId\`, \`expiresAt\`),
+        CONSTRAINT \`FKPasswordResetTokensUserId\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE RESTRICT
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+    `);
+
+    await queryRunner.query(`
       CREATE TABLE \`accounts\` (
         \`id\` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
         \`publicId\` ${PUBLIC_ID} NOT NULL,
@@ -311,6 +329,7 @@ export class InitialSchema1794873600000 implements MigrationInterface {
     await queryRunner.query('DROP TABLE `scheduledTransactions`');
     await queryRunner.query('DROP TABLE `categories`');
     await queryRunner.query('DROP TABLE `accounts`');
+    await queryRunner.query('DROP TABLE `passwordResetTokens`');
     await queryRunner.query('DROP TABLE `refreshTokens`');
     await queryRunner.query('DROP TABLE `users`');
   }
