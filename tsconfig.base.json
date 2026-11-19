@@ -19,6 +19,7 @@
       "@features/preferences/*": ["apps/web/src/app/features/preferences/*"],
       "@features/scheduled/*": ["apps/web/src/app/features/scheduled/*"],
       "@peco/contracts": ["./libs/shared/contracts/src/index.ts"],
+      "@peco/enums": ["./libs/shared/enums/src/index.ts"],
       "@peco/utils": ["./libs/shared/utils/src/index.ts"]
     }
   }

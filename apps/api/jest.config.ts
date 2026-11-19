@@ -8,6 +8,7 @@ export default {
   moduleFileExtensions: ['ts', 'js', 'html'],
   moduleNameMapper: {
     '^@peco/contracts$': '<rootDir>/../../libs/shared/contracts/src/index.ts',
+    '^@peco/enums$': '<rootDir>/../../libs/shared/enums/src/index.ts',
     '^@peco/utils$': '<rootDir>/../../libs/shared/utils/src/index.ts',
   },
   coverageDirectory: '../../coverage/apps/api',

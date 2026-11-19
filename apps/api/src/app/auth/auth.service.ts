@@ -1,4 +1,5 @@
 import {Injectable} from '@nestjs/common';
+import {RefreshRotationStatusEnum} from '@peco/enums';
 import type {UserEntity} from '../database/entities';
 import {DUMMY_PASSWORD_HASH} from './constants/dummy-password-hash.constant';
 import {AuthResponseDto} from './dto/auth-response.dto';
@@ -77,13 +78,13 @@ export class AuthService {
       nextExpiresAt: refreshToken.expiresAt,
     });
 
-    if (outcome.status === 'invalid') {
+    if (outcome.status === RefreshRotationStatusEnum.INVALID.toString()) {
       throw invalidRefreshTokenException();
     }
-    if (outcome.status === 'expired') {
+    if (outcome.status === RefreshRotationStatusEnum.EXPIRED.toString()) {
       throw refreshTokenExpiredException();
     }
-    if (outcome.status === 'reused') {
+    if (outcome.status === RefreshRotationStatusEnum.REUSED.toString()) {
       throw refreshTokenReusedException();
     }
 

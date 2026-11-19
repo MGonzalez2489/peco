@@ -1,4 +1,5 @@
 import {HttpStatus} from '@nestjs/common';
+import {ApiErrorCodeEnum} from '@peco/enums';
 import {API_ERROR_MESSAGES} from '../../common/http/api-error-messages.constant';
 import {ApiException} from '../../common/http/api-exception';
 
@@ -6,6 +7,6 @@ import {ApiException} from '../../common/http/api-exception';
 export const duplicateEmailException = (): ApiException =>
   new ApiException(
     HttpStatus.CONFLICT,
-    'EMAIL_ALREADY_REGISTERED',
+    ApiErrorCodeEnum.EMAIL_ALREADY_REGISTERED.toString(),
     API_ERROR_MESSAGES.EMAIL_ALREADY_REGISTERED,
   );

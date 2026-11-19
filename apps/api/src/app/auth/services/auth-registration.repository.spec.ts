@@ -1,4 +1,5 @@
 import {HttpStatus} from '@nestjs/common';
+import {AccountTypeEnum} from '@peco/enums';
 import {DataSource} from 'typeorm';
 import {ApiException} from '../../common/http/api-exception';
 import {AccountEntity, RefreshTokenEntity, UserEntity} from '../../database/entities';
@@ -56,7 +57,7 @@ describe('AuthRegistrationRepository', () => {
     expect(save.mock.calls[1][0]).toMatchObject({
       userId: 7,
       name: 'Efectivo',
-      type: 'CASH',
+      type: AccountTypeEnum.CASH.toString(),
       initialBalance: 0,
       currentBalance: 0,
       includeInTotal: true,

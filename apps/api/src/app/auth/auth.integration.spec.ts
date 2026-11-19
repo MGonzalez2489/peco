@@ -1,5 +1,6 @@
 import {createHash} from 'node:crypto';
 import {JwtService} from '@nestjs/jwt';
+import {AccountTypeEnum} from '@peco/enums';
 import {MySqlContainer, StartedMySqlContainer} from '@testcontainers/mysql';
 import {DataSource, DataSourceOptions} from 'typeorm';
 import {API_ERROR_MESSAGES} from '../common/http/api-error-messages.constant';
@@ -95,7 +96,7 @@ describe('auth flows (MySQL 8, US-201/US-202/US-203)', () => {
     expect(accounts[0]).toMatchObject({
       userId: users[0].id,
       name: 'Efectivo',
-      type: 'CASH',
+      type: AccountTypeEnum.CASH.toString(),
       initialBalance: 0,
       currentBalance: 0,
       includeInTotal: true,

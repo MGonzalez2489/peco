@@ -1,2 +1,4 @@
+import type {AppThemeEnum, StringEnumValues} from '@peco/enums';
+
 /** User-selectable theme. */
-export type AppTheme = 'light' | 'dark' | 'system';
+export type AppTheme = StringEnumValues<typeof AppThemeEnum>;

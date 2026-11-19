@@ -1,3 +1,4 @@
+import {ApiErrorCodeEnum} from '@peco/enums';
 import {ValidationError} from 'class-validator';
 import {API_ERROR_MESSAGES} from '../http/api-error-messages.constant';
 import {ApiException} from '../http/api-exception';
@@ -76,6 +77,11 @@ const flatten = (
 
 /** Builds `400 VALIDATION_ERROR` with `details.fields` from class-validator errors. */
 export const validationExceptionFactory = (errors: ValidationError[]): ApiException =>
-  new ApiException(400, 'VALIDATION_ERROR', API_ERROR_MESSAGES.VALIDATION_ERROR, {
-    fields: flatten(errors),
-  });
+  new ApiException(
+    400,
+    ApiErrorCodeEnum.VALIDATION_ERROR.toString(),
+    API_ERROR_MESSAGES.VALIDATION_ERROR,
+    {
+      fields: flatten(errors),
+    },
+  );

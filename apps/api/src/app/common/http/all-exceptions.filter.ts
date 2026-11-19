@@ -7,6 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import type {ApiErrorCode} from '@peco/contracts';
+import {ApiErrorCodeEnum} from '@peco/enums';
 import type {Response} from 'express';
 import {getCorrelationId} from '../middleware/correlation-id.context';
 import type {CorrelatedRequest} from '../types/correlated-request.type';
@@ -72,15 +73,15 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     return {
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-      code: 'INTERNAL_ERROR',
+      code: ApiErrorCodeEnum.INTERNAL_ERROR.toString(),
       message: API_ERROR_MESSAGES.INTERNAL_ERROR,
     };
   }
 
   private fallbackCode(statusCode: number): ApiErrorCode {
     return statusCode >= HttpStatus.INTERNAL_SERVER_ERROR
-      ? 'INTERNAL_ERROR'
-      : 'UNPROCESSABLE_ENTITY';
+      ? ApiErrorCodeEnum.INTERNAL_ERROR.toString()
+      : ApiErrorCodeEnum.UNPROCESSABLE_ENTITY.toString();
   }
 
   /** Health keeps its flat body: `{status, uptime, db}`. */

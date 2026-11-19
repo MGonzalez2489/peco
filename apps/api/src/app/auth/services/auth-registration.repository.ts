@@ -1,4 +1,5 @@
 import {Injectable} from '@nestjs/common';
+import {AccountTypeEnum} from '@peco/enums';
 import {DataSource} from 'typeorm';
 import {AccountEntity, RefreshTokenEntity, UserEntity} from '../../database/entities';
 import {ROOT_ACCOUNT_NAME} from '../constants/root-account-name.constant';
@@ -38,7 +39,7 @@ export class AuthRegistrationRepository {
           manager.create(AccountEntity, {
             userId: user.id,
             name: ROOT_ACCOUNT_NAME,
-            type: 'CASH',
+            type: AccountTypeEnum.CASH.toString(),
             initialBalance: 0,
             currentBalance: 0,
             includeInTotal: true,

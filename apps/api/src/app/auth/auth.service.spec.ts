@@ -1,4 +1,5 @@
 import {HttpStatus} from '@nestjs/common';
+import {RefreshRotationStatusEnum} from '@peco/enums';
 import type {UserEntity} from '../database/entities';
 import type {ApiException} from '../common/http/api-exception';
 import {API_ERROR_MESSAGES} from '../common/http/api-error-messages.constant';
@@ -55,7 +56,11 @@ describe('AuthService', () => {
       findActiveByEmail: jest.fn().mockResolvedValue(USER),
       storeRefreshToken: jest.fn().mockResolvedValue(undefined),
     };
-    refreshRepository = {rotate: jest.fn().mockResolvedValue({status: 'rotated', user: USER})};
+    refreshRepository = {
+      rotate: jest
+        .fn()
+        .mockResolvedValue({status: RefreshRotationStatusEnum.ROTATED.toString(), user: USER}),
+    };
     hasher = {
       hash: jest.fn().mockResolvedValue('argon2-hash'),
       verify: jest.fn().mockResolvedValue(true),
@@ -210,7 +215,9 @@ describe('AuthService', () => {
     });
 
     it('rejects an unknown token with 401 UNAUTHORIZED and issues nothing', async () => {
-      refreshRepository.rotate.mockResolvedValue({status: 'invalid'});
+      refreshRepository.rotate.mockResolvedValue({
+        status: RefreshRotationStatusEnum.INVALID.toString(),
+      });
 
       const failure = await service.refresh(REFRESH_REQUEST).catch((error: unknown) => error);
 
@@ -223,7 +230,9 @@ describe('AuthService', () => {
     });
 
     it('rejects an expired token with 401 REFRESH_TOKEN_EXPIRED', async () => {
-      refreshRepository.rotate.mockResolvedValue({status: 'expired'});
+      refreshRepository.rotate.mockResolvedValue({
+        status: RefreshRotationStatusEnum.EXPIRED.toString(),
+      });
 
       const failure = await service.refresh(REFRESH_REQUEST).catch((error: unknown) => error);
 
@@ -236,7 +245,9 @@ describe('AuthService', () => {
     });
 
     it('rejects a replayed token with 401 REFRESH_TOKEN_REUSED', async () => {
-      refreshRepository.rotate.mockResolvedValue({status: 'reused'});
+      refreshRepository.rotate.mockResolvedValue({
+        status: RefreshRotationStatusEnum.REUSED.toString(),
+      });
 
       const failure = await service.refresh(REFRESH_REQUEST).catch((error: unknown) => error);
 

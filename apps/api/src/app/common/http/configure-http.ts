@@ -1,4 +1,5 @@
 import type {INestApplication, LoggerService} from '@nestjs/common';
+import {ApiErrorCodeEnum} from '@peco/enums';
 import {json, type ErrorRequestHandler} from 'express';
 import {MAX_JSON_BODY_SIZE} from '../constants/max-json-body-size.constant';
 import {createRequestLogger} from '../logging/request-logger.middleware';
@@ -21,7 +22,7 @@ const bodyLimitErrorHandler: ErrorRequestHandler = (error, request, response, ne
       response,
       {
         statusCode: 413,
-        code: 'PAYLOAD_TOO_LARGE',
+        code: ApiErrorCodeEnum.PAYLOAD_TOO_LARGE.toString(),
         message: API_ERROR_MESSAGES.PAYLOAD_TOO_LARGE,
       },
       (request as CorrelatedRequest).correlationId ?? 'unavailable',

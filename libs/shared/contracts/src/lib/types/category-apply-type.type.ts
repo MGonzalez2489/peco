@@ -1,2 +1,4 @@
+import type {CategoryApplyTypeEnum, StringEnumValues} from '@peco/enums';
+
 /** Movement types a category accepts. */
-export type CategoryApplyType = 'INCOME' | 'EXPENSE' | 'BOTH' | 'TRANSFER';
+export type CategoryApplyType = StringEnumValues<typeof CategoryApplyTypeEnum>;

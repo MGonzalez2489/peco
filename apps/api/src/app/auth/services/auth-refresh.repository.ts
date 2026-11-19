@@ -1,4 +1,5 @@
 import {Injectable} from '@nestjs/common';
+import {RefreshRotationStatusEnum} from '@peco/enums';
 import {DataSource, IsNull} from 'typeorm';
 import {UtcClock} from '../../database/clock/utc-clock';
 import {RefreshTokenEntity, UserEntity} from '../../database/entities';
@@ -23,7 +24,7 @@ export class AuthRefreshRepository {
         where: {tokenHash: input.presentedTokenHash},
       });
       if (!presented) {
-        return {status: 'invalid'};
+        return {status: RefreshRotationStatusEnum.INVALID.toString()};
       }
 
       // Locking the user first makes the second concurrent refresh wait; the
@@ -33,7 +34,7 @@ export class AuthRefreshRepository {
         lock: {mode: 'pessimistic_write'},
       });
       if (!user) {
-        return {status: 'invalid'};
+        return {status: RefreshRotationStatusEnum.INVALID.toString()};
       }
 
       const current = await manager.findOne(RefreshTokenEntity, {
@@ -41,7 +42,7 @@ export class AuthRefreshRepository {
         lock: {mode: 'pessimistic_write'},
       });
       if (!current) {
-        return {status: 'invalid'};
+        return {status: RefreshRotationStatusEnum.INVALID.toString()};
       }
 
       const now = this.clock.now();
@@ -51,10 +52,10 @@ export class AuthRefreshRepository {
           {userId: current.userId, revokedAt: IsNull()},
           {revokedAt: now},
         );
-        return {status: 'reused'};
+        return {status: RefreshRotationStatusEnum.REUSED.toString()};
       }
       if (current.expiresAt <= now) {
-        return {status: 'expired'};
+        return {status: RefreshRotationStatusEnum.EXPIRED.toString()};
       }
 
       await manager.update(
@@ -71,7 +72,7 @@ export class AuthRefreshRepository {
         }),
       );
 
-      return {status: 'rotated', user};
+      return {status: RefreshRotationStatusEnum.ROTATED.toString(), user};
     });
   }
 }

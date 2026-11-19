@@ -693,13 +693,54 @@ Before shipping a change that touches money:
 - **Scheduled Items Isolation:** Scheduled payment lists MUST strictly filter items by the active global period. Past months show only applied payments; future months show projected payments; current month shows applied + pending current month payments.
 - **Current Period Reset:** Users can return to the present month at any time via the quick reset action `resetToCurrentPeriod()`.
 
+## Shared Enums & Magic Strings (Mandatory)
+
+**Single source of truth:** every fixed set of domain values (account types, movement types, statuses, error codes, themes, frequencies, etc.) MUST live in `libs/shared/enums` and be imported through the `@peco/enums` alias. Never re-declare the same value set in another library, app, DTO, type or constant.
+
+### Rules
+
+1. **No domain magic strings in production code.** Never compare or assign literal domain values (`outcome.status === 'invalid'`, `type: 'CASH'`, `status: 'APPLIED'`). Use the enum member: `EnumName.MEMBER.toString()`.
+2. **Reuse before creating.** If the required value already exists in an enum, use that enum. If it does not exist, create the enum in `libs/shared/enums/src/lib/name.enum.ts` (kebab-case file, `NameEnum` export, one export per file), export it from `libs/shared/enums/src/index.ts`, and then use it. Duplicated definitions of the same domain set are forbidden.
+3. **Contracts derive from enums, they never duplicate them.** A contract type MUST be built from its enum with `StringEnumValues`; never restate the literal union.
+4. **Use `.toString()` at the boundary.** Persistence, HTTP payloads and comparisons consume the wire value via `EnumName.MEMBER.toString()`. Do not store the enum member object.
+5. **Keep incidental strings out of enums.** Routes, HTTP headers, environment/config keys, SQL/TypeORM fragments, log messages, user-facing Spanish copy, health statuses and test fixtures are not domain enums.
+
+### Usage
+
+```ts
+// libs/shared/enums/src/lib/account-type.enum.ts
+import {stringEnumValue} from './string-enum-value';
+
+export const AccountTypeEnum = {
+  CASH: stringEnumValue('CASH'),
+  DEBIT: stringEnumValue('DEBIT'),
+  CREDIT: stringEnumValue('CREDIT'),
+  SAVINGS: stringEnumValue('SAVINGS'),
+} as const;
+
+// libs/shared/contracts/src/lib/types/account-type.type.ts
+import type {AccountTypeEnum, StringEnumValues} from '@peco/enums';
+
+export type AccountType = StringEnumValues<typeof AccountTypeEnum>;
+
+// production code
+import {AccountTypeEnum, RefreshRotationStatusEnum} from '@peco/enums';
+
+const account: AccountType = AccountTypeEnum.CASH.toString();
+if (outcome.status === RefreshRotationStatusEnum.INVALID.toString()) {
+  throw invalidRefreshTokenException();
+}
+```
+
+`stringEnumValue('CASH').toString()` returns the literal `'CASH'` (not `string`), so assignments and discriminated unions keep their narrowing while the wire value stays a plain string.
+
 ## Architecture & Backend Migration Governance (Mandatory)
 
 Before executing any task involving the Nx workspace, shared libraries (`libs/shared/*`), or the NestJS backend (`apps/api`), you **MUST** read and strictly comply with `docs/backend/plan.md`.
 
 ### Non-Negotiable Architectural Rules (Summary from `docs/backend/plan.md`)
 
-1. **Gatekeeper (US-100):** Do NOT write a single line of NestJS API code until the Nx 24 workspace migration (`apps/web`, `apps/api`, `libs/shared/contracts`, `libs/shared/utils`) is complete and passing `nx test` and `nx build`.
+1. **Gatekeeper (US-100):** Do NOT write a single line of NestJS API code until the Nx 24 workspace migration (`apps/web`, `apps/api`, `libs/shared/contracts`, `libs/shared/enums`, `libs/shared/utils`) is complete and passing `nx test` and `nx build`.
 2. **Module Boundaries:** `libs/shared/*` MUST remain 100% framework-agnostic (zero `@angular/*` or `@nestjs/*` imports). Apps never import directly from each other.
 3. **Database & Types:**
    - Timestamps: `VARCHAR(24)` ISO-8601 UTC (`M1`).
