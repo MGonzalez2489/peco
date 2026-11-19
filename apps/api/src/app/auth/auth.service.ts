@@ -7,6 +7,7 @@ import type {LoginRequestDto} from './dto/login-request.dto';
 import type {RefreshRequestDto} from './dto/refresh-request.dto';
 import type {RegisterRequestDto} from './dto/register-request.dto';
 import {AuthLoginRepository} from './services/auth-login.repository';
+import {AuthLogoutRepository} from './services/auth-logout.repository';
 import {AuthRefreshRepository} from './services/auth-refresh.repository';
 import {AuthRegistrationRepository} from './services/auth-registration.repository';
 import {PasswordHasher} from './services/password-hasher';
@@ -26,6 +27,7 @@ export class AuthService {
     private readonly registration: AuthRegistrationRepository,
     private readonly loginRepository: AuthLoginRepository,
     private readonly refreshRepository: AuthRefreshRepository,
+    private readonly logoutRepository: AuthLogoutRepository,
     private readonly passwordHasher: PasswordHasher,
     private readonly tokens: TokenService,
   ) {}
@@ -90,6 +92,14 @@ export class AuthService {
 
     const accessToken = await this.tokens.issueAccessToken(outcome.user.publicId);
     return this.toAuthResponse(outcome.user, accessToken, refreshToken);
+  }
+
+  /**
+   * Revokes only the presented session (US-204). An unknown or already revoked
+   * token is a no-op, so repeated logouts cannot be distinguished by the client.
+   */
+  async logout(request: RefreshRequestDto): Promise<void> {
+    await this.logoutRepository.revoke(this.tokens.hashRefreshToken(request.refreshToken));
   }
 
   private toAuthResponse(

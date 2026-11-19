@@ -3,6 +3,7 @@ import {
   ApiBadRequestResponse,
   ApiConflictResponse,
   ApiCreatedResponse,
+  ApiNoContentResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
@@ -49,5 +50,14 @@ export class AuthController {
   })
   refresh(@Body() body: RefreshRequestDto): Promise<AuthResponseDto> {
     return this.authService.refresh(body);
+  }
+
+  @Post('logout')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({summary: 'Cerrar la sesión revocando el token de renovación'})
+  @ApiNoContentResponse({description: 'Sesión revocada. Respuesta sin cuerpo.'})
+  @ApiBadRequestResponse({description: 'Datos de cierre de sesión no válidos.'})
+  logout(@Body() body: RefreshRequestDto): Promise<void> {
+    return this.authService.logout(body);
   }
 }

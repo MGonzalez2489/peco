@@ -38,20 +38,22 @@ const SILENT_LOGGER: LoggerService = {
   fatal: jest.fn(),
 };
 
-describe('AuthController HTTP contract (US-201/US-202/US-203)', () => {
+describe('AuthController HTTP contract (US-201/US-202/US-203/US-204)', () => {
   let app: INestApplication;
   let register: jest.Mock;
   let login: jest.Mock;
   let refresh: jest.Mock;
+  let logout: jest.Mock;
 
   beforeEach(async () => {
     register = jest.fn().mockResolvedValue(AUTH_RESPONSE);
     login = jest.fn().mockResolvedValue(AUTH_RESPONSE);
     refresh = jest.fn().mockResolvedValue(AUTH_RESPONSE);
+    logout = jest.fn().mockResolvedValue(undefined);
 
     const moduleRef = await Test.createTestingModule({
       controllers: [AuthController],
-      providers: [{provide: AuthService, useValue: {register, login, refresh}}],
+      providers: [{provide: AuthService, useValue: {register, login, refresh, logout}}],
     }).compile();
 
     app = moduleRef.createNestApplication({bodyParser: false});
@@ -215,5 +217,45 @@ describe('AuthController HTTP contract (US-201/US-202/US-203)', () => {
       message: API_ERROR_MESSAGES.REFRESH_TOKEN_REUSED,
       correlationId: expect.any(String),
     });
+  });
+
+  it('returns 204 with no body for logout and forwards the refresh token', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/auth/logout')
+      .send({refreshToken: 'raw-refresh-token'})
+      .expect(204);
+
+    expect(response.text).toBe('');
+    expect(response.body).toEqual({});
+    expect(logout).toHaveBeenCalledWith({refreshToken: 'raw-refresh-token'});
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 with details.fields for malformed logout input', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/auth/logout')
+      .send({refreshToken: 42})
+      .expect(400);
+
+    expect(response.body.error).toMatchObject({
+      statusCode: 400,
+      code: 'VALIDATION_ERROR',
+      details: {fields: {refreshToken: expect.any(String)}},
+    });
+    expect(logout).not.toHaveBeenCalled();
+  });
+
+  it('rejects injected identity fields on logout', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/auth/logout')
+      .send({refreshToken: 'raw-refresh-token', userId: 99, publicId: 'other-user'})
+      .expect(400);
+
+    expect(response.body.error).toMatchObject({
+      statusCode: 400,
+      code: 'VALIDATION_ERROR',
+      details: {fields: {userId: expect.any(String), publicId: expect.any(String)}},
+    });
+    expect(logout).not.toHaveBeenCalled();
   });
 });

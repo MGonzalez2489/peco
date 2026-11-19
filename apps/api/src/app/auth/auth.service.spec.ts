@@ -6,6 +6,7 @@ import {API_ERROR_MESSAGES} from '../common/http/api-error-messages.constant';
 import {DUMMY_PASSWORD_HASH} from './constants/dummy-password-hash.constant';
 import {AuthService} from './auth.service';
 import type {AuthLoginRepository} from './services/auth-login.repository';
+import type {AuthLogoutRepository} from './services/auth-logout.repository';
 import type {AuthRefreshRepository} from './services/auth-refresh.repository';
 import type {AuthRegistrationRepository} from './services/auth-registration.repository';
 import type {PasswordHasher} from './services/password-hasher';
@@ -38,10 +39,11 @@ const publicFailure = (error: unknown) => {
   };
 };
 
-describe('AuthService', () => {
+describe('AuthService (US-201/US-202/US-203/US-204)', () => {
   let registration: {create: jest.Mock};
   let loginRepository: {findActiveByEmail: jest.Mock; storeRefreshToken: jest.Mock};
   let refreshRepository: {rotate: jest.Mock};
+  let logoutRepository: {revoke: jest.Mock};
   let hasher: {hash: jest.Mock; verify: jest.Mock};
   let tokens: {
     createRefreshToken: jest.Mock;
@@ -61,6 +63,7 @@ describe('AuthService', () => {
         .fn()
         .mockResolvedValue({status: RefreshRotationStatusEnum.ROTATED.toString(), user: USER}),
     };
+    logoutRepository = {revoke: jest.fn().mockResolvedValue(undefined)};
     hasher = {
       hash: jest.fn().mockResolvedValue('argon2-hash'),
       verify: jest.fn().mockResolvedValue(true),
@@ -80,6 +83,7 @@ describe('AuthService', () => {
       registration as unknown as AuthRegistrationRepository,
       loginRepository as unknown as AuthLoginRepository,
       refreshRepository as unknown as AuthRefreshRepository,
+      logoutRepository as unknown as AuthLogoutRepository,
       hasher as unknown as PasswordHasher,
       tokens as unknown as TokenService,
     );
@@ -256,6 +260,29 @@ describe('AuthService', () => {
         status: HttpStatus.UNAUTHORIZED,
         message: API_ERROR_MESSAGES.REFRESH_TOKEN_REUSED,
       });
+      expect(tokens.issueAccessToken).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('logout (US-204)', () => {
+    const LOGOUT_REQUEST = {refreshToken: 'raw-refresh-token'};
+
+    it('hashes the presented token and revokes it without issuing anything', async () => {
+      await expect(service.logout(LOGOUT_REQUEST)).resolves.toBeUndefined();
+
+      expect(tokens.hashRefreshToken).toHaveBeenCalledWith('raw-refresh-token');
+      expect(logoutRepository.revoke).toHaveBeenCalledWith('presented-hash');
+      expect(refreshRepository.rotate).not.toHaveBeenCalled();
+      expect(tokens.createRefreshToken).not.toHaveBeenCalled();
+      expect(tokens.issueAccessToken).not.toHaveBeenCalled();
+    });
+
+    it('resolves on repeated logouts without rotating or issuing tokens', async () => {
+      await expect(service.logout(LOGOUT_REQUEST)).resolves.toBeUndefined();
+      await expect(service.logout(LOGOUT_REQUEST)).resolves.toBeUndefined();
+
+      expect(logoutRepository.revoke).toHaveBeenCalledTimes(2);
+      expect(refreshRepository.rotate).not.toHaveBeenCalled();
       expect(tokens.issueAccessToken).not.toHaveBeenCalled();
     });
   });
