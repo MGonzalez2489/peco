@@ -7,6 +7,7 @@ import {ApiException} from '../common/http/api-exception';
 import {configureHttp} from '../common/http/configure-http';
 import {AuthController} from './auth.controller';
 import {AuthService} from './auth.service';
+import {AuthRateLimitGuard} from './guards/auth-rate-limit.guard';
 import {invalidCredentialsException} from './utils/invalid-credentials.exception';
 import {invalidResetTokenException} from './utils/invalid-reset-token.exception';
 
@@ -64,7 +65,10 @@ describe('AuthController HTTP contract (US-201/US-202/US-203/US-204/US-205)', ()
           useValue: {register, login, refresh, logout, forgotPassword, resetPassword},
         },
       ],
-    }).compile();
+    })
+      .overrideGuard(AuthRateLimitGuard)
+      .useValue({canActivate: () => true})
+      .compile();
 
     app = moduleRef.createNestApplication({bodyParser: false});
     configureHttp(app, {logger: SILENT_LOGGER});

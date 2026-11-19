@@ -1,4 +1,5 @@
 import {Controller, Get, HttpException, HttpStatus} from '@nestjs/common';
+import {Public} from '../common/security/decorators/public.decorator';
 import {HealthService} from './health.service';
 
 @Controller('health')
@@ -6,6 +7,7 @@ export class HealthController {
   constructor(private readonly healthService: HealthService) {}
 
   @Get()
+  @Public()
   async check() {
     const uptime = process.uptime();
 

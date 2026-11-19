@@ -7,6 +7,7 @@
     "@nestjs/core": "^11.0.0",
     "@nestjs/jwt": "^11.0.2",
     "@nestjs/platform-express": "^11.0.0",
+    "@nestjs/throttler": "^6.8.0",
     "@nestjs/swagger": "^11.4.8",
     "@nestjs/typeorm": "^12.0.3",
     "argon2": "^0.45.2",

@@ -1,5 +1,6 @@
 import {createHash} from 'node:crypto';
 import {JwtService} from '@nestjs/jwt';
+import {API_ERROR_MESSAGES} from '../../common/http/api-error-messages.constant';
 import type {ConfigService} from '../../config/config.service';
 import type {UtcClock} from '../../database/clock/utc-clock';
 import {TokenService} from './token-service';
@@ -71,5 +72,66 @@ describe('TokenService', () => {
     expect(service.createResetToken().token).not.toBe(issued.token);
     expect(service.hashResetToken(issued.token)).toBe(issued.tokenHash);
     expect(service.hashResetToken(issued.token)).toBe(service.hashRefreshToken(issued.token));
+  });
+
+  describe('verifyAccessToken', () => {
+    it('returns only the subject of a valid access token', async () => {
+      const issued = await service.issueAccessToken('public-id');
+
+      await expect(service.verifyAccessToken(issued.token)).resolves.toEqual({sub: 'public-id'});
+    });
+
+    it('strips extra claims from the verified payload', async () => {
+      const token = jwtService.sign(
+        {sub: 'public-id', id: 99, role: 'admin'},
+        {secret: ACCESS_SECRET, expiresIn: 900},
+      );
+
+      await expect(service.verifyAccessToken(token)).resolves.toEqual({sub: 'public-id'});
+    });
+
+    it('rejects an expired token with 401 TOKEN_EXPIRED', async () => {
+      const token = jwtService.sign({sub: 'public-id'}, {secret: ACCESS_SECRET, expiresIn: -1});
+
+      await expect(service.verifyAccessToken(token)).rejects.toMatchObject({
+        code: 'TOKEN_EXPIRED',
+        status: 401,
+        userMessage: API_ERROR_MESSAGES.TOKEN_EXPIRED,
+      });
+    });
+
+    it('rejects a malformed token with 401 UNAUTHORIZED', async () => {
+      await expect(service.verifyAccessToken('not-a-jwt')).rejects.toMatchObject({
+        code: 'UNAUTHORIZED',
+        status: 401,
+        userMessage: API_ERROR_MESSAGES.UNAUTHORIZED,
+      });
+    });
+
+    it('rejects a token signed with another secret with 401 UNAUTHORIZED', async () => {
+      const token = jwtService.sign(
+        {sub: 'public-id'},
+        {secret: 'another-access-secret-at-least-32-chars', expiresIn: 900},
+      );
+
+      await expect(service.verifyAccessToken(token)).rejects.toMatchObject({
+        code: 'UNAUTHORIZED',
+        status: 401,
+        userMessage: API_ERROR_MESSAGES.UNAUTHORIZED,
+      });
+    });
+
+    it.each<Record<string, unknown>>([{}, {sub: 42}, {sub: ''}])(
+      'rejects a token with an invalid subject %p',
+      async (payload) => {
+        const token = jwtService.sign(payload, {secret: ACCESS_SECRET, expiresIn: 900});
+
+        await expect(service.verifyAccessToken(token)).rejects.toMatchObject({
+          code: 'UNAUTHORIZED',
+          status: 401,
+          userMessage: API_ERROR_MESSAGES.UNAUTHORIZED,
+        });
+      },
+    );
   });
 });

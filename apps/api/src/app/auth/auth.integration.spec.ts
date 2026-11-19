@@ -23,6 +23,7 @@ import {AuthRefreshRepository} from './services/auth-refresh.repository';
 import {AuthRegistrationRepository} from './services/auth-registration.repository';
 import {PasswordHasher} from './services/password-hasher';
 import {TokenService} from './services/token-service';
+import {UserActivityRepository} from './services/user-activity.repository';
 
 jest.setTimeout(180_000);
 
@@ -32,12 +33,18 @@ const VALID_REGISTRATION = {
   password: 'correct horse battery',
   name: 'Manuel',
 };
+const ACTIVITY_DAY_1 = '2026-11-19T15:30:00.000Z';
+const ACTIVITY_SAME_DAY_LATER = '2026-11-19T23:59:59.999Z';
+const ACTIVITY_DAY_2 = '2026-11-20T08:15:00.000Z';
 
-describe('auth flows (MySQL 8, US-201/US-202/US-203/US-204/US-205)', () => {
+describe('auth flows (MySQL 8, US-201/US-202/US-203/US-204/US-205/US-206)', () => {
   let container: StartedMySqlContainer;
   let dataSource: DataSource;
   let service: AuthService;
   let hasher: PasswordHasher;
+  let activity: UserActivityRepository;
+  const activityNow = jest.fn(() => ACTIVITY_DAY_1);
+  const activityClock = {now: activityNow} as unknown as UtcClock;
   const sentMails: PasswordResetMail[] = [];
   const mail: MailService = {
     sendPasswordReset: async (message) => {
@@ -82,6 +89,7 @@ describe('auth flows (MySQL 8, US-201/US-202/US-203/US-204/US-205)', () => {
     } as unknown as ConfigService;
 
     hasher = new PasswordHasher();
+    activity = new UserActivityRepository(dataSource, activityClock);
     service = new AuthService(
       new AuthRegistrationRepository(dataSource),
       new AuthLoginRepository(dataSource),
@@ -101,6 +109,7 @@ describe('auth flows (MySQL 8, US-201/US-202/US-203/US-204/US-205)', () => {
 
   beforeEach(async () => {
     sentMails.length = 0;
+    activityNow.mockReturnValue(ACTIVITY_DAY_1);
     await dataSource.query('DELETE FROM passwordResetTokens');
     await dataSource.query('DELETE FROM refreshTokens');
     await dataSource.query('DELETE FROM accounts');
@@ -633,6 +642,53 @@ describe('auth flows (MySQL 8, US-201/US-202/US-203/US-204/US-205)', () => {
       await expect(
         service.resetPassword({token: secondToken, newPassword: 'brand-new-password'}),
       ).resolves.toBeUndefined();
+    });
+  });
+
+  describe('activity signal (US-206)', () => {
+    const findUser = () =>
+      dataSource.getRepository(UserEntity).findOneByOrFail({email: VALID_REGISTRATION.email});
+
+    it('writes lastActiveAt once per UTC day with one conditional UPDATE', async () => {
+      const registered = await service.register(VALID_REGISTRATION);
+      expect((await findUser()).lastActiveAt).toBeNull();
+
+      await activity.touch(registered.user.publicId);
+      expect((await findUser()).lastActiveAt).toBe(ACTIVITY_DAY_1);
+
+      await dataSource
+        .getRepository(UserEntity)
+        .update({publicId: registered.user.publicId}, {lastActiveAt: ACTIVITY_SAME_DAY_LATER});
+
+      await activity.touch(registered.user.publicId);
+      expect((await findUser()).lastActiveAt).toBe(ACTIVITY_SAME_DAY_LATER);
+
+      activityNow.mockReturnValue(ACTIVITY_DAY_2);
+      await activity.touch(registered.user.publicId);
+      expect((await findUser()).lastActiveAt).toBe(ACTIVITY_DAY_2);
+    });
+
+    it('reactivates a long-inactive user on the first authenticated request', async () => {
+      const registered = await service.register(VALID_REGISTRATION);
+      await dataSource
+        .getRepository(UserEntity)
+        .update({publicId: registered.user.publicId}, {lastActiveAt: '2020-01-01T00:00:00.000Z'});
+
+      activityNow.mockReturnValue(ACTIVITY_DAY_2);
+      await activity.touch(registered.user.publicId);
+
+      expect((await findUser()).lastActiveAt).toBe(ACTIVITY_DAY_2);
+    });
+
+    it('does not reactivate a soft-deleted user', async () => {
+      const registered = await service.register(VALID_REGISTRATION);
+      await dataSource
+        .getRepository(UserEntity)
+        .update({publicId: registered.user.publicId}, {deletedAt: '2026-11-19T13:00:00.000Z'});
+
+      await activity.touch(registered.user.publicId);
+
+      expect((await findUser()).lastActiveAt).toBeNull();
     });
   });
 });

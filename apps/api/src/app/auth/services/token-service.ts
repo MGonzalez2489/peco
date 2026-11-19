@@ -1,14 +1,18 @@
 import {Injectable} from '@nestjs/common';
 import {JwtService} from '@nestjs/jwt';
 import {createHash, randomBytes} from 'node:crypto';
+import {TokenExpiredError} from 'jsonwebtoken';
 import {ConfigService} from '../../config/config.service';
 import {UtcClock} from '../../database/clock/utc-clock';
+import type {AccessTokenClaims} from '../types/access-token-claims.type';
 import type {IssuedAccessToken} from '../types/issued-access-token.type';
 import type {IssuedRefreshToken} from '../types/issued-refresh-token.type';
 import type {IssuedResetToken} from '../types/issued-reset-token.type';
 import {durationToSeconds} from '../utils/duration-to-seconds.util';
+import {tokenExpiredException} from '../utils/token-expired.exception';
+import {unauthorizedException} from '../utils/unauthorized.exception';
 
-/** Issues access JWTs and opaque, hashed refresh and reset tokens (D22, D85). */
+/** Issues and verifies access JWTs and opaque, hashed refresh and reset tokens (D22, D85, D86). */
 @Injectable()
 export class TokenService {
   private readonly accessExpiresIn: number;
@@ -35,6 +39,33 @@ export class TokenService {
     );
 
     return {token, expiresIn: this.accessExpiresIn};
+  }
+
+  /** Verifies an access JWT without trusting its payload until it is validated. */
+  async verifyAccessToken(token: string): Promise<AccessTokenClaims> {
+    let claims: unknown;
+
+    try {
+      claims = await this.jwtService.verifyAsync(token, {
+        secret: this.configService.config.jwt.accessSecret,
+      });
+    } catch (error: unknown) {
+      if (error instanceof TokenExpiredError) {
+        throw tokenExpiredException();
+      }
+      throw unauthorizedException();
+    }
+
+    if (
+      typeof claims !== 'object' ||
+      claims === null ||
+      typeof (claims as {sub?: unknown}).sub !== 'string' ||
+      (claims as {sub: string}).sub.length === 0
+    ) {
+      throw unauthorizedException();
+    }
+
+    return {sub: (claims as {sub: string}).sub};
   }
 
   createRefreshToken(): IssuedRefreshToken {
