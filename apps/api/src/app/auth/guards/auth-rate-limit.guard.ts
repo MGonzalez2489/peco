@@ -20,7 +20,7 @@ import {normalizeEmail} from '../utils/normalize-email.util';
 /**
  * Adapts `@nestjs/throttler` to the API contract (13.1, D86/D88): only routes
  * explicitly marked `@RateLimited()` are counted, identity buckets use a hash
- * of the normalized submitted email, user buckets use the authenticated
+ * of the normalized submitted email, user/read buckets use the authenticated
  * `publicId`, and rejections keep the error envelope.
  */
 @Injectable()
@@ -43,7 +43,7 @@ export class AuthRateLimitGuard extends ThrottlerGuard {
   }
 
   protected override generateKey(context: ExecutionContext, tracker: string, name: string): string {
-    if (name === 'user') {
+    if (name === 'user' || name === 'read') {
       const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
       const publicIdHash = createHash('sha256')
         .update(request.auth?.publicId ?? '')

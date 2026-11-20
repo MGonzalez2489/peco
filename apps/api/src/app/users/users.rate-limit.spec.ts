@@ -13,7 +13,9 @@ import {AuthRateLimitGuard} from '../auth/guards/auth-rate-limit.guard';
 import {RATE_LIMITS} from '../common/constants/rate-limits.constant';
 import {API_ERROR_MESSAGES} from '../common/http/api-error-messages.constant';
 import {configureHttp} from '../common/http/configure-http';
+import {EnvelopeStream} from '../common/http/envelope-stream';
 import type {AuthenticatedRequest} from '../common/types/authenticated-request.type';
+import {UserDataExportService} from './services/user-data-export.service';
 import {UsersController} from './users.controller';
 import {UsersService} from './users.service';
 
@@ -43,15 +45,21 @@ class SetPrincipalGuard implements CanActivate {
   }
 }
 
-type MutationMethod = 'patch' | 'delete';
+type RequestMethod = 'get' | 'patch' | 'delete';
 
 const CASES: ReadonlyArray<{
   name: string;
-  method: MutationMethod;
+  method: RequestMethod;
   path: string;
-  body: object;
+  body?: object;
   allowedStatus: HttpStatus;
 }> = [
+  {
+    name: 'GET /users/me/export',
+    method: 'get',
+    path: '/users/me/export',
+    allowedStatus: HttpStatus.OK,
+  },
   {
     name: 'PATCH /users/me',
     method: 'patch',
@@ -87,6 +95,7 @@ describe('UsersController rate limits (US-207/US-208)', () => {
             {name: 'ip', limit: 1, ttl: 60_000},
             {name: 'identity', limit: 1, ttl: 60_000},
             {name: 'user', limit: 1, ttl: 60_000},
+            {name: 'read', limit: 1, ttl: 60_000},
           ],
           setHeaders: false,
         }),
@@ -99,6 +108,19 @@ describe('UsersController rate limits (US-207/US-208)', () => {
             update: jest.fn().mockResolvedValue(USER_RESPONSE),
             changePassword: jest.fn().mockResolvedValue(undefined),
             remove: jest.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
+          provide: UserDataExportService,
+          useValue: {
+            exportData: jest.fn(
+              (_publicId: string, correlationId: string) =>
+                new EnvelopeStream(
+                  (async function* () {
+                    yield JSON.stringify({data: {}, meta: {correlationId}});
+                  })(),
+                ),
+            ),
           },
         },
         AuthRateLimitGuard,
@@ -115,14 +137,26 @@ describe('UsersController rate limits (US-207/US-208)', () => {
     await app.close();
   });
 
-  const send = (method: MutationMethod, path: string, body: object) => {
+  it('defines the read bucket as 300 requests per minute', () => {
+    expect(RATE_LIMITS.read.user).toEqual({limit: 300, ttl: 60_000});
+  });
+
+  const send = (method: RequestMethod, path: string, body?: object) => {
     const http = request(app.getHttpServer());
+    if (method === 'get') {
+      return http.get(path);
+    }
     return method === 'patch' ? http.patch(path).send(body) : http.delete(path).send(body);
   };
 
-  it.each(CASES)('limits $name to 120 requests per minute per user', async (item) => {
+  it.each(CASES)('limits $name to its configured per-user bucket', async (item) => {
+    const limit =
+      item.method === 'get'
+        ? RATE_LIMITS.read.user.limit
+        : RATE_LIMITS.mutation.user.limit;
+
     // Repeating the same IP proves the fail-closed ip bucket was skipped.
-    for (let attempt = 0; attempt < RATE_LIMITS.mutation.user.limit; attempt += 1) {
+    for (let attempt = 0; attempt < limit; attempt += 1) {
       await send(item.method, item.path, item.body)
         .set('X-Forwarded-For', '203.0.113.70')
         .expect(item.allowedStatus);

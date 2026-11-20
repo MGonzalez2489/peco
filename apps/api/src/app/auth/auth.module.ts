@@ -40,6 +40,11 @@ import {TokenService} from './services/token-service';
             limit: RATE_LIMITS.mutation.user.limit,
             ttl: RATE_LIMITS.mutation.user.ttl,
           },
+          {
+            name: 'read',
+            limit: RATE_LIMITS.read.user.limit,
+            ttl: RATE_LIMITS.read.user.ttl,
+          },
         ],
         setHeaders: false,
         skipIf: () => !config.config.rateLimitEnabled,

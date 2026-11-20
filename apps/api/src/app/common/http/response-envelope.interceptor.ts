@@ -3,6 +3,7 @@ import {Observable} from 'rxjs';
 import {map} from 'rxjs/operators';
 import type {CorrelatedRequest} from '../types/correlated-request.type';
 import {EnvelopeResult} from './envelope-result';
+import {EnvelopeStream} from './envelope-stream';
 import {isHealthRequest} from './is-health-request';
 
 /**
@@ -11,7 +12,8 @@ import {isHealthRequest} from './is-health-request';
  * Exceptions: `/health` keeps its flat contract and `204` responses stay
  * bodyless (their handler returns `undefined`). Controllers that need
  * pagination or totals return an `EnvelopeResult`; everything else is wrapped
- * as `{data: payload}`.
+ * as `{data: payload}`. An `EnvelopeStream` already emits the envelope itself
+ * while keeping it on the wire (D73), so it is passed through unchanged.
  */
 @Injectable()
 export class ResponseEnvelopeInterceptor implements NestInterceptor {
@@ -24,7 +26,7 @@ export class ResponseEnvelopeInterceptor implements NestInterceptor {
 
     return next.handle().pipe(
       map((body: unknown) => {
-        if (body === undefined) {
+        if (body === undefined || body instanceof EnvelopeStream) {
           return body;
         }
 

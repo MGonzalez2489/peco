@@ -4,6 +4,8 @@ import {PasswordHasher} from '../auth/services/password-hasher';
 import {UtcClock} from '../database/clock/utc-clock';
 import {DatabaseModule} from '../database/database.module';
 import {UserDeletionRepository} from './services/user-deletion.repository';
+import {UserDataExportRepository} from './services/user-data-export.repository';
+import {UserDataExportService} from './services/user-data-export.service';
 import {UserPasswordRepository} from './services/user-password.repository';
 import {UserProfileRepository} from './services/user-profile.repository';
 import {UsersController} from './users.controller';
@@ -17,6 +19,8 @@ import {UsersService} from './users.service';
     UsersService,
     UserProfileRepository,
     UserDeletionRepository,
+    UserDataExportRepository,
+    UserDataExportService,
     UserPasswordRepository,
     PasswordHasher,
     UtcClock,

@@ -11,10 +11,12 @@ import request from 'supertest';
 import {API_ERROR_MESSAGES} from '../common/http/api-error-messages.constant';
 import {ApiException} from '../common/http/api-exception';
 import {configureHttp} from '../common/http/configure-http';
+import {EnvelopeStream} from '../common/http/envelope-stream';
 import type {AuthenticatedRequest} from '../common/types/authenticated-request.type';
 import {AuthRateLimitGuard} from '../auth/guards/auth-rate-limit.guard';
 import {invalidCredentialsException} from '../auth/utils/invalid-credentials.exception';
 import {incorrectPasswordException} from './utils/incorrect-password.exception';
+import {UserDataExportService} from './services/user-data-export.service';
 import {UsersController} from './users.controller';
 import {UsersService} from './users.service';
 import {userNotFoundException} from './utils/user-not-found.exception';
@@ -25,6 +27,25 @@ const USER_RESPONSE = {
   name: 'Manuel',
   createdAt: '2026-11-19T12:00:00.000Z',
   updatedAt: '2026-11-19T12:00:00.000Z',
+};
+
+const EXPORT_DOCUMENT = {
+  exportedAt: '2026-11-20T10:00:00.000Z',
+  schemaVersion: 1,
+  user: USER_RESPONSE,
+  preferences: {
+    theme: 'system',
+    pwaBannerDismissedAt: null,
+    accounts: {hideBalance: false},
+    movements: {hideReversal: false},
+    updatedAt: '2026-11-20T10:00:00.000Z',
+  },
+  accounts: [],
+  categories: [],
+  movements: [],
+  scheduledTransactions: [],
+  scheduledExecutions: [],
+  periodSnapshots: [],
 };
 
 const SILENT_LOGGER: LoggerService = {
@@ -41,6 +62,7 @@ describe('UsersController HTTP contract (US-207/US-208)', () => {
   let update: jest.Mock;
   let remove: jest.Mock;
   let changePassword: jest.Mock;
+  let exportData: jest.Mock;
   let authenticated = true;
 
   const authGuard: CanActivate = {
@@ -58,11 +80,20 @@ describe('UsersController HTTP contract (US-207/US-208)', () => {
     update = jest.fn().mockResolvedValue(USER_RESPONSE);
     remove = jest.fn().mockResolvedValue(undefined);
     changePassword = jest.fn().mockResolvedValue(undefined);
+    exportData = jest.fn(
+      (_publicId: string, correlationId: string) =>
+        new EnvelopeStream(
+          (async function* () {
+            yield JSON.stringify({data: EXPORT_DOCUMENT, meta: {correlationId}});
+          })(),
+        ),
+    );
 
     const moduleRef = await Test.createTestingModule({
       controllers: [UsersController],
       providers: [
         {provide: UsersService, useValue: {update, remove, changePassword}},
+        {provide: UserDataExportService, useValue: {exportData}},
         {provide: APP_GUARD, useValue: authGuard},
       ],
     })
@@ -77,6 +108,35 @@ describe('UsersController HTTP contract (US-207/US-208)', () => {
 
   afterEach(async () => {
     await app.close();
+  });
+
+  it('streams the full export inside the standard envelope', async () => {
+    const response = await request(app.getHttpServer()).get('/users/me/export').expect(200);
+    const correlationId = response.headers['x-correlation-id'];
+
+    expect(response.headers['content-type']).toContain('application/json');
+    expect(response.body).toEqual({data: EXPORT_DOCUMENT, meta: {correlationId}});
+    expect(exportData).toHaveBeenCalledWith('user-public-id', correlationId);
+  });
+
+  it('returns 404 NOT_FOUND when the exported user has been deleted', async () => {
+    exportData.mockRejectedValueOnce(userNotFoundException());
+
+    const response = await request(app.getHttpServer()).get('/users/me/export').expect(404);
+
+    expect(response.body.error).toMatchObject({
+      statusCode: 404,
+      code: 'NOT_FOUND',
+      message: API_ERROR_MESSAGES.NOT_FOUND,
+    });
+  });
+
+  it('returns 401 UNAUTHORIZED when the export has no principal', async () => {
+    authenticated = false;
+
+    await request(app.getHttpServer()).get('/users/me/export').expect(401);
+
+    expect(exportData).not.toHaveBeenCalled();
   });
 
   it('returns 200 with the updated profile and the authenticated principal', async () => {
