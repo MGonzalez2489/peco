@@ -1,5 +1,9 @@
 import {Injectable} from '@nestjs/common';
-import type {CreateAccountRequest, UpdateAccountRequest} from '@peco/contracts';
+import type {
+  CreateAccountRequest,
+  UpdateAccountPinRequest,
+  UpdateAccountRequest,
+} from '@peco/contracts';
 import {buildAccountSummary, isLiabilityAccount} from '@peco/utils';
 import {UserProfileRepository} from '../users/services/user-profile.repository';
 import {userNotFoundException} from '../users/utils/user-not-found.exception';
@@ -13,7 +17,7 @@ import {negativeBalanceConflictException} from './utils/negative-balance-conflic
 import {negativeBalanceNotAllowedException} from './utils/negative-balance-not-allowed.exception';
 import {versionConflictException} from './utils/version-conflict.exception';
 
-/** Owner-scoped account reads and metadata updates (US-301/US-302/US-303). */
+/** Owner-scoped account reads, metadata updates and explicit pinning (US-301–US-304). */
 @Injectable()
 export class AccountsService {
   constructor(
@@ -96,6 +100,41 @@ export class AccountsService {
     }
 
     const result = await this.accounts.update(user.id, accountPublicId, request);
+    if (result.status === 'not-found') {
+      throw accountNotFoundException();
+    }
+    if (result.status === 'conflict') {
+      throw versionConflictException(request.version ?? account.version, result.currentVersion);
+    }
+
+    return new AccountResponseDto(result.account);
+  }
+
+  /** Sets `pinToHome` explicitly; an omitted version keeps last-write-wins (8.8/D94). */
+  async setPin(
+    publicId: string,
+    accountPublicId: string,
+    request: UpdateAccountPinRequest,
+  ): Promise<AccountResponseDto> {
+    const user = await this.profile.findActiveByPublicId(publicId);
+    if (!user) {
+      throw userNotFoundException();
+    }
+
+    const account = await this.accounts.findActiveByPublicId(user.id, accountPublicId);
+    if (!account) {
+      throw accountNotFoundException();
+    }
+
+    if (request.version !== undefined && account.version !== request.version) {
+      throw versionConflictException(request.version, account.version);
+    }
+
+    // Reuses the US-303 compare-and-set write so pinning shares versioning and UTC stamping.
+    const result = await this.accounts.update(user.id, accountPublicId, {
+      pinToHome: request.pinToHome,
+      version: request.version,
+    });
     if (result.status === 'not-found') {
       throw accountNotFoundException();
     }

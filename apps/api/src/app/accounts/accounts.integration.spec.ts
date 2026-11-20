@@ -23,7 +23,7 @@ const CREATE_REQUEST = {
   note: 'Cuenta de prueba',
 };
 
-describe('account flow (MySQL 8, US-301/US-302/US-303)', () => {
+describe('account flow (MySQL 8, US-301/US-302/US-303/US-304)', () => {
   let container: StartedMySqlContainer;
   let dataSource: DataSource;
   let service: AccountsService;
@@ -371,5 +371,81 @@ describe('account flow (MySQL 8, US-301/US-302/US-303)', () => {
       .getRepository(AccountEntity)
       .findOne({where: {publicId: account.publicId}});
     expect(stored).toMatchObject({creditLimit: null, version: 0});
+  });
+
+  it('persists explicit pin and unpin, incrementing version without touching balances', async () => {
+    const user = await seedUser('pin@example.com');
+    const root = await seedAccount(user, {name: 'Efectivo', isRoot: true, pinToHome: true});
+    const savings = await seedAccount(user, {
+      name: 'Ahorros',
+      type: AccountTypeEnum.SAVINGS.toString(),
+      currentBalance: 500000,
+    });
+
+    const pinned = await service.setPin(user.publicId, savings.publicId, {
+      pinToHome: true,
+      version: 0,
+    });
+    const unpinned = await service.setPin(user.publicId, root.publicId, {
+      pinToHome: false,
+      version: 0,
+    });
+    const again = await service.setPin(user.publicId, savings.publicId, {pinToHome: true});
+    const {items} = await service.list(user.publicId);
+    const stored = await dataSource
+      .getRepository(AccountEntity)
+      .findOne({where: {publicId: savings.publicId}});
+
+    expect(pinned).toMatchObject({pinToHome: true, version: 1});
+    expect(unpinned).toMatchObject({pinToHome: false, isRoot: true, version: 1});
+    expect(again).toMatchObject({pinToHome: true, version: 2});
+    expect(items.map((item) => item.name)).toEqual(['Ahorros', 'Efectivo']);
+    expect(stored).toMatchObject({
+      pinToHome: true,
+      initialBalance: 0,
+      currentBalance: 500000,
+      version: 2,
+      deletedAt: null,
+    });
+    expect(Object.keys(pinned)).not.toEqual(
+      expect.arrayContaining(['id', 'userId', 'initialBalance', 'deletedAt', 'rootKey']),
+    );
+  });
+
+  it('rejects a stale version on pinning without writing', async () => {
+    const user = await seedUser('pin-stale@example.com');
+    const account = await seedAccount(user, {version: 2, pinToHome: false});
+
+    await expect(
+      service.setPin(user.publicId, account.publicId, {pinToHome: true, version: 1}),
+    ).rejects.toMatchObject({
+      status: 409,
+      code: 'VERSION_CONFLICT',
+      details: {expectedVersion: 1, currentVersion: 2},
+    });
+
+    const stored = await dataSource
+      .getRepository(AccountEntity)
+      .findOne({where: {publicId: account.publicId}});
+    expect(stored).toMatchObject({pinToHome: false, version: 2});
+  });
+
+  it('returns 404 when pinning a foreign, soft-deleted or unknown account', async () => {
+    const user = await seedUser('pin-owner@example.com');
+    const otherUser = await seedUser('pin-other@example.com');
+    const foreign = await seedAccount(otherUser);
+    const deleted = await seedAccount(user, {
+      deletedAt: '2026-11-20T10:00:00.000Z',
+    });
+
+    await expect(
+      service.setPin(user.publicId, foreign.publicId, {pinToHome: true}),
+    ).rejects.toMatchObject({status: 404, code: 'NOT_FOUND'});
+    await expect(
+      service.setPin(user.publicId, deleted.publicId, {pinToHome: true}),
+    ).rejects.toMatchObject({status: 404, code: 'NOT_FOUND'});
+    await expect(
+      service.setPin(user.publicId, 'unknown-public-id', {pinToHome: true}),
+    ).rejects.toMatchObject({status: 404, code: 'NOT_FOUND'});
   });
 });

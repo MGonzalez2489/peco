@@ -86,6 +86,7 @@ describe('AccountsController HTTP contract (US-301/US-302/US-303)', () => {
   let create: jest.Mock;
   let findOne: jest.Mock;
   let update: jest.Mock;
+  let setPin: jest.Mock;
   let authenticated = true;
 
   const authGuard: CanActivate = {
@@ -104,11 +105,12 @@ describe('AccountsController HTTP contract (US-301/US-302/US-303)', () => {
     create = jest.fn().mockResolvedValue(ACCOUNT);
     findOne = jest.fn().mockResolvedValue(ACCOUNT);
     update = jest.fn().mockResolvedValue(ACCOUNT);
+    setPin = jest.fn().mockResolvedValue(ACCOUNT);
 
     const moduleRef = await Test.createTestingModule({
       controllers: [AccountsController],
       providers: [
-        {provide: AccountsService, useValue: {list, create, findOne, update}},
+        {provide: AccountsService, useValue: {list, create, findOne, update, setPin}},
         {provide: APP_GUARD, useValue: authGuard},
       ],
     })
@@ -267,6 +269,94 @@ describe('AccountsController HTTP contract (US-301/US-302/US-303)', () => {
     });
   });
 
+  it('sets pinToHome explicitly and returns the public account shape', async () => {
+    const response = await request(app.getHttpServer())
+      .patch('/accounts/account-public-id/pin')
+      .send({pinToHome: true, version: 0})
+      .expect(200);
+
+    expect(response.body).toEqual({data: ACCOUNT, error: null});
+    expect(setPin).toHaveBeenCalledWith('user-public-id', 'account-public-id', {
+      pinToHome: true,
+      version: 0,
+    });
+  });
+
+  it('unpins an account with an explicit false value', async () => {
+    await request(app.getHttpServer())
+      .patch('/accounts/account-public-id/pin')
+      .send({pinToHome: false})
+      .expect(200);
+
+    expect(setPin).toHaveBeenCalledWith('user-public-id', 'account-public-id', {
+      pinToHome: false,
+    });
+  });
+
+  it('rejects a missing, null or non-boolean pinToHome and unknown fields', async () => {
+    const missing = await request(app.getHttpServer())
+      .patch('/accounts/account-public-id/pin')
+      .send({version: 0})
+      .expect(400);
+    const invalid = await request(app.getHttpServer())
+      .patch('/accounts/account-public-id/pin')
+      .send({pinToHome: 'true', isRoot: true})
+      .expect(400);
+    const nullValue = await request(app.getHttpServer())
+      .patch('/accounts/account-public-id/pin')
+      .send({pinToHome: null})
+      .expect(400);
+
+    expect(missing.body.error.details.fields.pinToHome).toBe(VALIDATION_FIELD_MESSAGES.isBoolean);
+    expect(invalid.body.error.details.fields).toMatchObject({
+      pinToHome: VALIDATION_FIELD_MESSAGES.isBoolean,
+      isRoot: VALIDATION_FIELD_MESSAGES.whitelistValidation,
+    });
+    expect(nullValue.body.error.details.fields.pinToHome).toBe(VALIDATION_FIELD_MESSAGES.isBoolean);
+    expect(setPin).not.toHaveBeenCalled();
+  });
+
+  it('rejects a non-integer version on pinning', async () => {
+    const response = await request(app.getHttpServer())
+      .patch('/accounts/account-public-id/pin')
+      .send({pinToHome: true, version: 1.5})
+      .expect(400);
+
+    expect(response.body.error.details.fields.version).toBe(VALIDATION_FIELD_MESSAGES.isInt);
+    expect(setPin).not.toHaveBeenCalled();
+  });
+
+  it('maps a foreign or missing pin target to 404 NOT_FOUND', async () => {
+    setPin.mockRejectedValueOnce(accountNotFoundException());
+
+    const response = await request(app.getHttpServer())
+      .patch('/accounts/foreign-account-id/pin')
+      .send({pinToHome: true})
+      .expect(404);
+
+    expect(response.body.error).toMatchObject({
+      statusCode: 404,
+      code: 'NOT_FOUND',
+      message: API_ERROR_MESSAGES.NOT_FOUND,
+    });
+  });
+
+  it('maps a stale version on pinning to 409 VERSION_CONFLICT with details', async () => {
+    setPin.mockRejectedValueOnce(versionConflictException(0, 2));
+
+    const response = await request(app.getHttpServer())
+      .patch('/accounts/account-public-id/pin')
+      .send({pinToHome: true, version: 0})
+      .expect(409);
+
+    expect(response.body.error).toMatchObject({
+      statusCode: 409,
+      code: 'VERSION_CONFLICT',
+      message: API_ERROR_MESSAGES.VERSION_CONFLICT,
+      details: {expectedVersion: 0, currentVersion: 2},
+    });
+  });
+
   it('creates a non-root account and returns its public shape', async () => {
     const response = await request(app.getHttpServer())
       .post('/accounts')
@@ -390,7 +480,7 @@ describe('AccountsController HTTP contract (US-301/US-302/US-303)', () => {
     expect(create).not.toHaveBeenCalled();
   });
 
-  it('returns 401 UNAUTHORIZED for detail and update without a principal', async () => {
+  it('returns 401 UNAUTHORIZED for detail, update and pinning without a principal', async () => {
     authenticated = false;
 
     const detail = await request(app.getHttpServer())
@@ -400,10 +490,16 @@ describe('AccountsController HTTP contract (US-301/US-302/US-303)', () => {
       .patch('/accounts/account-public-id')
       .send(UPDATE_BODY)
       .expect(401);
+    const pin = await request(app.getHttpServer())
+      .patch('/accounts/account-public-id/pin')
+      .send({pinToHome: true})
+      .expect(401);
 
     expect(detail.body.error.code).toBe('UNAUTHORIZED');
     expect(patch.body.error.code).toBe('UNAUTHORIZED');
+    expect(pin.body.error.code).toBe('UNAUTHORIZED');
     expect(findOne).not.toHaveBeenCalled();
     expect(update).not.toHaveBeenCalled();
+    expect(setPin).not.toHaveBeenCalled();
   });
 });

@@ -45,7 +45,9 @@ const UPDATE_BODY = {
   version: 0,
 };
 
-describe('AccountsController rate limits (US-301/US-302)', () => {
+const PIN_BODY = {pinToHome: true};
+
+describe('AccountsController rate limits (US-301/US-302/US-304)', () => {
   let app: INestApplication;
 
   beforeEach(async () => {
@@ -71,6 +73,7 @@ describe('AccountsController rate limits (US-301/US-302)', () => {
             create: jest.fn().mockResolvedValue({publicId: 'created-account'}),
             findOne: jest.fn().mockResolvedValue({publicId: 'account-public-id'}),
             update: jest.fn().mockResolvedValue({publicId: 'account-public-id'}),
+            setPin: jest.fn().mockResolvedValue({publicId: 'account-public-id'}),
           },
         },
         AuthRateLimitGuard,
@@ -170,6 +173,24 @@ describe('AccountsController rate limits (US-301/US-302)', () => {
       .patch('/accounts/account-public-id')
       .send(UPDATE_BODY)
       .set('X-Forwarded-For', '203.0.113.84')
+      .expect(HttpStatus.TOO_MANY_REQUESTS);
+
+    expect(response.body.error.code).toBe('RATE_LIMITED');
+  });
+
+  it('rejects account pinning above the configured per-user budget', async () => {
+    for (let attempt = 0; attempt < RATE_LIMITS.mutation.user.limit; attempt += 1) {
+      await request(app.getHttpServer())
+        .patch('/accounts/account-public-id/pin')
+        .send(PIN_BODY)
+        .set('X-Forwarded-For', '203.0.113.85')
+        .expect(HttpStatus.OK);
+    }
+
+    const response = await request(app.getHttpServer())
+      .patch('/accounts/account-public-id/pin')
+      .send(PIN_BODY)
+      .set('X-Forwarded-For', '203.0.113.86')
       .expect(HttpStatus.TOO_MANY_REQUESTS);
 
     expect(response.body.error.code).toBe('RATE_LIMITED');

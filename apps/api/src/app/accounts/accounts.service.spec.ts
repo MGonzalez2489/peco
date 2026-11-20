@@ -51,7 +51,7 @@ const UPDATE_REQUEST = {
   version: 0,
 };
 
-describe('AccountsService (US-301/US-302/US-303)', () => {
+describe('AccountsService (US-301/US-302/US-303/US-304)', () => {
   let profile: {findActiveByPublicId: jest.Mock};
   let repository: {
     findActiveByUser: jest.Mock;
@@ -384,6 +384,105 @@ describe('AccountsService (US-301/US-302/US-303)', () => {
       code: ApiErrorCodeEnum.VALIDATION_ERROR.toString(),
       details: {fields: {creditLimit: expect.any(String)}},
     });
+    expect(repository.update).not.toHaveBeenCalled();
+  });
+
+  it('sets pinToHome explicitly through the optimistic update and exposes only public fields', async () => {
+    profile.findActiveByPublicId.mockResolvedValue({id: 42} as UserEntity);
+    repository.findActiveByPublicId.mockResolvedValue(account({pinToHome: true, version: 2}));
+    repository.update.mockResolvedValue({
+      status: 'updated',
+      account: account({pinToHome: false, version: 3}),
+    });
+
+    const result = await service.setPin('user-public-id', 'account-public-id', {
+      pinToHome: false,
+      version: 2,
+    });
+
+    expect(repository.findActiveByPublicId).toHaveBeenCalledWith(42, 'account-public-id');
+    expect(repository.update).toHaveBeenCalledWith(42, 'account-public-id', {
+      pinToHome: false,
+      version: 2,
+    });
+    expect(result).toMatchObject({pinToHome: false, version: 3});
+    expect(Object.keys(result)).not.toEqual(
+      expect.arrayContaining(['id', 'userId', 'initialBalance', 'deletedAt', 'rootKey']),
+    );
+  });
+
+  it('pins without a version as last-write-wins', async () => {
+    profile.findActiveByPublicId.mockResolvedValue({id: 42} as UserEntity);
+    repository.findActiveByPublicId.mockResolvedValue(account({pinToHome: false}));
+    repository.update.mockResolvedValue({
+      status: 'updated',
+      account: account({pinToHome: true, version: 1}),
+    });
+
+    const result = await service.setPin('user-public-id', 'account-public-id', {pinToHome: true});
+
+    expect(repository.update).toHaveBeenCalledWith(42, 'account-public-id', {
+      pinToHome: true,
+      version: undefined,
+    });
+    expect(result.pinToHome).toBe(true);
+  });
+
+  it('rejects a stale version before pinning', async () => {
+    profile.findActiveByPublicId.mockResolvedValue({id: 42} as UserEntity);
+    repository.findActiveByPublicId.mockResolvedValue(account({version: 2}));
+
+    await expect(
+      service.setPin('user-public-id', 'account-public-id', {pinToHome: true, version: 1}),
+    ).rejects.toMatchObject({
+      status: HttpStatus.CONFLICT,
+      code: ApiErrorCodeEnum.VERSION_CONFLICT.toString(),
+      details: {expectedVersion: 1, currentVersion: 2},
+    });
+    expect(repository.update).not.toHaveBeenCalled();
+  });
+
+  it('maps a pinning compare-and-set conflict and a concurrent deletion', async () => {
+    profile.findActiveByPublicId.mockResolvedValue({id: 42} as UserEntity);
+    repository.findActiveByPublicId.mockResolvedValue(account());
+    repository.update
+      .mockResolvedValueOnce({status: 'conflict', currentVersion: 4})
+      .mockResolvedValueOnce({status: 'not-found'});
+
+    await expect(
+      service.setPin('user-public-id', 'account-public-id', {pinToHome: true, version: 0}),
+    ).rejects.toMatchObject({
+      status: HttpStatus.CONFLICT,
+      code: ApiErrorCodeEnum.VERSION_CONFLICT.toString(),
+      details: {expectedVersion: 0, currentVersion: 4},
+    });
+    await expect(
+      service.setPin('user-public-id', 'account-public-id', {pinToHome: false}),
+    ).rejects.toMatchObject({
+      status: HttpStatus.NOT_FOUND,
+      code: ApiErrorCodeEnum.NOT_FOUND.toString(),
+    });
+  });
+
+  it('returns 404 when pinning a foreign account or with an inactive principal', async () => {
+    profile.findActiveByPublicId
+      .mockResolvedValueOnce({id: 42} as UserEntity)
+      .mockResolvedValueOnce(null);
+    repository.findActiveByPublicId.mockResolvedValue(null);
+
+    await expect(
+      service.setPin('user-public-id', 'foreign-id', {pinToHome: true}),
+    ).rejects.toMatchObject({
+      status: HttpStatus.NOT_FOUND,
+      code: ApiErrorCodeEnum.NOT_FOUND.toString(),
+    });
+    await expect(
+      service.setPin('missing-user', 'account-public-id', {pinToHome: true}),
+    ).rejects.toMatchObject({
+      status: HttpStatus.NOT_FOUND,
+      code: ApiErrorCodeEnum.NOT_FOUND.toString(),
+    });
+    expect(repository.findActiveByPublicId).toHaveBeenCalledTimes(1);
     expect(repository.update).not.toHaveBeenCalled();
   });
 

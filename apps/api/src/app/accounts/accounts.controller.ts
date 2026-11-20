@@ -31,9 +31,10 @@ import {AccountsService} from './accounts.service';
 import {AccountResponseDto} from './dto/account-response.dto';
 import {AccountSummaryDto} from './dto/account-summary.dto';
 import {CreateAccountRequestDto} from './dto/create-account-request.dto';
+import {PinAccountRequestDto} from './dto/pin-account-request.dto';
 import {UpdateAccountRequestDto} from './dto/update-account-request.dto';
 
-/** Authenticated account reads, detail, metadata updates and non-root creation (D86/US-303). */
+/** Authenticated account reads, detail, metadata updates, pinning and non-root creation (D86/US-304). */
 @ApiTags('accounts')
 @Controller('accounts')
 @UseGuards(AuthRateLimitGuard)
@@ -134,6 +135,38 @@ export class AccountsController {
     @Body() request: CreateAccountRequestDto,
   ): Promise<AccountResponseDto> {
     return this.accounts.create(publicId, request);
+  }
+
+  @Patch(':publicId/pin')
+  @RateLimited()
+  // The shared guard evaluates every named throttler; only the user policy applies (13.1).
+  @SkipThrottle({ip: true, identity: true, read: true})
+  @Throttle({
+    user: {limit: RATE_LIMITS.mutation.user.limit, ttl: RATE_LIMITS.mutation.user.ttl},
+  })
+  @ApiOperation({summary: 'Fijar o desfijar una cuenta propia del inicio'})
+  @ApiParam({name: 'publicId', description: 'Identificador público de la cuenta.'})
+  @ApiOkResponse({
+    description: 'Cuenta actualizada en el envelope estándar {data, error}.',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {type: 'object'},
+        error: {type: 'null', nullable: true, example: null},
+      },
+    },
+  })
+  @ApiBadRequestResponse({description: 'Cuerpo inválido; `pinToHome` debe ser booleano.'})
+  @ApiNotFoundResponse({description: 'La cuenta no existe o pertenece a otro usuario.'})
+  @ApiConflictResponse({description: 'Versión obsoleta.'})
+  @ApiUnauthorizedResponse({description: 'Falta un token de acceso válido.'})
+  @ApiTooManyRequestsResponse({description: 'Límite de mutaciones excedido.'})
+  setPin(
+    @CurrentUser() publicId: string,
+    @Param('publicId') accountPublicId: string,
+    @Body() request: PinAccountRequestDto,
+  ): Promise<AccountResponseDto> {
+    return this.accounts.setPin(publicId, accountPublicId, request);
   }
 
   @Patch(':publicId')
