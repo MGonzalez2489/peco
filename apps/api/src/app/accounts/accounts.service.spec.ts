@@ -43,14 +43,32 @@ const CREATE_REQUEST = {
   note: null,
 };
 
-describe('AccountsService (US-301/US-302)', () => {
+const UPDATE_REQUEST = {
+  name: 'Ahorros actualizados',
+  type: AccountTypeEnum.CREDIT.toString(),
+  creditLimit: 600000,
+  pinToHome: true,
+  version: 0,
+};
+
+describe('AccountsService (US-301/US-302/US-303)', () => {
   let profile: {findActiveByPublicId: jest.Mock};
-  let repository: {findActiveByUser: jest.Mock; create: jest.Mock};
+  let repository: {
+    findActiveByUser: jest.Mock;
+    findActiveByPublicId: jest.Mock;
+    create: jest.Mock;
+    update: jest.Mock;
+  };
   let service: AccountsService;
 
   beforeEach(() => {
     profile = {findActiveByPublicId: jest.fn()};
-    repository = {findActiveByUser: jest.fn(), create: jest.fn()};
+    repository = {
+      findActiveByUser: jest.fn(),
+      findActiveByPublicId: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+    };
     service = new AccountsService(
       profile as unknown as UserProfileRepository,
       repository as unknown as AccountRepository,
@@ -199,5 +217,186 @@ describe('AccountsService (US-301/US-302)', () => {
       code: ApiErrorCodeEnum.NOT_FOUND.toString(),
     });
     expect(repository.create).not.toHaveBeenCalled();
+  });
+
+  it('returns an owner-scoped account detail with only public fields', async () => {
+    profile.findActiveByPublicId.mockResolvedValue({id: 42} as UserEntity);
+    repository.findActiveByPublicId.mockResolvedValue(account());
+
+    const result = await service.findOne('user-public-id', 'account-public-id');
+
+    expect(repository.findActiveByPublicId).toHaveBeenCalledWith(42, 'account-public-id');
+    expect(Object.keys(result)).not.toEqual(
+      expect.arrayContaining(['id', 'userId', 'initialBalance', 'deletedAt', 'rootKey']),
+    );
+    expect(result).toMatchObject({publicId: 'account-public-id', version: 0});
+  });
+
+  it('returns 404 for a foreign or soft-deleted account detail', async () => {
+    profile.findActiveByPublicId.mockResolvedValue({id: 42} as UserEntity);
+    repository.findActiveByPublicId.mockResolvedValue(null);
+
+    await expect(service.findOne('user-public-id', 'foreign-id')).rejects.toMatchObject({
+      status: HttpStatus.NOT_FOUND,
+      code: ApiErrorCodeEnum.NOT_FOUND.toString(),
+    });
+  });
+
+  it('returns 404 for an account detail when the principal is inactive', async () => {
+    profile.findActiveByPublicId.mockResolvedValue(null);
+
+    await expect(service.findOne('missing-user', 'account-public-id')).rejects.toMatchObject({
+      status: HttpStatus.NOT_FOUND,
+      code: ApiErrorCodeEnum.NOT_FOUND.toString(),
+    });
+    expect(repository.findActiveByPublicId).not.toHaveBeenCalled();
+  });
+
+  it('applies metadata updates with the expected version and returns the incremented row', async () => {
+    profile.findActiveByPublicId.mockResolvedValue({id: 42} as UserEntity);
+    repository.findActiveByPublicId.mockResolvedValue(
+      account({
+        type: AccountTypeEnum.CREDIT.toString(),
+        currentBalance: -120000,
+        creditLimit: 500000,
+      }),
+    );
+    repository.update.mockResolvedValue({
+      status: 'updated',
+      account: account({
+        name: UPDATE_REQUEST.name,
+        type: AccountTypeEnum.CREDIT.toString(),
+        currentBalance: -120000,
+        creditLimit: 600000,
+        pinToHome: true,
+        version: 1,
+      }),
+    });
+
+    const result = await service.update('user-public-id', 'account-public-id', UPDATE_REQUEST);
+
+    expect(repository.findActiveByPublicId).toHaveBeenCalledWith(42, 'account-public-id');
+    expect(repository.update).toHaveBeenCalledWith(42, 'account-public-id', UPDATE_REQUEST);
+    expect(result).toMatchObject({
+      name: 'Ahorros actualizados',
+      currentBalance: -120000,
+      version: 1,
+    });
+    expect(Object.keys(result)).not.toEqual(
+      expect.arrayContaining(['id', 'userId', 'initialBalance', 'deletedAt', 'rootKey']),
+    );
+  });
+
+  it('rejects a stale client version before writing', async () => {
+    profile.findActiveByPublicId.mockResolvedValue({id: 42} as UserEntity);
+    repository.findActiveByPublicId.mockResolvedValue(account({version: 2}));
+
+    await expect(
+      service.update('user-public-id', 'account-public-id', {...UPDATE_REQUEST, version: 1}),
+    ).rejects.toMatchObject({
+      status: HttpStatus.CONFLICT,
+      code: ApiErrorCodeEnum.VERSION_CONFLICT.toString(),
+      details: {expectedVersion: 1, currentVersion: 2},
+    });
+    expect(repository.update).not.toHaveBeenCalled();
+  });
+
+  it('maps a compare-and-set conflict to 409 with the current version', async () => {
+    profile.findActiveByPublicId.mockResolvedValue({id: 42} as UserEntity);
+    repository.findActiveByPublicId.mockResolvedValue(
+      account({type: AccountTypeEnum.CREDIT.toString(), creditLimit: 500000}),
+    );
+    repository.update.mockResolvedValue({status: 'conflict', currentVersion: 3});
+
+    await expect(
+      service.update('user-public-id', 'account-public-id', UPDATE_REQUEST),
+    ).rejects.toMatchObject({
+      status: HttpStatus.CONFLICT,
+      code: ApiErrorCodeEnum.VERSION_CONFLICT.toString(),
+      details: {expectedVersion: 0, currentVersion: 3},
+    });
+  });
+
+  it('maps a concurrent account deletion to 404', async () => {
+    profile.findActiveByPublicId.mockResolvedValue({id: 42} as UserEntity);
+    repository.findActiveByPublicId.mockResolvedValue(
+      account({type: AccountTypeEnum.CREDIT.toString(), creditLimit: 500000}),
+    );
+    repository.update.mockResolvedValue({status: 'not-found'});
+
+    await expect(
+      service.update('user-public-id', 'account-public-id', UPDATE_REQUEST),
+    ).rejects.toMatchObject({
+      status: HttpStatus.NOT_FOUND,
+      code: ApiErrorCodeEnum.NOT_FOUND.toString(),
+    });
+  });
+
+  it('rejects a type change to non-credit while the balance is negative', async () => {
+    profile.findActiveByPublicId.mockResolvedValue({id: 42} as UserEntity);
+    repository.findActiveByPublicId.mockResolvedValue(
+      account({type: AccountTypeEnum.CREDIT.toString(), currentBalance: -120000}),
+    );
+
+    await expect(
+      service.update('user-public-id', 'account-public-id', {
+        name: 'Efectivo',
+        type: AccountTypeEnum.CASH.toString(),
+        version: 0,
+      }),
+    ).rejects.toMatchObject({
+      status: HttpStatus.CONFLICT,
+      code: ApiErrorCodeEnum.NEGATIVE_BALANCE_NOT_ALLOWED.toString(),
+    });
+    expect(repository.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects a non-null credit limit when the effective type is non-credit', async () => {
+    profile.findActiveByPublicId.mockResolvedValue({id: 42} as UserEntity);
+    repository.findActiveByPublicId.mockResolvedValue(account());
+
+    await expect(
+      service.update('user-public-id', 'account-public-id', {
+        creditLimit: 100000,
+        version: 0,
+      }),
+    ).rejects.toMatchObject({
+      status: HttpStatus.BAD_REQUEST,
+      code: ApiErrorCodeEnum.VALIDATION_ERROR.toString(),
+      details: {fields: {creditLimit: expect.any(String)}},
+    });
+    expect(repository.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects a type change away from credit while an existing limit remains', async () => {
+    profile.findActiveByPublicId.mockResolvedValue({id: 42} as UserEntity);
+    repository.findActiveByPublicId.mockResolvedValue(
+      account({type: AccountTypeEnum.CREDIT.toString(), creditLimit: 500000}),
+    );
+
+    await expect(
+      service.update('user-public-id', 'account-public-id', {
+        type: AccountTypeEnum.CASH.toString(),
+        version: 0,
+      }),
+    ).rejects.toMatchObject({
+      status: HttpStatus.BAD_REQUEST,
+      code: ApiErrorCodeEnum.VALIDATION_ERROR.toString(),
+      details: {fields: {creditLimit: expect.any(String)}},
+    });
+    expect(repository.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects an account update for a principal that no longer resolves', async () => {
+    profile.findActiveByPublicId.mockResolvedValue(null);
+
+    await expect(
+      service.update('missing-user', 'account-public-id', UPDATE_REQUEST),
+    ).rejects.toMatchObject({
+      status: HttpStatus.NOT_FOUND,
+      code: ApiErrorCodeEnum.NOT_FOUND.toString(),
+    });
+    expect(repository.findActiveByPublicId).not.toHaveBeenCalled();
+    expect(repository.update).not.toHaveBeenCalled();
   });
 });

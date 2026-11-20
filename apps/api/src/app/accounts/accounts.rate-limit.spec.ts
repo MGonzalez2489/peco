@@ -40,6 +40,11 @@ const CREATE_BODY = {
   initialBalance: 500000,
 };
 
+const UPDATE_BODY = {
+  name: 'Ahorros actualizados',
+  version: 0,
+};
+
 describe('AccountsController rate limits (US-301/US-302)', () => {
   let app: INestApplication;
 
@@ -64,6 +69,8 @@ describe('AccountsController rate limits (US-301/US-302)', () => {
           useValue: {
             list: jest.fn().mockResolvedValue({items: [], summary: {}}),
             create: jest.fn().mockResolvedValue({publicId: 'created-account'}),
+            findOne: jest.fn().mockResolvedValue({publicId: 'account-public-id'}),
+            update: jest.fn().mockResolvedValue({publicId: 'account-public-id'}),
           },
         },
         AuthRateLimitGuard,
@@ -132,5 +139,39 @@ describe('AccountsController rate limits (US-301/US-302)', () => {
       message: API_ERROR_MESSAGES.RATE_LIMITED,
       details: {retryAfterSeconds: expect.any(Number)},
     });
+  });
+
+  it('rejects account detail reads above the configured per-user budget', async () => {
+    for (let attempt = 0; attempt < RATE_LIMITS.read.user.limit; attempt += 1) {
+      await request(app.getHttpServer())
+        .get('/accounts/account-public-id')
+        .set('X-Forwarded-For', '203.0.113.73')
+        .expect(HttpStatus.OK);
+    }
+
+    const response = await request(app.getHttpServer())
+      .get('/accounts/account-public-id')
+      .set('X-Forwarded-For', '203.0.113.74')
+      .expect(HttpStatus.TOO_MANY_REQUESTS);
+
+    expect(response.body.error.code).toBe('RATE_LIMITED');
+  });
+
+  it('rejects account updates above the configured per-user budget', async () => {
+    for (let attempt = 0; attempt < RATE_LIMITS.mutation.user.limit; attempt += 1) {
+      await request(app.getHttpServer())
+        .patch('/accounts/account-public-id')
+        .send(UPDATE_BODY)
+        .set('X-Forwarded-For', '203.0.113.83')
+        .expect(HttpStatus.OK);
+    }
+
+    const response = await request(app.getHttpServer())
+      .patch('/accounts/account-public-id')
+      .send(UPDATE_BODY)
+      .set('X-Forwarded-For', '203.0.113.84')
+      .expect(HttpStatus.TOO_MANY_REQUESTS);
+
+    expect(response.body.error.code).toBe('RATE_LIMITED');
   });
 });

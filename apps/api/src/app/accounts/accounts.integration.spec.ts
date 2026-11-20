@@ -1,6 +1,7 @@
 import {AccountTypeEnum} from '@peco/enums';
 import {MySqlContainer, StartedMySqlContainer} from '@testcontainers/mysql';
 import {DataSource, DataSourceOptions} from 'typeorm';
+import {UtcClock} from '../database/clock/utc-clock';
 import {createTypeOrmOptions} from '../database/database.config';
 import {AccountEntity, UserEntity} from '../database/entities';
 import {UserProfileRepository} from '../users/services/user-profile.repository';
@@ -22,7 +23,7 @@ const CREATE_REQUEST = {
   note: 'Cuenta de prueba',
 };
 
-describe('account flow (MySQL 8, US-301/US-302)', () => {
+describe('account flow (MySQL 8, US-301/US-302/US-303)', () => {
   let container: StartedMySqlContainer;
   let dataSource: DataSource;
   let service: AccountsService;
@@ -86,7 +87,7 @@ describe('account flow (MySQL 8, US-301/US-302)', () => {
 
     service = new AccountsService(
       new UserProfileRepository(dataSource),
-      new AccountRepository(dataSource),
+      new AccountRepository(dataSource, new UtcClock()),
     );
   });
 
@@ -241,5 +242,134 @@ describe('account flow (MySQL 8, US-301/US-302)', () => {
       status: 404,
       code: 'NOT_FOUND',
     });
+  });
+
+  it('returns a detail only for an active account owned by the caller', async () => {
+    const user = await seedUser('detail@example.com');
+    const otherUser = await seedUser('detail-other@example.com');
+    const own = await seedAccount(user, {name: 'Efectivo', currentBalance: 150000});
+    const foreign = await seedAccount(otherUser, {name: 'Externa'});
+    const deleted = await seedAccount(user, {
+      name: 'Borrada',
+      deletedAt: '2026-11-20T10:00:00.000Z',
+    });
+
+    const detail = await service.findOne(user.publicId, own.publicId);
+
+    expect(detail).toMatchObject({publicId: own.publicId, currentBalance: 150000, version: 0});
+    expect(Object.keys(detail)).not.toEqual(
+      expect.arrayContaining(['id', 'userId', 'initialBalance', 'deletedAt', 'rootKey']),
+    );
+    await expect(service.findOne(user.publicId, foreign.publicId)).rejects.toMatchObject({
+      status: 404,
+      code: 'NOT_FOUND',
+    });
+    await expect(service.findOne(user.publicId, deleted.publicId)).rejects.toMatchObject({
+      status: 404,
+      code: 'NOT_FOUND',
+    });
+  });
+
+  it('persists mutable metadata and increments version atomically', async () => {
+    const user = await seedUser('update@example.com');
+    const account = await seedAccount(user, {
+      name: 'Efectivo',
+      type: AccountTypeEnum.SAVINGS.toString(),
+      currentBalance: 150000,
+    });
+
+    const updated = await service.update(user.publicId, account.publicId, {
+      name: 'Ahorros actualizados',
+      includeInTotal: false,
+      targetGoal: 900000,
+      color: '#112233',
+      icon: 'wallet',
+      pinToHome: true,
+      note: 'Actualizada',
+      version: 0,
+    });
+    const stored = await dataSource
+      .getRepository(AccountEntity)
+      .findOne({where: {publicId: account.publicId}});
+
+    expect(updated).toMatchObject({
+      name: 'Ahorros actualizados',
+      includeInTotal: false,
+      targetGoal: 900000,
+      color: '#112233',
+      icon: 'wallet',
+      pinToHome: true,
+      note: 'Actualizada',
+      version: 1,
+    });
+    expect(Object.keys(updated)).not.toEqual(
+      expect.arrayContaining(['id', 'userId', 'initialBalance', 'deletedAt', 'rootKey']),
+    );
+    expect(stored).toMatchObject({
+      name: 'Ahorros actualizados',
+      initialBalance: 0,
+      currentBalance: 150000,
+      version: 1,
+      deletedAt: null,
+    });
+  });
+
+  it('rejects a stale version without writing', async () => {
+    const user = await seedUser('stale@example.com');
+    const account = await seedAccount(user, {version: 2});
+
+    await expect(
+      service.update(user.publicId, account.publicId, {name: 'Otro nombre', version: 1}),
+    ).rejects.toMatchObject({
+      status: 409,
+      code: 'VERSION_CONFLICT',
+      details: {expectedVersion: 1, currentVersion: 2},
+    });
+
+    const stored = await dataSource
+      .getRepository(AccountEntity)
+      .findOne({where: {publicId: account.publicId}});
+    expect(stored).toMatchObject({name: 'Efectivo', version: 2});
+  });
+
+  it('rejects a CREDIT to non-CREDIT change while the balance is negative', async () => {
+    const user = await seedUser('credit-update@example.com');
+    const account = await seedAccount(user, {
+      type: AccountTypeEnum.CREDIT.toString(),
+      currentBalance: -120000,
+    });
+
+    await expect(
+      service.update(user.publicId, account.publicId, {
+        type: AccountTypeEnum.CASH.toString(),
+        version: 0,
+      }),
+    ).rejects.toMatchObject({
+      status: 409,
+      code: 'NEGATIVE_BALANCE_NOT_ALLOWED',
+    });
+
+    const stored = await dataSource
+      .getRepository(AccountEntity)
+      .findOne({where: {publicId: account.publicId}});
+    expect(stored).toMatchObject({type: AccountTypeEnum.CREDIT.toString(), version: 0});
+  });
+
+  it('rejects a non-null credit limit when the effective type is non-credit', async () => {
+    const user = await seedUser('credit-limit@example.com');
+    const account = await seedAccount(user, {type: AccountTypeEnum.CASH.toString()});
+
+    await expect(
+      service.update(user.publicId, account.publicId, {creditLimit: 100000, version: 0}),
+    ).rejects.toMatchObject({
+      status: 400,
+      code: 'VALIDATION_ERROR',
+      details: {fields: {creditLimit: expect.any(String)}},
+    });
+
+    const stored = await dataSource
+      .getRepository(AccountEntity)
+      .findOne({where: {publicId: account.publicId}});
+    expect(stored).toMatchObject({creditLimit: null, version: 0});
   });
 });

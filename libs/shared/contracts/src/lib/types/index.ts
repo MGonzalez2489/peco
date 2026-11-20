@@ -20,6 +20,7 @@ export * from './register-request.type';
 export * from './reset-password-request.type';
 export * from './scheduled-execution-status.type';
 export * from './scheduled-transaction-type.type';
+export * from './update-account-request.type';
 export * from './update-user-request.type';
 export * from './user-data-export.type';
 export * from './user-response.type';

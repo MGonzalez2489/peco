@@ -2,12 +2,11 @@ import {AccountTypeEnum} from '@peco/enums';
 import {registerDecorator, type ValidationArguments, type ValidationOptions} from 'class-validator';
 
 /**
- * Cross-field rule for account creation: a non-null `creditLimit` only makes
- * sense for a CREDIT account (US-302). `null` is accepted for every type.
+ * Cross-field rule for account writes: a non-null `creditLimit` only makes
+ * sense for a CREDIT account (US-302/US-303). `null` is accepted for every type.
  */
-export const IsCreditLimitOnlyForCredit = (
-  validationOptions?: ValidationOptions,
-): PropertyDecorator =>
+export const IsCreditLimitOnlyForCredit =
+  (validationOptions?: ValidationOptions): PropertyDecorator =>
   (object: object, propertyName: string | symbol): void => {
     registerDecorator({
       name: 'creditLimitOnlyForCredit',

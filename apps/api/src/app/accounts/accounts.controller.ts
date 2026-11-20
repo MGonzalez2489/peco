@@ -1,10 +1,22 @@
-import {Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards} from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiBadRequestResponse,
+  ApiConflictResponse,
   ApiCreatedResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiParam,
   ApiTags,
   ApiTooManyRequestsResponse,
   ApiUnauthorizedResponse,
@@ -19,8 +31,9 @@ import {AccountsService} from './accounts.service';
 import {AccountResponseDto} from './dto/account-response.dto';
 import {AccountSummaryDto} from './dto/account-summary.dto';
 import {CreateAccountRequestDto} from './dto/create-account-request.dto';
+import {UpdateAccountRequestDto} from './dto/update-account-request.dto';
 
-/** Authenticated account reads and non-root creation (D86/US-302). */
+/** Authenticated account reads, detail, metadata updates and non-root creation (D86/US-303). */
 @ApiTags('accounts')
 @Controller('accounts')
 @UseGuards(AuthRateLimitGuard)
@@ -64,6 +77,35 @@ export class AccountsController {
     return EnvelopeResult.withMeta(items, {summary});
   }
 
+  @Get(':publicId')
+  @RateLimited()
+  // The shared guard evaluates every named throttler; only the read policy applies (13.1).
+  @SkipThrottle({ip: true, identity: true, user: true})
+  @Throttle({
+    read: {limit: RATE_LIMITS.read.user.limit, ttl: RATE_LIMITS.read.user.ttl},
+  })
+  @ApiOperation({summary: 'Obtener el detalle de una cuenta propia'})
+  @ApiParam({name: 'publicId', description: 'Identificador público de la cuenta.'})
+  @ApiOkResponse({
+    description: 'Cuenta en el envelope estándar {data, error}.',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {type: 'object'},
+        error: {type: 'null', nullable: true, example: null},
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({description: 'Falta un token de acceso válido.'})
+  @ApiNotFoundResponse({description: 'La cuenta no existe o pertenece a otro usuario.'})
+  @ApiTooManyRequestsResponse({description: 'Límite de lecturas excedido.'})
+  findOne(
+    @CurrentUser() publicId: string,
+    @Param('publicId') accountPublicId: string,
+  ): Promise<AccountResponseDto> {
+    return this.accounts.findOne(publicId, accountPublicId);
+  }
+
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @RateLimited()
@@ -92,5 +134,39 @@ export class AccountsController {
     @Body() request: CreateAccountRequestDto,
   ): Promise<AccountResponseDto> {
     return this.accounts.create(publicId, request);
+  }
+
+  @Patch(':publicId')
+  @RateLimited()
+  // The shared guard evaluates every named throttler; only the user policy applies (13.1).
+  @SkipThrottle({ip: true, identity: true, read: true})
+  @Throttle({
+    user: {limit: RATE_LIMITS.mutation.user.limit, ttl: RATE_LIMITS.mutation.user.ttl},
+  })
+  @ApiOperation({summary: 'Actualizar los metadatos de una cuenta propia'})
+  @ApiParam({name: 'publicId', description: 'Identificador público de la cuenta.'})
+  @ApiOkResponse({
+    description: 'Cuenta actualizada en el envelope estándar {data, error}.',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {type: 'object'},
+        error: {type: 'null', nullable: true, example: null},
+      },
+    },
+  })
+  @ApiBadRequestResponse({description: 'Cuerpo inválido o límite de crédito no permitido.'})
+  @ApiNotFoundResponse({description: 'La cuenta no existe o pertenece a otro usuario.'})
+  @ApiConflictResponse({
+    description: 'Versión obsoleta o cambio de tipo que dejaría un saldo negativo.',
+  })
+  @ApiUnauthorizedResponse({description: 'Falta un token de acceso válido.'})
+  @ApiTooManyRequestsResponse({description: 'Límite de mutaciones excedido.'})
+  update(
+    @CurrentUser() publicId: string,
+    @Param('publicId') accountPublicId: string,
+    @Body() request: UpdateAccountRequestDto,
+  ): Promise<AccountResponseDto> {
+    return this.accounts.update(publicId, accountPublicId, request);
   }
 }

@@ -15,7 +15,10 @@ import {VALIDATION_FIELD_MESSAGES} from '../common/validation/validation-field-m
 import {userNotFoundException} from '../users/utils/user-not-found.exception';
 import {AccountsController} from './accounts.controller';
 import {AccountsService} from './accounts.service';
+import {accountNotFoundException} from './utils/account-not-found.exception';
+import {negativeBalanceConflictException} from './utils/negative-balance-conflict.exception';
 import {negativeBalanceNotAllowedException} from './utils/negative-balance-not-allowed.exception';
+import {versionConflictException} from './utils/version-conflict.exception';
 
 const ACCOUNT = {
   publicId: 'account-public-id',
@@ -60,6 +63,14 @@ const CREATE_BODY = {
   note: 'Cuenta de prueba',
 };
 
+const UPDATE_BODY = {
+  name: '  Ahorros actualizados  ',
+  type: 'CREDIT',
+  creditLimit: 500000,
+  pinToHome: true,
+  version: 0,
+};
+
 const SILENT_LOGGER: LoggerService = {
   log: jest.fn(),
   error: jest.fn(),
@@ -69,10 +80,12 @@ const SILENT_LOGGER: LoggerService = {
   fatal: jest.fn(),
 };
 
-describe('AccountsController HTTP contract (US-301/US-302)', () => {
+describe('AccountsController HTTP contract (US-301/US-302/US-303)', () => {
   let app: INestApplication;
   let list: jest.Mock;
   let create: jest.Mock;
+  let findOne: jest.Mock;
+  let update: jest.Mock;
   let authenticated = true;
 
   const authGuard: CanActivate = {
@@ -89,11 +102,13 @@ describe('AccountsController HTTP contract (US-301/US-302)', () => {
     authenticated = true;
     list = jest.fn().mockResolvedValue({items: [ACCOUNT], summary: SUMMARY});
     create = jest.fn().mockResolvedValue(ACCOUNT);
+    findOne = jest.fn().mockResolvedValue(ACCOUNT);
+    update = jest.fn().mockResolvedValue(ACCOUNT);
 
     const moduleRef = await Test.createTestingModule({
       controllers: [AccountsController],
       providers: [
-        {provide: AccountsService, useValue: {list, create}},
+        {provide: AccountsService, useValue: {list, create, findOne, update}},
         {provide: APP_GUARD, useValue: authGuard},
       ],
     })
@@ -144,6 +159,112 @@ describe('AccountsController HTTP contract (US-301/US-302)', () => {
       message: API_ERROR_MESSAGES.UNAUTHORIZED,
     });
     expect(list).not.toHaveBeenCalled();
+  });
+
+  it('returns a single account in the standard envelope', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/accounts/account-public-id')
+      .expect(200);
+
+    expect(response.body).toEqual({data: ACCOUNT, error: null});
+    expect(findOne).toHaveBeenCalledWith('user-public-id', 'account-public-id');
+  });
+
+  it('maps a foreign or missing account detail to 404 NOT_FOUND', async () => {
+    findOne.mockRejectedValueOnce(accountNotFoundException());
+
+    const response = await request(app.getHttpServer())
+      .get('/accounts/foreign-account-id')
+      .expect(404);
+
+    expect(response.body.error).toMatchObject({
+      statusCode: 404,
+      code: 'NOT_FOUND',
+      message: API_ERROR_MESSAGES.NOT_FOUND,
+    });
+  });
+
+  it('updates mutable metadata and returns the public account shape', async () => {
+    const response = await request(app.getHttpServer())
+      .patch('/accounts/account-public-id')
+      .send(UPDATE_BODY)
+      .expect(200);
+
+    expect(response.body).toEqual({data: ACCOUNT, error: null});
+    expect(update).toHaveBeenCalledWith(
+      'user-public-id',
+      'account-public-id',
+      expect.objectContaining({
+        name: 'Ahorros actualizados',
+        type: 'CREDIT',
+        creditLimit: 500000,
+        pinToHome: true,
+        version: 0,
+      }),
+    );
+  });
+
+  it('rejects server-owned fields and a null version in a patch', async () => {
+    const response = await request(app.getHttpServer())
+      .patch('/accounts/account-public-id')
+      .send({...UPDATE_BODY, initialBalance: 1, currentBalance: 2, isRoot: true, version: null})
+      .expect(400);
+
+    expect(response.body.error).toMatchObject({
+      statusCode: 400,
+      code: 'VALIDATION_ERROR',
+      message: API_ERROR_MESSAGES.VALIDATION_ERROR,
+      details: {
+        fields: {
+          initialBalance: VALIDATION_FIELD_MESSAGES.whitelistValidation,
+          currentBalance: VALIDATION_FIELD_MESSAGES.whitelistValidation,
+          isRoot: VALIDATION_FIELD_MESSAGES.whitelistValidation,
+          version: VALIDATION_FIELD_MESSAGES.isInt,
+        },
+      },
+    });
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('rejects an unsupported account type in a patch', async () => {
+    const response = await request(app.getHttpServer())
+      .patch('/accounts/account-public-id')
+      .send({...UPDATE_BODY, type: 'INVALID'})
+      .expect(400);
+
+    expect(response.body.error.details.fields.type).toBe(VALIDATION_FIELD_MESSAGES.isIn);
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('maps a stale version to 409 VERSION_CONFLICT with details', async () => {
+    update.mockRejectedValueOnce(versionConflictException(0, 1));
+
+    const response = await request(app.getHttpServer())
+      .patch('/accounts/account-public-id')
+      .send(UPDATE_BODY)
+      .expect(409);
+
+    expect(response.body.error).toMatchObject({
+      statusCode: 409,
+      code: 'VERSION_CONFLICT',
+      message: API_ERROR_MESSAGES.VERSION_CONFLICT,
+      details: {expectedVersion: 0, currentVersion: 1},
+    });
+  });
+
+  it('maps a negative-balance type change to 409 NEGATIVE_BALANCE_NOT_ALLOWED', async () => {
+    update.mockRejectedValueOnce(negativeBalanceConflictException());
+
+    const response = await request(app.getHttpServer())
+      .patch('/accounts/account-public-id')
+      .send(UPDATE_BODY)
+      .expect(409);
+
+    expect(response.body.error).toMatchObject({
+      statusCode: 409,
+      code: 'NEGATIVE_BALANCE_NOT_ALLOWED',
+      message: API_ERROR_MESSAGES.NEGATIVE_BALANCE_NOT_ALLOWED,
+    });
   });
 
   it('creates a non-root account and returns its public shape', async () => {
@@ -267,5 +388,22 @@ describe('AccountsController HTTP contract (US-301/US-302)', () => {
 
     expect(response.body.error.code).toBe('UNAUTHORIZED');
     expect(create).not.toHaveBeenCalled();
+  });
+
+  it('returns 401 UNAUTHORIZED for detail and update without a principal', async () => {
+    authenticated = false;
+
+    const detail = await request(app.getHttpServer())
+      .get('/accounts/account-public-id')
+      .expect(401);
+    const patch = await request(app.getHttpServer())
+      .patch('/accounts/account-public-id')
+      .send(UPDATE_BODY)
+      .expect(401);
+
+    expect(detail.body.error.code).toBe('UNAUTHORIZED');
+    expect(patch.body.error.code).toBe('UNAUTHORIZED');
+    expect(findOne).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
   });
 });
