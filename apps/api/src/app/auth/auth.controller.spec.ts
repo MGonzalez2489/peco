@@ -85,7 +85,7 @@ describe('AuthController HTTP contract (US-201/US-202/US-203/US-204/US-205)', ()
       .send({...VALID_BODY, email: '  USER@Example.COM '})
       .expect(201);
 
-    expect(response.body).toEqual({data: AUTH_RESPONSE, meta: {correlationId: expect.any(String)}});
+    expect(response.body).toEqual({data: AUTH_RESPONSE, error: null});
     expect(register).toHaveBeenCalledWith(
       expect.objectContaining({email: 'user@example.com', name: 'Manuel'}),
     );
@@ -134,7 +134,7 @@ describe('AuthController HTTP contract (US-201/US-202/US-203/US-204/US-205)', ()
       .send({email: '  USER@Example.COM ', password: 'correct horse battery'})
       .expect(200);
 
-    expect(response.body).toEqual({data: AUTH_RESPONSE, meta: {correlationId: expect.any(String)}});
+    expect(response.body).toEqual({data: AUTH_RESPONSE, error: null});
     expect(login).toHaveBeenCalledWith({
       email: 'user@example.com',
       password: 'correct horse battery',
@@ -192,7 +192,7 @@ describe('AuthController HTTP contract (US-201/US-202/US-203/US-204/US-205)', ()
       .send({refreshToken: 'raw-refresh-token'})
       .expect(200);
 
-    expect(response.body).toEqual({data: AUTH_RESPONSE, meta: {correlationId: expect.any(String)}});
+    expect(response.body).toEqual({data: AUTH_RESPONSE, error: null});
     expect(refresh).toHaveBeenCalledWith({refreshToken: 'raw-refresh-token'});
     expect(login).not.toHaveBeenCalled();
   });

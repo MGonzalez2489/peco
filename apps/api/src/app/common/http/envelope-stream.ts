@@ -2,7 +2,7 @@ import {StreamableFile} from '@nestjs/common';
 import {Readable} from 'node:stream';
 
 /**
- * A response stream that already carries the `{data, meta}` envelope (8.3/D73).
+ * A response stream that already carries the 8.3/D73 success envelope.
  *
  * Extending `StreamableFile` is what makes Nest's Express adapter pipe the
  * chunks instead of JSON-serializing the object. The global interceptor leaves

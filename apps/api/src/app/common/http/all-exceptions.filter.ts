@@ -20,10 +20,10 @@ import {isHealthRequest} from './is-health-request';
 type NormalizedError = RenderableApiError;
 
 /**
- * Renders every failure as `{error: {...}}` with a stable code, a Spanish
- * message and the request correlation id (8.3/D65). Unhandled exceptions become
- * `500 INTERNAL_ERROR`; the stack trace and SQL text stay in the server log and
- * are never sent to the client.
+ * Renders every failure as `{data: null, error: {...}}` with a stable code, a
+ * Spanish message and the request correlation id (8.3/D65). Unhandled exceptions
+ * become `500 INTERNAL_ERROR`; the stack trace and SQL text stay in the server
+ * log and are never sent to the client.
  *
  * `/health` is the only exception: it keeps its flat contract (8.3).
  */

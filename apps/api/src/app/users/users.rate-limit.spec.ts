@@ -114,10 +114,10 @@ describe('UsersController rate limits (US-207/US-208)', () => {
           provide: UserDataExportService,
           useValue: {
             exportData: jest.fn(
-              (_publicId: string, correlationId: string) =>
+              (_publicId: string) =>
                 new EnvelopeStream(
                   (async function* () {
-                    yield JSON.stringify({data: {}, meta: {correlationId}});
+                    yield JSON.stringify({data: {}, error: null});
                   })(),
                 ),
             ),

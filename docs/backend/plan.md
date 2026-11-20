@@ -465,7 +465,8 @@ verified explicitly:
   derived contract types and keeps discriminated unions narrow.
 - `contracts` holds `AuthResponse`, `AccountResponse`, `MovementResponse`,
   `PeriodSnapshotResponse`, the wire types derived from the `enums` registries,
-  the `code` union of 8.3 and the `ApiSuccess<T>` / `ApiError` envelope types. No
+  the `code` union of 8.3 and the `ApiSingleSuccess<T>` / `ApiListSuccess<T, M>` /
+  `ApiError` envelope types. No
   Nest and no Angular imports.
 - `utils` holds the pure helpers both sides need: cents conversion and
   formatting, UTC date helpers and `movementBalanceImpact` — the same math the
@@ -1159,7 +1160,7 @@ VALIDATION_ERROR` (`details.fields.to`), never a truncated result (Q8).
 Rules: `email` 5–254 chars, normalized lowercase/trimmed; `password` 8–128
 chars (no composition rules, NIST); `name` 1–80 chars.
 
-`201`:
+`201` single-resource response (`{data, error: null}`) where `data` is:
 
 ```json
 {
@@ -1184,10 +1185,12 @@ Accounts created later are never root. System categories (`Otros`,
 created once at deployment, not per user. Register is **auto-login**: no
 separate login call.
 
-**`POST /auth/login`** — `{email, password}` → same `AuthResponse` (`200`).
+**`POST /auth/login`** — `{email, password}` → `200` single-resource response;
+`data` has the same `AuthResponse` shape.
 
-**`POST /auth/refresh`** — `{refreshToken}` → new pair (`200`). The old token is
-revoked; replaying it returns `401 REFRESH_TOKEN_REUSED` and revokes the family.
+**`POST /auth/refresh`** — `{refreshToken}` → `200` single-resource response with
+a new pair in `data`. The old token is revoked; replaying it returns
+`401 REFRESH_TOKEN_REUSED` and revokes the family.
 
 **`POST /auth/logout`** — `{refreshToken}` → `204`.
 
@@ -1197,7 +1200,7 @@ email does not exist (no enumeration). Sends a single-use token by email.
 **`POST /auth/reset-password`** — `{token, newPassword}` → `204`; revokes every
 refresh token of the user.
 
-**`GET /auth/me`** — `UserResponse` (`200`).
+**`GET /auth/me`** — `200` single-resource response; `data` is `UserResponse`.
 
 ### 8.7 User contracts
 
@@ -1207,7 +1210,8 @@ refresh token of the user.
 {"publicId": "…", "email": "…", "name": "…", "createdAt": "…", "updatedAt": "…"}
 ```
 
-**`PATCH /users/me`** — `{name?}` → `UserResponse`.
+**`PATCH /users/me`** — `{name?}` → `200` single-resource response; `data` is
+`UserResponse`.
 
 **`PATCH /users/me/password`** — `{currentPassword, newPassword}` → `204`.
 Both fields follow the password rule of 8.15 (8–128 chars). A wrong
@@ -1215,7 +1219,8 @@ Both fields follow the password rule of 8.15 (8–128 chars). A wrong
 of the user, so all devices must log in again. This is the only way to change a
 password without email (D70); the reset flow of 8.6 stays for a forgotten one.
 
-**`GET /users/me/export`** — `200` with one JSON document (D73):
+**`GET /users/me/export`** — `200` streamed single-resource response (`{data, error: null}`)
+containing one JSON document (D73). `data` is:
 
 ```json
 {
@@ -1232,10 +1237,11 @@ password without email (D70); the reset flow of 8.6 stays for a forgotten one.
 }
 ```
 
-Every collection contains only rows owned by the caller, in `publicId` form and
-with money in integer cents. `auditLogs` and internal ids are never exported.
-The response streams, is not paginated and is rate limited as a read route
-(13.1). A soft-deleted user gets `401`, not an export.
+`correlationId` travels in the `X-Correlation-Id` response header (no `meta` in
+the body). Every collection contains only rows owned by the caller, in
+`publicId` form and with money in integer cents. `auditLogs` and internal ids
+are never exported. The response streams, is not paginated and is rate limited
+as a read route (13.1). A soft-deleted user gets `401`, not an export.
 
 **`DELETE /users/me`** — `{password}` → `204`. Soft-deletes the user, sets
 `deletedAt` on owned rows, anonymizes `name`/`passwordHash`, keeps the email as
@@ -1267,22 +1273,19 @@ the reservation key (D31). Financial rows and snapshots are retained.
 
 `currentBalance` is server-computed and read-only after creation.
 
-**`GET /accounts`** → `{items, summary}`:
+**`GET /accounts`** — list response. `data` contains `AccountResponse[]`; `meta.summary`:
 
 ```json
 {
-  "items": [AccountResponse, …],
-  "summary": {
-    "totalBalance": 520000,
-    "availableBalance": 400000,
-    "liabilitiesBalance": 120000,
-    "typeSummaries": [
-      {"type": "CASH", "count": 1, "total": 150000},
-      {"type": "DEBIT", "count": 2, "total": 250000},
-      {"type": "CREDIT", "count": 1, "total": -120000},
-      {"type": "SAVINGS", "count": 0, "total": 0}
-    ]
-  }
+  "totalBalance": 520000,
+  "availableBalance": 400000,
+  "liabilitiesBalance": 120000,
+  "typeSummaries": [
+    {"type": "CASH", "count": 1, "total": 150000},
+    {"type": "DEBIT", "count": 2, "total": 250000},
+    {"type": "CREDIT", "count": 1, "total": -120000},
+    {"type": "SAVINGS", "count": 0, "total": 0}
+  ]
 }
 ```
 
@@ -1315,6 +1318,8 @@ accepted only for `CREDIT` and otherwise returns `400 NEGATIVE_BALANCE_NOT_ALLOW
 `currentBalance` is rejected as an unknown field; the root account is seeded at
 registration, so created accounts are always `isRoot: false`. Account names are
 not unique.
+
+`201` single-resource response; `data` is `AccountResponse`.
 
 **`PATCH /accounts/:publicId`** — partial of `{name, type, includeInTotal,
 targetGoal, creditLimit, color, icon, pinToHome, note, version}`. Changing
@@ -1555,13 +1560,13 @@ reversed/canceled or closed period → `409`.
 | `cursor`           | string                            | –       | Opaque                                                                                                                       |
 | `limit`            | integer                           | `20`    | Max 100                                                                                                                      |
 
-`200`:
+`200` list response. `data` contains `MovementResponse[]`; `meta` includes:
 
 ```json
 {
-  "items": [MovementResponse, …],
   "nextCursor": "eyJkIjoiMjAyNi0xMS0xMiIsImkiOjEyfQ",
-  "totals": {"totalIncome": 300000, "totalExpenses": 145000, "netBalance": 155000, "count": 18}
+  "totals": {"totalIncome": 300000, "totalExpenses": 145000, "netBalance": 155000, "count": 18},
+  "correlationId": "01JC7Z3Q9K"
 }
 ```
 
@@ -1695,7 +1700,7 @@ PERIOD_CLOSED` and nothing is written (section 10.7).
 
 **`POST /scheduled-transactions/apply-due`** — `{asOf?: "YYYY-MM-DD"}` (default
 today, UTC) + `Idempotency-Key`. Applies every due occurrence of the current
-user, oldest first, up to 500 per schedule (section 10.6). `200`:
+user, oldest first, up to 500 per schedule (section 10.6). `200` content (`data`):
 
 ```json
 {
@@ -1713,8 +1718,8 @@ app before the daily run still sees today's occurrence. It is idempotent: a
 second call replays the existing rows and returns an empty `results` array.
 
 **`GET /scheduled-transactions/due`** — `asOf` (default today), `autoApply`
-(optional) → `{items: [ScheduledTransactionResponse]}` with
-`nextExecutionDate <= asOf`, active only.
+(optional). `200` list response: `data` contains `ScheduledTransactionResponse[]`
+with `nextExecutionDate <= asOf`, active only.
 
 > Route order: declare `GET /scheduled-transactions/due` **before**
 > `GET /scheduled-transactions/:publicId`, otherwise NestJS matches `due` as a
@@ -1769,10 +1774,11 @@ once: a transfer is one movement even though it affects two accounts (11.3).
 Labels are the frozen copies taken at closing time (Q16/D30), so a later
 soft-deleted account still renders correctly.
 
-**`GET /periods`** — `from`/`to` (default last 12 months, max 24) →
-`{items: [PeriodSummaryResponse]}`.
+**`GET /periods`** — `from`/`to` (default last 12 months, max 24). `200` list
+response: `data` contains `PeriodSummaryResponse[]`.
 
-**`GET /periods/:period`** — `PeriodSnapshotResponse`; `404` if not closed.
+**`GET /periods/:period`** — `200` content (`data`): `PeriodSnapshotResponse`;
+`404` if not closed.
 
 **`POST /periods/:period/close`** — idempotent. `201` on first close, `200` with
 the existing snapshot on replay. Current/future period → `409
@@ -1941,6 +1947,7 @@ Validation errors return `details.fields`:
 
 ```json
 {
+  "data": null,
   "error": {
     "statusCode": 400,
     "code": "VALIDATION_ERROR",
@@ -3740,9 +3747,10 @@ stays flat because monitoring tools read it, and `204` answers have no body.
 | 2026-11-19 | D87 | US-207 implementation: `PATCH /users/me` accepts only an optional `name` (1–80 chars) through the shared `UpdateUserRequest`, returns the existing `UserResponse` shape and leaves `email` immutable; `DELETE /users/me` requires `{password}` (8–128 chars) via the shared `DeleteUserRequest`, verifies Argon2id against the active user and answers `401 INVALID_CREDENTIALS` for a wrong password and `404 NOT_FOUND` when no active row remains (second delete). A shared `CurrentUser()` decorator reads `request.auth.publicId` set by D86 and maps a missing principal to `401 UNAUTHORIZED`. Deletion runs in one transaction that locks the user row, revokes every refresh token, soft-deletes `users` and `userPreferences`, anonymizes `name` to `Deleted user` and `passwordHash` to a non-hash marker, preserves the email as the Q14 reservation key, and appends one `auditLogs` row (`entity: users`, `action: DELETE`, `entityId = publicId`, non-sensitive before/after) with the acting `userId` and the shared UTC clock. `userPreferences` gains `deletedAt` (the entity extends `SoftDeletableEntity`; the unreleased initial migration and schema metadata specs are edited in place per Q15). Financial rows and snapshots stay untouched (D31) and are unreachable because every user-scoped read requires an active user. Audit `entity`/`action` remain free-form internal labels (7.3), not a new wire enum. `PATCH /users/me/password` stays US-208. | Keeps the public contract shared with the client, preserves referential integrity and the forever-reserved email while removing usable credentials, and makes the irreversible operation atomic and auditable; editing the unreleased migration avoids a second schema version. | Backend |
 | 2026-11-19 | D88 | US-208 implementation: `PATCH /users/me/password` accepts `{currentPassword, newPassword}` (8–128 chars each, 8.15) through the shared `ChangePasswordRequest`, returns `204` and rejects a wrong current password with `401 UNAUTHORIZED` (D70) without touching the row. The service verifies Argon2id against the active user first, hashes the new secret and delegates to `UserPasswordRepository`, which locks the user row, stamps `passwordHash`/`updatedAt` and revokes every active refresh token in one transaction; the principal is the `publicId` injected by D86 and a vanished active row yields `404`. A third named throttler `user` (120/min) rate limits the route through the same `@RateLimited()` marker and `AuthRateLimitGuard` of D86, keyed by a SHA-256 digest of `request.auth.publicId` and independent of the IP tracker; `@SkipThrottle({ip: true, identity: true})` disables the two fail-closed defaults because `ThrottlerGuard` evaluates every named policy and 13.1 limits authenticated mutating routes by user only, while `AuthController` skips `user` because its public routes have no principal to key on; `UsersModule` imports `AuthModule` so both controllers share one in-memory storage and the `429 RATE_LIMITED` + `Retry-After` envelope. Reusing the current password is not rejected because 8.15 defines no inequality rule and a new error code would change the shared contract; no audit row is appended because the story asks only for the hash change and session revocation, and audit action labels stay internal free-form strings (7.3). | Keeps the wire contract shared with the client, makes the credential change and the global logout atomic under the row lock, and extends the documented rate-limit adapter instead of inventing a second 429 path; sharing the storage means the 120/min budget is not silently multiplied per module. | Backend |
 | 2026-11-19 | D89 | US-207 rate-limit gap closed: `PATCH /users/me` and `DELETE /users/me` now carry the same `@RateLimited()` marker, `@SkipThrottle({ip: true, identity: true})` and 120/min `@Throttle({user: ...})` of D88, so every authenticated mutation in `UsersController` obeys the 13.1 user bucket while the public `AuthController` keeps skipping it. The shared `AuthRateLimitGuard`, in-memory storage and `429 RATE_LIMITED` + `Retry-After` envelope are reused without a second limiter; `users.rate-limit.spec.ts` exercises all three mutations with production-like fail-closed throttler defaults and a repeated source IP. | Closes the 13.1 coverage gap for the two pre-existing user mutations without changing their request/response contracts; fail-closed defaults in the spec prove the skips are deliberate. | Backend |
-| 2026-11-20 | D90 | US-209 implementation: `GET /users/me/export` streams one `{data, meta}` JSON document (D73) with the active caller, normalized preferences, accounts, categories, movements, scheduled transactions, executions and period snapshots. `UserDataExport` lives in `@peco/contracts`; `EnvelopeStream` extends `StreamableFile` so Nest pipes the envelope chunks while `ResponseEnvelopeInterceptor` passes it through unchanged. A fourth named throttler `read` (300/min, keyed by a SHA-256 digest of `request.auth.publicId`) applies only to the export route; every mutation skips it so 13.1 keeps separate read and mutation budgets. `UserDataExportRepository` reads in 500-row pages through `getMany()` (TypeORM `.stream()` returns raw rows without transformers), resolves related entities through user-scoped `id → publicId` maps and never selects internal ids into the response; a missing preferences row falls back to `light`/`false`/`true`. | Extends the existing envelope, guard and repository patterns instead of adding a second serialization path; paged hydration keeps cents and booleans correct while the HTTP response still streams, and user-scoped maps keep every collection disjoint without depending on feature modules that do not exist until EP-03/EP-04. | Backend |
+| 2026-11-20 | D90 | US-209 implementation: `GET /users/me/export` streams one `{data, meta}` JSON document (D73) with the active caller, normalized preferences, accounts, categories, movements, scheduled transactions, executions and period snapshots (envelope shape amended by D93 to `{data, error: null}` with no `meta` in the body). `UserDataExport` lives in `@peco/contracts`; `EnvelopeStream` extends `StreamableFile` so Nest pipes the envelope chunks while `ResponseEnvelopeInterceptor` passes it through unchanged. A fourth named throttler `read` (300/min, keyed by a SHA-256 digest of `request.auth.publicId`) applies only to the export route; every mutation skips it so 13.1 keeps separate read and mutation budgets. `UserDataExportRepository` reads in 500-row pages through `getMany()` (TypeORM `.stream()` returns raw rows without transformers), resolves related entities through user-scoped `id → publicId` maps and never selects internal ids into the response; a missing preferences row falls back to `light`/`false`/`true`. | Extends the existing envelope, guard and repository patterns instead of adding a second serialization path; paged hydration keeps cents and booleans correct while the HTTP response still streams, and user-scoped maps keep every collection disjoint without depending on feature modules that do not exist until EP-03/EP-04. | Backend |
 | 2026-11-20 | D91 | US-301 implementation: `GET /accounts` returns `data: AccountResponse[]` and `meta.summary` under the D65 envelope. A new `AccountsModule` reuses the exported `UserProfileRepository` and an owner-scoped `AccountRepository` that filters `deletedAt IS NULL` and orders by `pinToHome DESC, name ASC, createdAt ASC, id ASC`. `AccountResponse`, `AccountSummary` and `AccountTypeSummary` are shared contracts; `buildAccountSummary`/`isLiabilityAccount` live in `@peco/utils`, and the existing web wrappers delegate to them so the API and UI cannot drift (6.7). The route uses the 300/min `read` bucket and skips the other named policies; a deterministic property-style spec checks the formulas against a reference implementation. The acceptance criterion's "pure helpers of 9.9" pointer was corrected to 6.7/8.8 because 9.9 is nightly reconciliation. | Unifies the list shape behind D65, keeps every query inside the authenticated owner, and removes duplicated balance math from both apps; the added tie-breakers make ordering deterministic without changing the documented primary keys. | Backend |
 | 2026-11-20 | D92 | US-302 implementation: `POST /accounts` returns `201` with the public `AccountResponse` shape, `currentBalance` seeded from the required integer-cent `initialBalance`, `isRoot: false`, `rootKey: NULL`, `version: 0` and no duplicate-name check. The shared `CreateAccountRequest` contract and API DTO validate the whole body with the existing strict global pipe, so client-supplied `currentBalance` and `isRoot` are unknown fields; account types come only from `@peco/enums` and `@peco/utils` `isLiabilityAccount` owns the credit-only rule. The service rejects a negative initial balance for non-`CREDIT` accounts before the owner-scoped insert with `400 NEGATIVE_BALANCE_NOT_ALLOWED`, while `CREDIT` accepts it. `creditLimit: null` is valid for every type and a non-null value is allowed only for `CREDIT`. The route uses the 120/min `user` mutation bucket like the other authenticated writes; a missing active principal returns `404 NOT_FOUND`. The acceptance criterion wins over the older text that defaulted `initialBalance` to `0` and over the generic `409` mapping for this create-time rule; the error table now splits creation (`400`) from later balance-changing writes (`409`). | Keeps the create contract explicit and tenant-safe without weakening the ledger invariant, and records the narrow status exception so the generic `409` mapping is not silently rewritten for future stories. | Backend |
+| 2026-11-20 | D93 | Envelope standardization (amends D65/D78/D90): every wrapped client-facing success now includes `error: null`. Single-resource successes return `{data, error: null}` (no `meta`); list successes return `{data, meta, error: null}` with transport-level `meta` (`correlationId` plus the documented extras). Every error returns `{data: null, error}` with the same error object shape for list and non-list routes. `@peco/contracts` exposes `ApiSingleSuccess<T>` and `ApiListSuccess<T, M>` (replacing `ApiSuccess`) and `ApiError` includes `data: null`. The streamed export `GET /users/me/export` now emits the single-resource envelope `{data, error: null}` with no `meta` in the body; `correlationId` remains in `X-Correlation-Id` and in list/error bodies. `/health` stays flat and `204` stays bodyless. Existing endpoint implementations, tests and endpoint docs were aligned. | Uniform `data`/`error` keys make success and failure handling explicit across all endpoints while preserving list-only transport metadata and existing exceptions. | Backend |
 
 ---
 
@@ -4819,8 +4827,9 @@ _Refs:_ 8, 21.1.
 
 - The OpenAPI document covers every route, error code and enum, and is published
   with the build.
-- It exposes one `ApiSuccess<T>` and one `ApiError` schema; per-route success
-  schemas are generated from the `data` type (D65).
+- It exposes `ApiSingleSuccess<T>`, `ApiListSuccess<T, M>` and `ApiError`
+  schemas; per-route success schemas are generated from the `data` type and, for
+  lists, the documented `meta` shape (D65/D93).
 - A short README explains local setup, migrations, seeding and the job schedule.
 - The mapping between the frontend models and the API DTOs is documented once,
   including the cents convention.

@@ -36,12 +36,20 @@ export class AccountsController {
   })
   @ApiOperation({summary: 'Listar las cuentas del usuario autenticado'})
   @ApiOkResponse({
-    description: 'Cuentas del usuario con sus totales calculados en `meta.summary`.',
+    description:
+      'Lista en el envelope estándar {data, meta, error}; los totales van en `meta.summary`.',
     schema: {
       type: 'object',
       properties: {
         data: {type: 'array', items: {type: 'object'}},
-        meta: {type: 'object'},
+        meta: {
+          type: 'object',
+          properties: {
+            correlationId: {type: 'string'},
+            summary: {type: 'object'},
+          },
+        },
+        error: {type: 'null', nullable: true, example: null},
       },
     },
   })
@@ -65,7 +73,16 @@ export class AccountsController {
     user: {limit: RATE_LIMITS.mutation.user.limit, ttl: RATE_LIMITS.mutation.user.ttl},
   })
   @ApiOperation({summary: 'Crear una cuenta no principal'})
-  @ApiCreatedResponse({type: AccountResponseDto, description: 'Cuenta creada.'})
+  @ApiCreatedResponse({
+    description: 'Cuenta creada en el envelope estándar {data, error}.',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {type: 'object'},
+        error: {type: 'null', nullable: true, example: null},
+      },
+    },
+  })
   @ApiBadRequestResponse({description: 'Cuerpo inválido o saldo inicial negativo no permitido.'})
   @ApiUnauthorizedResponse({description: 'Falta un token de acceso válido.'})
   @ApiNotFoundResponse({description: 'El usuario ya no está activo.'})

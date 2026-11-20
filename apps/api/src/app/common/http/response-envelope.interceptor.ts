@@ -7,13 +7,15 @@ import {EnvelopeStream} from './envelope-stream';
 import {isHealthRequest} from './is-health-request';
 
 /**
- * Wraps every client-facing success in `{data, meta}` (8.3/D65).
+ * Wraps every client-facing success in the 8.3/D65 envelope.
  *
  * Exceptions: `/health` keeps its flat contract and `204` responses stay
  * bodyless (their handler returns `undefined`). Controllers that need
- * pagination or totals return an `EnvelopeResult`; everything else is wrapped
- * as `{data: payload}`. An `EnvelopeStream` already emits the envelope itself
- * while keeping it on the wire (D73), so it is passed through unchanged.
+ * transport metadata (pagination, totals, summary) return an `EnvelopeResult`
+ * and receive a list success envelope `{data, meta, error: null}`. Everything
+ * else is wrapped as a single-resource success `{data, error: null}`. An
+ * `EnvelopeStream` already emits the envelope itself while keeping it on the
+ * wire (D73), so it is passed through unchanged.
  */
 @Injectable()
 export class ResponseEnvelopeInterceptor implements NestInterceptor {
@@ -33,8 +35,8 @@ export class ResponseEnvelopeInterceptor implements NestInterceptor {
         const meta = {correlationId: request.correlationId};
 
         return body instanceof EnvelopeResult
-          ? {data: body.data, meta: {...meta, ...body.meta}}
-          : {data: body, meta};
+          ? {data: body.data, meta: {...meta, ...body.meta}, error: null}
+          : {data: body, error: null};
       }),
     );
   }

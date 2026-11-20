@@ -27,7 +27,6 @@ import {UserDataExportRepository} from './user-data-export.repository';
 import {UserDataExportService} from './user-data-export.service';
 
 const EXPORTED_AT = '2026-11-20T12:00:00.000Z';
-const CORRELATION_ID = '01JC7Z3Q9K';
 const USER_PUBLIC_ID = 'user-public-id';
 const ACCOUNT_PUBLIC_ID = 'account-public-id';
 const CATEGORY_PUBLIC_ID = 'category-public-id';
@@ -247,13 +246,14 @@ describe('UserDataExportService (US-209)', () => {
   });
 
   it('streams a self-describing envelope with public ids, cents and default preferences', async () => {
-    const stream = await service.exportData(USER_PUBLIC_ID, CORRELATION_ID);
+    const stream = await service.exportData(USER_PUBLIC_ID);
     const envelope = JSON.parse(await collect(stream)) as {
       data: UserDataExport;
-      meta: {correlationId: string};
+      error: null;
     };
 
-    expect(envelope.meta).toEqual({correlationId: CORRELATION_ID});
+    expect(envelope.error).toBeNull();
+    expect(envelope).not.toHaveProperty('meta');
     expect(envelope.data.exportedAt).toBe(EXPORTED_AT);
     expect(envelope.data.schemaVersion).toBe(1);
     expect(envelope.data.preferences).toEqual({
@@ -297,9 +297,10 @@ describe('UserDataExportService (US-209)', () => {
     } as unknown as UserPreferencesEntity;
     repository.findPreferences.mockResolvedValue(preferences);
 
-    const stream = await service.exportData(USER_PUBLIC_ID, CORRELATION_ID);
-    const envelope = JSON.parse(await collect(stream)) as {data: UserDataExport};
+    const stream = await service.exportData(USER_PUBLIC_ID);
+    const envelope = JSON.parse(await collect(stream)) as {data: UserDataExport; error: null};
 
+    expect(envelope.error).toBeNull();
     expect(envelope.data.preferences).toEqual({
       theme: AppThemeEnum.DARK.toString(),
       pwaBannerDismissedAt: null,
@@ -312,7 +313,7 @@ describe('UserDataExportService (US-209)', () => {
   it('rejects a soft-deleted user before starting the stream', async () => {
     profile.findActiveByPublicId.mockResolvedValue(null);
 
-    await expect(service.exportData(USER_PUBLIC_ID, CORRELATION_ID)).rejects.toMatchObject({
+    await expect(service.exportData(USER_PUBLIC_ID)).rejects.toMatchObject({
       status: 404,
       code: 'NOT_FOUND',
     });

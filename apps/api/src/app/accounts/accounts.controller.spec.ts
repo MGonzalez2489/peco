@@ -116,6 +116,7 @@ describe('AccountsController HTTP contract (US-301/US-302)', () => {
     expect(response.body).toEqual({
       data: [ACCOUNT],
       meta: {correlationId: expect.any(String), summary: SUMMARY},
+      error: null,
     });
     expect(list).toHaveBeenCalledWith('user-public-id');
   });
@@ -153,7 +154,7 @@ describe('AccountsController HTTP contract (US-301/US-302)', () => {
 
     expect(response.body).toEqual({
       data: ACCOUNT,
-      meta: {correlationId: expect.any(String)},
+      error: null,
     });
     expect(create).toHaveBeenCalledWith(
       'user-public-id',

@@ -40,7 +40,16 @@ export class AuthController {
     identity: {limit: RATE_LIMITS.register.identity.limit, ttl: RATE_LIMITS.register.identity.ttl},
   })
   @ApiOperation({summary: 'Registrar un usuario, crear su cuenta raíz e iniciar sesión'})
-  @ApiCreatedResponse({type: AuthResponseDto, description: 'Usuario creado y autenticado.'})
+  @ApiCreatedResponse({
+    description: 'Usuario creado y autenticado en el envelope estándar {data, error}.',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {type: 'object'},
+        error: {type: 'null', nullable: true, example: null},
+      },
+    },
+  })
   @ApiBadRequestResponse({description: 'Datos de registro no válidos.'})
   @ApiConflictResponse({description: 'El correo ya está registrado.'})
   @ApiTooManyRequestsResponse({description: 'Límite de registro excedido.'})
@@ -57,7 +66,16 @@ export class AuthController {
     identity: {limit: RATE_LIMITS.login.identity.limit, ttl: RATE_LIMITS.login.identity.ttl},
   })
   @ApiOperation({summary: 'Iniciar sesión con correo y contraseña'})
-  @ApiOkResponse({type: AuthResponseDto, description: 'Sesión iniciada.'})
+  @ApiOkResponse({
+    description: 'Sesión iniciada en el envelope estándar {data, error}.',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {type: 'object'},
+        error: {type: 'null', nullable: true, example: null},
+      },
+    },
+  })
   @ApiBadRequestResponse({description: 'Datos de inicio de sesión no válidos.'})
   @ApiUnauthorizedResponse({description: 'El correo o la contraseña no son correctos.'})
   @ApiTooManyRequestsResponse({description: 'Límite de inicio de sesión excedido.'})
@@ -69,7 +87,16 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Public()
   @ApiOperation({summary: 'Renovar el par de tokens con un token de renovación'})
-  @ApiOkResponse({type: AuthResponseDto, description: 'Nuevo par de tokens emitido.'})
+  @ApiOkResponse({
+    description: 'Nuevo par de tokens emitido en el envelope estándar {data, error}.',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {type: 'object'},
+        error: {type: 'null', nullable: true, example: null},
+      },
+    },
+  })
   @ApiBadRequestResponse({description: 'Datos de renovación no válidos.'})
   @ApiUnauthorizedResponse({
     description: 'Token desconocido, expirado o reutilizado; la familia queda revocada.',

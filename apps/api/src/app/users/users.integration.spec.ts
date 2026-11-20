@@ -218,12 +218,12 @@ describe('user profile, password, deletion and export flows (MySQL 8, US-207/US-
   };
 
   const exportDocument = async (publicId: string): Promise<UserDataExport> => {
-    const stream = await exportService.exportData(publicId, '01JC7Z3Q9K');
+    const stream = await exportService.exportData(publicId);
     let text = '';
     for await (const chunk of stream) {
       text += String(chunk);
     }
-    return (JSON.parse(text) as {data: UserDataExport}).data;
+    return (JSON.parse(text) as {data: UserDataExport; error: null}).data;
   };
 
   const collectKeys = (value: unknown, keys: Set<string>): void => {

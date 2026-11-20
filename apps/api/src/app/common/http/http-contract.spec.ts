@@ -112,14 +112,15 @@ describe('HTTP contract (US-104)', () => {
   });
 
   describe('success envelope', () => {
-    it('wraps a single resource in {data, meta}', async () => {
+    it('wraps a single resource in {data, error}', async () => {
       const response = await request(app.getHttpServer()).get('/test/single').expect(200);
 
       expect(response.body).toEqual({
         data: {publicId: 'resource-1', amount: 100},
-        meta: {correlationId: expect.any(String)},
+        error: null,
       });
-      expect(response.headers['x-correlation-id']).toBe(response.body.meta.correlationId);
+      expect(response.body).not.toHaveProperty('meta');
+      expect(response.headers['x-correlation-id']).toEqual(expect.any(String));
     });
 
     it('keeps the collection in data and pagination in meta', async () => {
@@ -132,6 +133,7 @@ describe('HTTP contract (US-104)', () => {
           count: 2,
           nextCursor: 'cursor-1',
         },
+        error: null,
       });
     });
 
@@ -143,13 +145,14 @@ describe('HTTP contract (US-104)', () => {
   });
 
   describe('error envelope', () => {
-    it('renders a domain exception with code, Spanish message, details and correlation id', async () => {
+    it('renders a domain exception with data null, code, Spanish message, details and correlation id', async () => {
       const response = await request(app.getHttpServer())
         .get('/test/failure')
         .set('x-correlation-id', '01JC7Z3Q9K')
         .expect(409);
 
       expect(response.body).toEqual({
+        data: null,
         error: {
           statusCode: 409,
           code: 'VERSION_CONFLICT',
@@ -163,11 +166,14 @@ describe('HTTP contract (US-104)', () => {
     it('maps an unknown route to 404 NOT_FOUND', async () => {
       const response = await request(app.getHttpServer()).get('/does-not-exist').expect(404);
 
-      expect(response.body.error).toMatchObject({
-        statusCode: 404,
-        code: 'NOT_FOUND',
-        message: API_ERROR_MESSAGES.NOT_FOUND,
-        correlationId: expect.any(String),
+      expect(response.body).toEqual({
+        data: null,
+        error: {
+          statusCode: 404,
+          code: 'NOT_FOUND',
+          message: API_ERROR_MESSAGES.NOT_FOUND,
+          correlationId: expect.any(String),
+        },
       });
     });
 
@@ -175,6 +181,7 @@ describe('HTTP contract (US-104)', () => {
       const response = await request(app.getHttpServer()).get('/test/boom').expect(500);
 
       expect(response.body).toEqual({
+        data: null,
         error: {
           statusCode: 500,
           code: 'INTERNAL_ERROR',
@@ -196,11 +203,14 @@ describe('HTTP contract (US-104)', () => {
         .send({name: 'Café', amount: 1500, padding: 'x'.repeat(1024 * 1024)})
         .expect(413);
 
-      expect(response.body.error).toEqual({
-        statusCode: 413,
-        code: 'PAYLOAD_TOO_LARGE',
-        message: API_ERROR_MESSAGES.PAYLOAD_TOO_LARGE,
-        correlationId: expect.any(String),
+      expect(response.body).toEqual({
+        data: null,
+        error: {
+          statusCode: 413,
+          code: 'PAYLOAD_TOO_LARGE',
+          message: API_ERROR_MESSAGES.PAYLOAD_TOO_LARGE,
+          correlationId: expect.any(String),
+        },
       });
     });
   });
@@ -212,7 +222,10 @@ describe('HTTP contract (US-104)', () => {
         .set('x-correlation-id', '01JC7Z3Q9K')
         .expect(200);
 
-      expect(response.body.meta.correlationId).toBe('01JC7Z3Q9K');
+      expect(response.body).toEqual({
+        data: {publicId: 'resource-1', amount: 100},
+        error: null,
+      });
       expect(response.headers['x-correlation-id']).toBe('01JC7Z3Q9K');
     });
 
@@ -222,8 +235,12 @@ describe('HTTP contract (US-104)', () => {
         .set('x-correlation-id', 'short')
         .expect(200);
 
-      expect(response.body.meta.correlationId).not.toBe('short');
-      expect(response.body.meta.correlationId).toMatch(
+      expect(response.body).toEqual({
+        data: {publicId: 'resource-1', amount: 100},
+        error: null,
+      });
+      expect(response.headers['x-correlation-id']).not.toBe('short');
+      expect(response.headers['x-correlation-id']).toMatch(
         /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
       );
     });
@@ -236,7 +253,10 @@ describe('HTTP contract (US-104)', () => {
         .send({name: 'Café', amount: 1500})
         .expect(201);
 
-      expect(response.body.data).toEqual({name: 'Café', amount: 1500});
+      expect(response.body).toEqual({
+        data: {name: 'Café', amount: 1500},
+        error: null,
+      });
     });
 
     it('rejects invalid fields with details.fields in Spanish', async () => {
@@ -245,17 +265,20 @@ describe('HTTP contract (US-104)', () => {
         .send({name: 'a', amount: '1500'})
         .expect(400);
 
-      expect(response.body.error).toEqual({
-        statusCode: 400,
-        code: 'VALIDATION_ERROR',
-        message: API_ERROR_MESSAGES.VALIDATION_ERROR,
-        details: {
-          fields: {
-            name: 'La longitud no es válida.',
-            amount: 'Debe ser un número entero.',
+      expect(response.body).toEqual({
+        data: null,
+        error: {
+          statusCode: 400,
+          code: 'VALIDATION_ERROR',
+          message: API_ERROR_MESSAGES.VALIDATION_ERROR,
+          details: {
+            fields: {
+              name: 'La longitud no es válida.',
+              amount: 'Debe ser un número entero.',
+            },
           },
+          correlationId: expect.any(String),
         },
-        correlationId: expect.any(String),
       });
     });
 
@@ -273,7 +296,7 @@ describe('HTTP contract (US-104)', () => {
     it('accepts a list limit within the D25 bound', async () => {
       const response = await request(app.getHttpServer()).get('/test/items?limit=100').expect(200);
 
-      expect(response.body.data).toEqual({limit: 100});
+      expect(response.body).toEqual({data: {limit: 100}, error: null});
     });
 
     it('rejects a list limit above 100 instead of clamping it', async () => {
@@ -284,6 +307,7 @@ describe('HTTP contract (US-104)', () => {
         code: 'VALIDATION_ERROR',
         details: {fields: {limit: expect.any(String)}},
       });
+      expect(response.body.data).toBeNull();
     });
   });
 

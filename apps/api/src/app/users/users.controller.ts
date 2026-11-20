@@ -7,7 +7,6 @@ import {
   HttpCode,
   HttpStatus,
   Patch,
-  Req,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -29,7 +28,6 @@ import {UserResponseDto} from '../common/dto/user-response.dto';
 import {EnvelopeStream} from '../common/http/envelope-stream';
 import {CurrentUser} from '../common/security/decorators/current-user.decorator';
 import {RateLimited} from '../common/security/decorators/rate-limited.decorator';
-import type {CorrelatedRequest} from '../common/types/correlated-request.type';
 import {ChangePasswordRequestDto} from './dto/change-password-request.dto';
 import {DeleteUserRequestDto} from './dto/delete-user-request.dto';
 import {UpdateUserRequestDto} from './dto/update-user-request.dto';
@@ -57,17 +55,21 @@ export class UsersController {
   @ApiOperation({summary: 'Exportar todos los datos del usuario autenticado'})
   @ApiProduces('application/json')
   @ApiOkResponse({
-    description: 'Documento JSON con los datos del usuario. Incluye el envelope estándar.',
-    schema: {type: 'object'},
+    description:
+      'Documento JSON con los datos del usuario en el envelope estándar {data, error}.',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {type: 'object'},
+        error: {type: 'null', nullable: true, example: null},
+      },
+    },
   })
   @ApiUnauthorizedResponse({description: 'Falta un token de acceso válido.'})
   @ApiNotFoundResponse({description: 'El usuario ya no está activo.'})
   @ApiTooManyRequestsResponse({description: 'Límite de lecturas excedido.'})
-  exportData(
-    @CurrentUser() publicId: string,
-    @Req() request: CorrelatedRequest,
-  ): Promise<EnvelopeStream> {
-    return this.exports.exportData(publicId, request.correlationId);
+  exportData(@CurrentUser() publicId: string): Promise<EnvelopeStream> {
+    return this.exports.exportData(publicId);
   }
 
   @Patch('me')
@@ -79,7 +81,16 @@ export class UsersController {
     user: {limit: RATE_LIMITS.mutation.user.limit, ttl: RATE_LIMITS.mutation.user.ttl},
   })
   @ApiOperation({summary: 'Actualizar el nombre del usuario autenticado'})
-  @ApiOkResponse({type: UserResponseDto, description: 'Perfil actualizado.'})
+  @ApiOkResponse({
+    description: 'Perfil actualizado en el envelope estándar {data, error}.',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {type: 'object'},
+        error: {type: 'null', nullable: true, example: null},
+      },
+    },
+  })
   @ApiBadRequestResponse({description: 'El nombre no tiene entre 1 y 80 caracteres.'})
   @ApiUnauthorizedResponse({description: 'Falta un token de acceso válido.'})
   @ApiNotFoundResponse({description: 'El usuario ya no está activo.'})

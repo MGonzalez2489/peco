@@ -8,7 +8,7 @@ export const createOpenApiDocument = (app: INestApplication) => {
   const documentConfig = new DocumentBuilder()
     .setTitle('Peco API')
     .setDescription(
-      'API de Peco. Las respuestas correctas usan {data, meta} y los errores usan {error}.',
+      'API de Peco. Las respuestas correctas envuelven el resultado en {data, error}; las listas incluyen {data, meta, error} y los errores usan {data: null, error}. /health es plano y 204 no tiene cuerpo.',
     )
     .setVersion('1.0')
     .addBearerAuth()

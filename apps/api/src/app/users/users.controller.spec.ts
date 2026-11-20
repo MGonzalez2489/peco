@@ -81,10 +81,10 @@ describe('UsersController HTTP contract (US-207/US-208)', () => {
     remove = jest.fn().mockResolvedValue(undefined);
     changePassword = jest.fn().mockResolvedValue(undefined);
     exportData = jest.fn(
-      (_publicId: string, correlationId: string) =>
+      (_publicId: string) =>
         new EnvelopeStream(
           (async function* () {
-            yield JSON.stringify({data: EXPORT_DOCUMENT, meta: {correlationId}});
+            yield JSON.stringify({data: EXPORT_DOCUMENT, error: null});
           })(),
         ),
     );
@@ -112,11 +112,11 @@ describe('UsersController HTTP contract (US-207/US-208)', () => {
 
   it('streams the full export inside the standard envelope', async () => {
     const response = await request(app.getHttpServer()).get('/users/me/export').expect(200);
-    const correlationId = response.headers['x-correlation-id'];
 
     expect(response.headers['content-type']).toContain('application/json');
-    expect(response.body).toEqual({data: EXPORT_DOCUMENT, meta: {correlationId}});
-    expect(exportData).toHaveBeenCalledWith('user-public-id', correlationId);
+    expect(response.headers['x-correlation-id']).toEqual(expect.any(String));
+    expect(response.body).toEqual({data: EXPORT_DOCUMENT, error: null});
+    expect(exportData).toHaveBeenCalledWith('user-public-id');
   });
 
   it('returns 404 NOT_FOUND when the exported user has been deleted', async () => {
@@ -145,7 +145,7 @@ describe('UsersController HTTP contract (US-207/US-208)', () => {
       .send({name: 'Ana'})
       .expect(200);
 
-    expect(response.body).toEqual({data: USER_RESPONSE, meta: {correlationId: expect.any(String)}});
+    expect(response.body).toEqual({data: USER_RESPONSE, error: null});
     expect(update).toHaveBeenCalledWith('user-public-id', {name: 'Ana'});
   });
 

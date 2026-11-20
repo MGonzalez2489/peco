@@ -16,6 +16,7 @@ export const renderApiError = (
   correlationId: string,
 ): void => {
   response.status(error.statusCode).json({
+    data: null,
     error: {
       statusCode: error.statusCode,
       code: error.code,

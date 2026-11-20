@@ -45,7 +45,7 @@ export class UserDataExportService {
     private readonly clock: UtcClock,
   ) {}
 
-  async exportData(publicId: string, correlationId: string): Promise<EnvelopeStream> {
+  async exportData(publicId: string): Promise<EnvelopeStream> {
     const user = await this.profile.findActiveByPublicId(publicId);
     if (!user) {
       throw userNotFoundException();
@@ -57,9 +57,7 @@ export class UserDataExportService {
       this.loadPublicIds(user.id),
     ]);
 
-    return new EnvelopeStream(
-      this.streamDocument(user, preferences, accountBalances, publicIds, correlationId),
-    );
+    return new EnvelopeStream(this.streamDocument(user, preferences, accountBalances, publicIds));
   }
 
   private async loadPublicIds(userId: number): Promise<ExportPublicIds> {
@@ -78,7 +76,6 @@ export class UserDataExportService {
     preferences: UserPreferencesEntity | null,
     accountBalances: AccountBalancesBySnapshot,
     publicIds: ExportPublicIds,
-    correlationId: string,
   ): AsyncGenerator<string> {
     yield `{"data":{"exportedAt":${JSON.stringify(this.clock.now())},"schemaVersion":${USER_DATA_EXPORT_SCHEMA_VERSION},"user":${JSON.stringify(this.mapUser(user))},"preferences":${JSON.stringify(this.mapPreferences(preferences))},`;
 
@@ -117,7 +114,7 @@ export class UserDataExportService {
       await this.repository.streamPeriodSnapshots(user.id),
       (row: PeriodSnapshotEntity) => this.mapPeriodSnapshot(row, accountBalances, publicIds),
     );
-    yield `},"meta":{"correlationId":${JSON.stringify(correlationId)}}}\n`;
+    yield '},"error":null}\n';
   }
 
   private async *streamCollection<T>(
