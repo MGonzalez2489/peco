@@ -1,5 +1,5 @@
+import {buildAccountSummary} from '@peco/utils';
 import {Account} from '../models/account.model';
-import {isLiability} from './is-liability.util';
 
 /**
  * Money the user can actually spend: balances of non-liability accounts that
@@ -8,7 +8,5 @@ import {isLiability} from './is-liability.util';
  * `calculateTotalLiabilities`.
  */
 export function calculateNetLiquidBalance(accounts: Account[]): number {
-  return accounts
-    .filter((account) => account.includeInTotal !== false && !isLiability(account.type))
-    .reduce((total, account) => total + account.currentBalance, 0);
+  return buildAccountSummary(accounts).availableBalance;
 }

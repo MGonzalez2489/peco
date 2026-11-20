@@ -25,5 +25,6 @@ import {UsersService} from './users.service';
     PasswordHasher,
     UtcClock,
   ],
+  exports: [UserProfileRepository],
 })
 export class UsersModule {}

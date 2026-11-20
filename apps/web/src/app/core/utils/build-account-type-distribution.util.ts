@@ -1,3 +1,4 @@
+import {buildAccountSummary} from '@peco/utils';
 import {ACCOUNT_TYPES} from '../constants/account-types.constant';
 import {Account} from '../models/account.model';
 import {AccountTypeSummary} from '../models/account-type-summary.model';
@@ -8,14 +9,16 @@ import {AccountTypeSummary} from '../models/account-type-summary.model';
  * the responsive summaries keep a stable shape and column count.
  */
 export function buildAccountTypeDistribution(accounts: Account[]): AccountTypeSummary[] {
+  const summaries = buildAccountSummary(accounts).typeSummaries;
+
   return ACCOUNT_TYPES.map((definition) => {
-    const matching = accounts.filter((account) => account.type === definition.key);
+    const summary = summaries.find((item) => item.type === definition.key);
 
     return {
       type: definition.key,
       label: definition.pluralName,
-      count: matching.length,
-      total: matching.reduce((sum, account) => sum + account.currentBalance, 0),
+      count: summary?.count ?? 0,
+      total: summary?.total ?? 0,
       color: definition.color,
       icon: definition.icon,
     };

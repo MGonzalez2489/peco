@@ -7,13 +7,12 @@ import {
   withDevtools,
 } from '@angular-architects/ngrx-toolkit';
 import {patchState, signalStore, withComputed, withMethods, withState} from '@ngrx/signals';
+import {buildAccountSummary} from '@peco/utils';
 import {CreateAccountDto} from '../dtos/create-account.dto';
 import {Account} from '../models/account.model';
 import {AccountsStorageService} from '../services/accounts-storage.service';
 import {BalanceOperation} from '../types/balance-operation.type';
 import {buildAccountTypeDistribution} from '../utils/build-account-type-distribution.util';
-import {calculateNetLiquidBalance} from '../utils/calculate-net-liquid-balance.util';
-import {calculateTotalLiabilities} from '../utils/calculate-total-liabilities.util';
 import {isNegativeBalanceAllowed} from '../utils/is-negative-balance-allowed.util';
 
 /**
@@ -38,22 +37,24 @@ export const AccountsStore = signalStore(
   {providedIn: 'root'},
   withState(initialState),
   withCallState(),
-  withComputed(({accounts, selectedAccountId}) => ({
-    rootAccount: computed(() => accounts().find((account) => account.isRoot === true)),
-    pinnedAccounts: computed(() => accounts().filter((account) => account.pinToHome === true)),
-    // Net worth: every balance with its sign, so credit debt subtracts.
-    totalBalance: computed(() =>
-      accounts().reduce((total, account) => total + account.currentBalance, 0),
-    ),
-    // Liquid money: liabilities are reported separately and never reduce it.
-    availableBalance: computed(() => calculateNetLiquidBalance(accounts())),
-    liabilitiesBalance: computed(() => calculateTotalLiabilities(accounts())),
-    // Distribution by account type: always the four canonical types.
-    accountTypeSummaries: computed(() => buildAccountTypeDistribution(accounts())),
-    selectedAccount: computed(() =>
-      accounts().find((account) => account.id === selectedAccountId()),
-    ),
-  })),
+  withComputed(({accounts, selectedAccountId}) => {
+    const summary = computed(() => buildAccountSummary(accounts()));
+
+    return {
+      rootAccount: computed(() => accounts().find((account) => account.isRoot === true)),
+      pinnedAccounts: computed(() => accounts().filter((account) => account.pinToHome === true)),
+      // Net worth: every balance with its sign, so credit debt subtracts.
+      totalBalance: computed(() => summary().totalBalance),
+      // Liquid money: liabilities are reported separately and never reduce it.
+      availableBalance: computed(() => summary().availableBalance),
+      liabilitiesBalance: computed(() => summary().liabilitiesBalance),
+      // Distribution by account type: always the four canonical types.
+      accountTypeSummaries: computed(() => buildAccountTypeDistribution(accounts())),
+      selectedAccount: computed(() =>
+        accounts().find((account) => account.id === selectedAccountId()),
+      ),
+    };
+  }),
   withMethods((store) => {
     const storage = inject(AccountsStorageService);
 

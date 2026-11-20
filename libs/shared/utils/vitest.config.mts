@@ -1,8 +1,10 @@
+import tsconfigPaths from 'vite-tsconfig-paths';
 import {defineConfig} from 'vitest/config';
 
 export default defineConfig(() => ({
   root: import.meta.dirname,
   cacheDir: '../../../node_modules/.vite/libs/shared/utils',
+  plugins: [tsconfigPaths({root: '../../../'})],
   resolve: {
     tsconfigPaths: true,
   },

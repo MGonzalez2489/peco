@@ -1,4 +1,5 @@
 import {Module} from '@nestjs/common';
+import {AccountsModule} from './accounts/accounts.module';
 import {AppController} from './app.controller';
 import {AppService} from './app.service';
 import {AuthModule} from './auth/auth.module';
@@ -12,7 +13,7 @@ import {UsersModule} from './users/users.module';
  * `/health` with `503` while MySQL is down.
  */
 @Module({
-  imports: [ConfigModule, HealthModule, AuthModule, UsersModule],
+  imports: [ConfigModule, HealthModule, AuthModule, UsersModule, AccountsModule],
   controllers: [AppController],
   providers: [AppService],
 })
