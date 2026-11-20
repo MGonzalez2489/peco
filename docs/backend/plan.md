@@ -970,12 +970,12 @@ erDiagram
 
 ### 8.3 Response envelopes, status codes & errors
 
-> **Decided (G1/D65): every client-facing endpoint returns the same
-> envelope.** The examples in 8.6–8.14 show the content of `data`; the envelope
-> is defined once, here, and never repeated per route. `/health` is the only
-> exception (infrastructure probe) and `204` stays bodyless.
+> **Decided (G1/D65): every client-facing endpoint returns a response envelope.**
+> The examples in 8.6–8.14 show the content of `data`; the envelope is defined
+> once, here, and never repeated per route. `/health` is the only exception
+> (infrastructure probe) and `204` stays bodyless.
 
-**Success — single resource:**
+**Success — single resource (non-list):**
 
 ```json
 {
@@ -988,9 +988,15 @@ erDiagram
     "createdAt": "2026-11-12T15:04:05.123Z",
     "updatedAt": "2026-11-12T15:04:05.123Z"
   },
-  "meta": {"correlationId": "01JC7Z3Q9K"}
+  "error": null
 }
 ```
+
+- `data` contains the returned resource, object, or scalar value.
+- `error` is always present and is `null` on success.
+- This envelope does **not** include `meta`.
+- The correlation identifier is still returned in the `X-Correlation-Id`
+  response header (8.1).
 
 **Success — list:** the collection is `data`; pagination and summary live in
 `meta`.
@@ -1005,28 +1011,36 @@ erDiagram
     "nextCursor": "eyJkIjoiMjAyNi0xMS0xMiJ9",
     "totals": {"inflows": 300000, "outflows": 145000},
     "correlationId": "01JC7Z3Q9K"
-  }
+  },
+  "error": null
 }
 ```
 
-**Rules for `meta`:**
+- `data` contains the collection.
+- `meta` contains transport-level information for the list response.
+- `error` is always present and is `null` on success.
+
+**Rules for `meta` (list success responses only):**
 
 - Transport-level information only: `nextCursor`, `totals`, `summary`, `count`
   and `correlationId`. Domain fields never live in `meta`; they belong in
   `data`.
-- `correlationId` is always present. Every other key is optional and only
-  appears on endpoints that document it.
+- `correlationId` is always present in list success responses. Every other key
+  is optional and only appears on endpoints that document it.
 - Tokens, secrets and personal data are never placed in `meta`, because
   infrastructure may log it.
+- `meta` is omitted on error responses.
 
 **Delete:** `204 No Content` is bodyless, so it carries no envelope. `200` with
 a summary is used when the operation has side effects (account transfer,
-category reassignment) and that summary goes inside `data`.
+category reassignment) and that summary goes inside `data` with `error: null`.
 
-**Error:** one nesting level under `error`; the fields are unchanged.
+**Error (list and non-list responses):** `data` is `null` and `error` contains
+the error object; the error fields are unchanged.
 
 ```json
 {
+  "data": null,
   "error": {
     "statusCode": 409,
     "code": "VERSION_CONFLICT",
@@ -1039,12 +1053,23 @@ category reassignment) and that summary goes inside `data`.
 
 `message` is user-facing and Spanish; `code` is stable and English.
 
+**Envelope summary:**
+
+| Case | Success shape | Error shape |
+| --- | --- | --- |
+| Single resource (non-list) | `{ "data": <resource \| object \| value>, "error": null }` | `{ "data": null, "error": { ... } }` |
+| List / collection | `{ "data": <array>, "meta": { "correlationId", ... }, "error": null }` | `{ "data": null, "error": { ... } }` |
+| Bodyless delete | `204` (no body) | `{ "data": null, "error": { ... } }` |
+| Health probe | flat object (exception) | flat/object per probe contract |
+
 **Health:** `GET /health` is the only unwrapped route, so load balancers and
 uptime probes keep a flat contract: `{"status": "ok", "uptime": 1234, "db": "up"}`.
 
 **Client unwrap:** the frontend strips the envelope once, in its HTTP
-interceptor, and the signal stores keep receiving plain models. No store, view
-or test knows about `data`/`meta`.
+interceptor. For list success responses it receives `data` and `meta`; for
+single-resource success responses it receives `data`; for error responses it
+reads `error`. No store, view or test depends on the raw envelope shape beyond
+that unwrap point.
 
 | HTTP | `code`                         | When                                                                         |
 | ---- | ------------------------------ | ---------------------------------------------------------------------------- |
@@ -3504,26 +3529,54 @@ decided (D59), C4 is decided (D58) and E1/E2 are decided (D62/D63).
 
 ### 18.7 Response envelope (G1, decided D65)
 
-| #   | Question                                               | Decision                                                                                                                                                         | Status            |
-| --- | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
-| G1  | Should every endpoint return the same generic wrapper? | Success `{data, meta}`; lists keep the collection in `data` and pagination/summary in `meta`; errors under `{error}`; `/health` stays flat; `204` stays bodyless | **DECIDED (D65)** |
+| #   | Question                                               | Decision                                                                                                                                                                                                 | Status            |
+| --- | ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
+| G1  | Should every endpoint return one generic wrapper?      | Wrapped responses always include `data` and `error`: non-list success returns `{data, error: null}`; list success returns `{data, meta, error: null}`; errors return `{data: null, error}`; `/health` stays flat; `204` stays bodyless | **DECIDED (D65)** |
 
-**Contract.** One envelope for every client-facing route (normative text in 8.3):
+**Contract.** One envelope per response kind (normative text in 8.3):
 
 ```json
 {
   "data": {"publicId": "…", "currentBalance": 150000},
-  "meta": {"correlationId": "01JC7Z3Q9K"}
+  "error": null
+}
+```
+
+```json
+{
+  "data": [{"publicId": "…"}],
+  "meta": {"nextCursor": null, "correlationId": "01JC7Z3Q9K"},
+  "error": null
+}
+```
+
+```json
+{
+  "data": null,
+  "error": {
+    "statusCode": 409,
+    "code": "VERSION_CONFLICT",
+    "message": "El recurso fue modificado por otra operación.",
+    "details": {"expectedVersion": 3, "currentVersion": 4},
+    "correlationId": "01JC7Z3Q9K"
+  }
 }
 ```
 
 ```ts
-interface ApiSuccess<T, M extends object = object> {
+interface ApiSingleSuccess<T> {
   data: T;
+  error: null;
+}
+
+interface ApiListSuccess<T, M extends object = object> {
+  data: T[];
   meta: {correlationId: string} & M;
+  error: null;
 }
 
 interface ApiError {
+  data: null;
   error: {
     statusCode: number;
     code: string;
@@ -3563,33 +3616,17 @@ interface ApiError {
 
 **Rules that come with the decision.**
 
-1. `meta` carries transport-level information only (`nextCursor`, `totals`,
-   `summary`, `count`, `correlationId`). Domain data always lives in `data`.
-2. `correlationId` is always present; the other `meta` keys appear only where
-   documented.
-3. `/health` is exempt so infrastructure probes keep a flat contract.
-4. `204` responses are bodyless and therefore unwrapped.
-5. Errors use `{"error": {…}}`; `statusCode`, `code`, `message`, `details` and
-   `correlationId` are unchanged from 8.3.
-6. The frontend unwraps once in its HTTP interceptor; stores and views receive
-   plain models and never see `data`/`meta`.
-7. OpenAPI exposes one `ApiSuccess<T>` and one `ApiError` schema; per-route
-   success schemas are generated from the `data` type.
+1. `data` and `error` are always present in every wrapped response.
+2. On success, `data` contains the returned value (resource/object/scalar for single-resource endpoints, or array for list endpoints) and `error` is `null`.
+3. On error, `data` is `null` and `error` contains the error object with the same shape for list and non-list endpoints.
+4. `meta` exists only on list success responses and carries transport-level information only (`nextCursor`, `totals`, `summary`, `count`, `correlationId`). Domain data always lives in `data`.
+5. `correlationId` is always present in list success `meta` and in every error body, and every response still carries the `X-Correlation-Id` header (8.1).
+6. `/health` is exempt so infrastructure probes keep a flat contract.
+7. `204` responses are bodyless and therefore unwrapped.
+8. The frontend unwraps once in its HTTP interceptor: success responses yield `data` (and `meta` for lists); error responses yield `error`. Stores and views never depend on the raw envelope beyond that unwrap point.
+9. OpenAPI exposes `ApiSingleSuccess<T>`, `ApiListSuccess<T>` and `ApiError`; per-route success schemas are generated from the `data` type and, for lists, the documented `meta` shape.
 
-**Why A and not B, C or D.**
-
-- **B (status quo)** needs three client cases (bare object, `{items, …}`, flat
-  error) and has no home for `nextCursor`, `totals` or `correlationId`. The
-  current catalog already has two incompatible list shapes
-  (`{items, summary}` vs `{items, nextCursor, totals}`), which is the problem
-  the wrapper removes.
-- **C (hybrid)** keeps the single-resource special case, so the client still
-  branches and the inconsistency survives.
-- **D (JSON:API)** adds `type`/`id`/`attributes`/`relationships` semantics that
-  this domain does not need and the Angular stores do not model.
-- **A** costs one nesting level and buys one contract for 40+ routes, one
-  unwrap point and one OpenAPI schema. The `meta` block is where pagination and
-  totals belong, so `data` stays a clean domain payload.
+**Why (updated):** a constant `data`/`error` pair makes the envelope explicit and easy to consume in both success and failure paths. List responses keep `meta` for transport concerns (pagination, totals, correlation), while single-resource responses avoid forcing `meta` when no transport metadata applies, preserving a uniform error contract.
 
 **Cost and sequencing.** The envelope is implemented once, in the response
 interceptor of US-104, and the client unwrap is one operator in its HTTP layer.
@@ -3598,13 +3635,13 @@ estimate; retrofitting it after the modules are written would touch every
 response, every E2E assertion and the OpenAPI document. G1 is therefore settled
 before slice S1 closes and does not change the 577 h of section 21.3.
 
-**G1 — plain language.** Every endpoint now answers with the same shape: the
-useful content inside `data`, and any extra information (next page, totals,
-correlation id) inside `meta`. An error answers with the same shape everywhere,
-under `error`. The client unwraps once, in one place, and every screen receives
-the same thing. Two deliberate exceptions: `/health` stays flat because
-monitoring tools read it, and `204` answers have no body at all. **Decided
-(D65).**
+**G1 — plain language.** Every wrapped response carries `data` and `error`. On
+success, `error` is `null` and `data` holds the result: a single resource/object
+or, for lists, a collection with `meta` for pagination, totals and correlation.
+On error, `data` is `null` and `error` holds the same error object everywhere.
+The client unwraps once, in one place. Two deliberate exceptions: `/health`
+stays flat because monitoring tools read it, and `204` answers have no body.
+**Decided (D65).**
 
 ---
 
@@ -3677,7 +3714,7 @@ monitoring tools read it, and `204` answers have no body at all. **Decided
 | 2026-11-13 | D62 | E1 accepted: `accountPeriodBalances` freezes `includeInTotal`; `availableBalance` and `liabilitiesBalance` of a closed month are derived from the frozen `accountType`/`includeInTotal`, exactly like the live path                                                                                                                                                                                                                                                                                                                                                                                  | A closed month must answer "saldo disponible" with the same meaning as the current month; using the gross total hid credit-card debt and included excluded accounts                                                                                                                   | Product            |
 | 2026-11-13 | D63 | E2 accepted: `periodSnapshots.totalTransactionsCount` counts distinct movements, so a transfer counts once; per-account `totalTransactions` keeps counting it on both sides                                                                                                                                                                                                                                                                                                                                                                                                                          | The month counter must match the rows the user sees in the list; the per-account breakdown stays correct per account                                                                                                                                                                  | Product            |
 | 2026-11-13 | D64 | F1 accepted: `categories` gets a stored generated `ownerKey = COALESCE(userId, 0)` and uniqueness moves to `unique(ownerKey, activeName)`, refining D36                                                                                                                                                                                                                                                                                                                                                                                                                                              | MySQL treats `NULL`s as distinct, so `unique(userId, activeName)` let the global catalog (`userId = NULL`) be duplicated; the owner key closes that gap without a second table                                                                                                        | Backend            |
-| 2026-11-13 | D65 | G1 accepted: every client-facing endpoint returns `{data, meta}` on success and `{error}` on failure; `meta` is transport-level only; `/health` stays flat and `204` stays bodyless                                                                                                                                                                                                                                                                                                                                                                                                                  | One contract for 40+ routes, one client unwrap and one OpenAPI schema; the current catalog already had two incompatible list shapes                                                                                                                                                   | Backend / Frontend |
+| 2026-11-13 | D65 | G1 accepted (amended by D93): wrapped responses always include `data` and `error`. Single-resource success returns `{data, error: null}`; list success returns `{data, meta, error: null}` (`meta` is transport-level only, with `correlationId` always present). Errors return `{data: null, error}` with the same error object shape for list and non-list responses. `/health` stays flat and `204` stays bodyless                                                                                                                                                                                                                                            | One explicit envelope per response kind, one client unwrap and one OpenAPI contract; uniform `data`/`error` keys simplify success/error handling while keeping list transport metadata in `meta`                                                                                 | Backend / Frontend |
 | 2026-11-13 | D66 | Step 8 accepted: 1 full-time developer at 30 productive h/week, 6 milestones mapped to the 6 slices of 21.17, 3 release candidates (RC1 after the ledger, RC2 feature-complete, RC3 = `v1.0.0`) and a 15% buffer; there is no deadline, so dates are targets and a slip shifts the whole line instead of cutting scope                                                                                                                                                                                                                                                                               | No external deadline exists; keeping the scope fixed and letting dates float protects the ledger and period invariants, which are the most expensive rules to fix later                                                                                                               | Product / Backend  |
 | 2026-11-14 | D68 | NFR baseline accepted for v1: availability 99.5%/month, RPO 24 h (15 min with binlog replay), RTO 4 h, p95 300 ms lists / 500 ms reports / 200 ms writes at 10k movements, 10 DB connections per instance with a 5 s statement and lock-wait timeout, rate limits per 13.1, logs 30 days and audit 2 years; alerts are rules whose delivery channel lives in the platform, not in the app                                                                                                                                                                                                            | The plan had a single nine-row NFR table with no numbers, so "fast", "reliable" and "safe" were untestable; fixing explicit baselines lets US-1106 and US-1204 fail objectively, and keeping alert delivery in the platform avoids the deferred external integration (F2)             | Backend / Ops      |
 | 2026-11-14 | D69 | The frontend refactor that consumes the API stays out of v1 (phase 2, ~80–140 h, own plan). RC3 is renamed **API v1.0.0** and tagged `api-v1.0.0`; the milestone calendar is unchanged (GA 2027-04-23, buffer 2027-05-14)                                                                                                                                                                                                                                                                                                                                                                            | Shipping an API nobody consumes is not a product release, but pretending the client work is free would corrupt the estimate; naming the artifact honestly keeps the backend plan focused and makes the phase-2 cost visible instead of hidden in a footnote                           | Product / Backend  |
@@ -3820,8 +3857,10 @@ deletion, D87) and **US-208** (password change, D88) are done; the US-207 mutati
 - `auditLogs` written for every mutating action listed in 7.3/D24.
 - Money stays integer cents (D26); timestamps stay `VARCHAR(24)` UTC (D8/D27);
   no internal `id` leaks (D13/D28).
-- Every success response uses the 8.3 envelope (`data` + `meta`); errors use
-  `{error: {…}}`; `204` stays bodyless (D65).
+- Wrapped responses follow the 8.3 envelope (D65): single-resource success
+  returns `{data, error: null}`; list success returns `{data, meta, error: null}`;
+  errors return `{data: null, error}` with the same error shape; `204` stays
+  bodyless and `/health` stays flat.
 - The change stays inside its project: no app imports another app, and anything
   shared lives in `libs/shared/*` with the tags of 6.5 (D67).
 - `npx nx affected -t lint test build` is green for the projects the story
@@ -3921,9 +3960,11 @@ _Refs:_ 7.1, 7.2, D6, D8, D10, D11, D14, D15, D16, D26–D28.
 
 _Refs:_ 8.3, 8.15, 13.2, D65, D78.
 
-- Every success response is `{data, meta}` and every error is
-  `{error: {statusCode, code, message, details?, correlationId}}`; `message` is
-  Spanish, `code` is the stable English value from the 8.3 table (D65).
+- Wrapped responses always include `data` and `error` (D65): single-resource
+  success returns `{data, error: null}`; list success returns
+  `{data, meta, error: null}`; errors return `{data: null, error}` with
+  `{statusCode, code, message, details?, correlationId}`. `message` is Spanish,
+  `code` is the stable English value from the 8.3 table.
 - The envelope is applied by one response interceptor, not per controller; a
   test asserts a single-resource route, a list route and an error route.
 - `204` responses stay bodyless and `/health` stays flat (the two documented
@@ -4875,7 +4916,7 @@ _Refs:_ 14, 16.3, 20.
 | --- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------ |
 | F1  | How is uniqueness enforced for system categories whose `userId` is `NULL`? | Stored generated `ownerKey = COALESCE(userId, 0)` plus `unique(ownerKey, activeName)`                              | **DECIDED (D64)**        |
 | F2  | Which email transport sends reset links?                                   | Provider-agnostic `MailService` behind an interface; the real provider is chosen in the end-of-v1 integration pass | **DEFERRED (end of v1)** |
-| G1  | Does every endpoint return one generic wrapper?                            | Success `{data, meta}`, errors under `{error}`, `/health` flat, `204` bodyless (8.3, 18.7)                         | **DECIDED (D65)**        |
+| G1  | Does every endpoint return one generic wrapper?                            | Wrapped responses always include `data` and `error`: single-resource success `{data, error: null}`; list success `{data, meta, error: null}`; errors `{data: null, error}`; `/health` flat, `204` bodyless (8.3, 18.7) | **DECIDED (D65, amended D93)** |
 
 **F1 — plain language.** The shared categories (`Otros`, `Transferencia`,
 `Ajuste de Saldo`) have no owner, and the database did not consider two "no
@@ -4894,12 +4935,13 @@ block US-205.**
 > reset needs an operator-assisted path. That is acceptable for the v1 phase and
 > becomes a release condition only if self-service reset is required at launch.
 
-**G1 — plain language.** Every endpoint now answers with the same shape: the
-useful content inside `data` and any extra information (next page, totals,
-correlation id) inside `meta`. Errors answer under `error`. The client unwraps
-once, in one place. Two deliberate exceptions: `/health` stays flat because
-monitoring tools read it, and `204` answers have no body. **Decided (D65);
-normative text in 8.3, analysis in 18.7.**
+**G1 — plain language.** Every wrapped response carries `data` and `error`. On
+success, `error` is `null` and `data` holds the result: a single resource/object
+or, for lists, a collection with `meta` for pagination, totals and correlation.
+On error, `data` is `null` and `error` holds the same error object everywhere.
+The client unwraps once, in one place. Two deliberate exceptions: `/health`
+stays flat because monitoring tools read it, and `204` answers have no body.
+**Decided (D65, amended D93); normative text in 8.3, analysis in 18.7.**
 
 ---
 
@@ -5090,9 +5132,10 @@ One item is deliberately deferred:
   US-100 (M0, week 1).
 - **Step 8 — decided (D66):** the delivery plan of 16.4 fixes team size,
   milestones and release candidates; no calendar date is a commitment.
-- **G1 — decided (D65):** every client-facing endpoint returns `{data, meta}` on
-  success and `{error}` on failure; `/health` stays flat and `204` stays
-  bodyless (8.3, 18.7).
+- **G1 — decided (D65, amended D93):** wrapped responses always include `data`
+  and `error`. Single-resource success returns `{data, error: null}`; list
+  success returns `{data, meta, error: null}`; errors return `{data: null, error}`.
+  `/health` stays flat and `204` stays bodyless (8.3, 18.7).
 - **F1 — decided (D64):** `categories` gets a stored generated
   `ownerKey = COALESCE(userId, 0)` and `unique(ownerKey, activeName)`, so the
   global catalog cannot be duplicated.
