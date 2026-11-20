@@ -1,5 +1,6 @@
 import type {INestApplication} from '@nestjs/common';
 import {DocumentBuilder, SwaggerModule} from '@nestjs/swagger';
+import {CreateAccountRequestDto} from '../../accounts/dto/create-account-request.dto';
 import {ListQueryDto} from '../dto/list-query.dto';
 
 /** Builds the OpenAPI document from the same DTOs used by validation. */
@@ -14,6 +15,6 @@ export const createOpenApiDocument = (app: INestApplication) => {
     .build();
 
   return SwaggerModule.createDocument(app, documentConfig, {
-    extraModels: [ListQueryDto],
+    extraModels: [ListQueryDto, CreateAccountRequestDto],
   });
 };

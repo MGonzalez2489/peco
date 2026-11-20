@@ -9,7 +9,20 @@ import {AccountRepository} from './services/account.repository';
 
 jest.setTimeout(180_000);
 
-describe('account listing flow (MySQL 8, US-301)', () => {
+const CREATE_REQUEST = {
+  name: 'Ahorros',
+  type: AccountTypeEnum.SAVINGS.toString(),
+  initialBalance: 500000,
+  includeInTotal: true,
+  targetGoal: 1000000,
+  creditLimit: null,
+  color: '#F59E0B',
+  icon: 'piggy-bank',
+  pinToHome: false,
+  note: 'Cuenta de prueba',
+};
+
+describe('account flow (MySQL 8, US-301/US-302)', () => {
   let container: StartedMySqlContainer;
   let dataSource: DataSource;
   let service: AccountsService;
@@ -149,6 +162,82 @@ describe('account listing flow (MySQL 8, US-301)', () => {
     const user = await seedUser('deleted@example.com', '2026-11-20T10:00:00.000Z');
 
     await expect(service.list(user.publicId)).rejects.toMatchObject({
+      status: 404,
+      code: 'NOT_FOUND',
+    });
+  });
+
+  it('persists a non-root account with seeded balance and allows duplicate names', async () => {
+    const user = await seedUser('create@example.com');
+
+    const created = await service.create(user.publicId, CREATE_REQUEST);
+    const duplicate = await service.create(user.publicId, CREATE_REQUEST);
+    const rows = await dataSource.getRepository(AccountEntity).find({where: {userId: user.id}});
+
+    expect(created).toMatchObject({
+      name: CREATE_REQUEST.name,
+      type: CREATE_REQUEST.type,
+      currentBalance: 500000,
+      includeInTotal: true,
+      targetGoal: 1000000,
+      pinToHome: false,
+      isRoot: false,
+      version: 0,
+    });
+    expect(Object.keys(created)).not.toEqual(
+      expect.arrayContaining(['id', 'userId', 'initialBalance', 'deletedAt', 'rootKey']),
+    );
+    expect(duplicate.publicId).not.toBe(created.publicId);
+    expect(rows).toHaveLength(2);
+    expect(rows.every((row) => row.isRoot === false && row.rootKey === null)).toBe(true);
+    expect(rows[0]).toMatchObject({
+      initialBalance: 500000,
+      currentBalance: 500000,
+      version: 0,
+      deletedAt: null,
+    });
+  });
+
+  it('persists a negative credit balance in integer cents', async () => {
+    const user = await seedUser('credit@example.com');
+    const request = {
+      ...CREATE_REQUEST,
+      type: AccountTypeEnum.CREDIT.toString(),
+      initialBalance: -120000,
+      targetGoal: null,
+      creditLimit: 500000,
+    };
+
+    const created = await service.create(user.publicId, request);
+    const stored = await dataSource
+      .getRepository(AccountEntity)
+      .findOne({where: {publicId: created.publicId}});
+
+    expect(created.currentBalance).toBe(-120000);
+    expect(stored).toMatchObject({
+      initialBalance: -120000,
+      currentBalance: -120000,
+      creditLimit: 500000,
+      isRoot: false,
+    });
+  });
+
+  it('rejects a negative non-credit balance without writing a row', async () => {
+    const user = await seedUser('negative@example.com');
+
+    await expect(
+      service.create(user.publicId, {...CREATE_REQUEST, initialBalance: -1}),
+    ).rejects.toMatchObject({
+      status: 400,
+      code: 'NEGATIVE_BALANCE_NOT_ALLOWED',
+    });
+    expect(await dataSource.getRepository(AccountEntity).count({where: {userId: user.id}})).toBe(0);
+  });
+
+  it('rejects account creation for a deleted user', async () => {
+    const user = await seedUser('deleted-create@example.com', '2026-11-20T10:00:00.000Z');
+
+    await expect(service.create(user.publicId, CREATE_REQUEST)).rejects.toMatchObject({
       status: 404,
       code: 'NOT_FOUND',
     });

@@ -28,6 +28,7 @@ export const VALIDATION_FIELD_MESSAGES: Readonly<Record<string, string>> = {
   matches: 'El formato no es válido.',
   arrayNotEmpty: 'La lista no puede estar vacía.',
   isNumberString: 'Debe ser un número.',
+  creditLimitOnlyForCredit: 'El límite de crédito solo aplica a cuentas de crédito.',
 };
 
 /** Message used when the constraint has no Spanish translation yet. */

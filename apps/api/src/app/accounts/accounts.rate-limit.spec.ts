@@ -34,7 +34,13 @@ class SetPrincipalGuard implements CanActivate {
   }
 }
 
-describe('AccountsController rate limits (US-301)', () => {
+const CREATE_BODY = {
+  name: 'Ahorros',
+  type: 'SAVINGS',
+  initialBalance: 500000,
+};
+
+describe('AccountsController rate limits (US-301/US-302)', () => {
   let app: INestApplication;
 
   beforeEach(async () => {
@@ -55,7 +61,10 @@ describe('AccountsController rate limits (US-301)', () => {
       providers: [
         {
           provide: AccountsService,
-          useValue: {list: jest.fn().mockResolvedValue({items: [], summary: {}})},
+          useValue: {
+            list: jest.fn().mockResolvedValue({items: [], summary: {}}),
+            create: jest.fn().mockResolvedValue({publicId: 'created-account'}),
+          },
         },
         AuthRateLimitGuard,
         {provide: APP_GUARD, useClass: SetPrincipalGuard},
@@ -96,5 +105,32 @@ describe('AccountsController rate limits (US-301)', () => {
       details: {retryAfterSeconds: expect.any(Number)},
     });
     expect(Number(response.headers['retry-after'])).toBeGreaterThan(0);
+  });
+
+  it('uses the 120 requests per minute user bucket for creation', () => {
+    expect(RATE_LIMITS.mutation.user).toEqual({limit: 120, ttl: 60_000});
+  });
+
+  it('rejects account creation above the configured per-user budget', async () => {
+    for (let attempt = 0; attempt < RATE_LIMITS.mutation.user.limit; attempt += 1) {
+      await request(app.getHttpServer())
+        .post('/accounts')
+        .send(CREATE_BODY)
+        .set('X-Forwarded-For', '203.0.113.81')
+        .expect(HttpStatus.CREATED);
+    }
+
+    const response = await request(app.getHttpServer())
+      .post('/accounts')
+      .send(CREATE_BODY)
+      .set('X-Forwarded-For', '203.0.113.82')
+      .expect(HttpStatus.TOO_MANY_REQUESTS);
+
+    expect(response.body.error).toMatchObject({
+      statusCode: HttpStatus.TOO_MANY_REQUESTS,
+      code: 'RATE_LIMITED',
+      message: API_ERROR_MESSAGES.RATE_LIMITED,
+      details: {retryAfterSeconds: expect.any(Number)},
+    });
   });
 });

@@ -30,14 +30,27 @@ const account = (overrides: Partial<AccountEntity> = {}): AccountEntity =>
     ...overrides,
   }) as AccountEntity;
 
-describe('AccountsService.list (US-301)', () => {
+const CREATE_REQUEST = {
+  name: 'Ahorros',
+  type: AccountTypeEnum.SAVINGS.toString(),
+  initialBalance: 500000,
+  includeInTotal: true,
+  targetGoal: 1000000,
+  creditLimit: null,
+  color: '#F59E0B',
+  icon: 'piggy-bank',
+  pinToHome: false,
+  note: null,
+};
+
+describe('AccountsService (US-301/US-302)', () => {
   let profile: {findActiveByPublicId: jest.Mock};
-  let repository: {findActiveByUser: jest.Mock};
+  let repository: {findActiveByUser: jest.Mock; create: jest.Mock};
   let service: AccountsService;
 
   beforeEach(() => {
     profile = {findActiveByPublicId: jest.fn()};
-    repository = {findActiveByUser: jest.fn()};
+    repository = {findActiveByUser: jest.fn(), create: jest.fn()};
     service = new AccountsService(
       profile as unknown as UserProfileRepository,
       repository as unknown as AccountRepository,
@@ -45,7 +58,10 @@ describe('AccountsService.list (US-301)', () => {
   });
 
   it('scopes the query to the active user and maps only public account fields', async () => {
-    profile.findActiveByPublicId.mockResolvedValue({id: 42, publicId: 'user-public-id'} as UserEntity);
+    profile.findActiveByPublicId.mockResolvedValue({
+      id: 42,
+      publicId: 'user-public-id',
+    } as UserEntity);
     repository.findActiveByUser.mockResolvedValue([account()]);
 
     const result = await service.list('user-public-id');
@@ -109,5 +125,79 @@ describe('AccountsService.list (US-301)', () => {
       code: ApiErrorCodeEnum.NOT_FOUND.toString(),
     });
     expect(repository.findActiveByUser).not.toHaveBeenCalled();
+  });
+
+  it('creates an owner-scoped non-root account and exposes only public fields', async () => {
+    profile.findActiveByPublicId.mockResolvedValue({id: 42} as UserEntity);
+    repository.create.mockResolvedValue(
+      account({
+        publicId: 'created-account',
+        name: CREATE_REQUEST.name,
+        type: CREATE_REQUEST.type,
+        initialBalance: 500000,
+        currentBalance: 500000,
+        isRoot: false,
+        rootKey: null,
+      }),
+    );
+
+    const result = await service.create('user-public-id', CREATE_REQUEST);
+
+    expect(profile.findActiveByPublicId).toHaveBeenCalledWith('user-public-id');
+    expect(repository.create).toHaveBeenCalledWith(42, CREATE_REQUEST);
+    expect(result).toMatchObject({
+      publicId: 'created-account',
+      name: 'Ahorros',
+      currentBalance: 500000,
+      isRoot: false,
+      version: 0,
+    });
+    expect(Object.keys(result)).not.toEqual(
+      expect.arrayContaining(['id', 'userId', 'initialBalance', 'deletedAt', 'rootKey']),
+    );
+  });
+
+  it('rejects a negative initial balance for non-credit accounts before writing', async () => {
+    profile.findActiveByPublicId.mockResolvedValue({id: 42} as UserEntity);
+
+    await expect(
+      service.create('user-public-id', {
+        ...CREATE_REQUEST,
+        type: AccountTypeEnum.CASH.toString(),
+        initialBalance: -1,
+      }),
+    ).rejects.toMatchObject({
+      status: HttpStatus.BAD_REQUEST,
+      code: ApiErrorCodeEnum.NEGATIVE_BALANCE_NOT_ALLOWED.toString(),
+    });
+    expect(repository.create).not.toHaveBeenCalled();
+  });
+
+  it('allows a negative initial balance for credit accounts', async () => {
+    const request = {
+      ...CREATE_REQUEST,
+      type: AccountTypeEnum.CREDIT.toString(),
+      initialBalance: -120000,
+      creditLimit: 500000,
+    };
+    profile.findActiveByPublicId.mockResolvedValue({id: 42} as UserEntity);
+    repository.create.mockResolvedValue(
+      account({type: request.type, initialBalance: -120000, currentBalance: -120000}),
+    );
+
+    const result = await service.create('user-public-id', request);
+
+    expect(repository.create).toHaveBeenCalledWith(42, request);
+    expect(result.currentBalance).toBe(-120000);
+  });
+
+  it('rejects creation for a principal that no longer resolves to an active user', async () => {
+    profile.findActiveByPublicId.mockResolvedValue(null);
+
+    await expect(service.create('missing-user', CREATE_REQUEST)).rejects.toMatchObject({
+      status: HttpStatus.NOT_FOUND,
+      code: ApiErrorCodeEnum.NOT_FOUND.toString(),
+    });
+    expect(repository.create).not.toHaveBeenCalled();
   });
 });

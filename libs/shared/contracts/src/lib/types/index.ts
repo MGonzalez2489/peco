@@ -9,6 +9,7 @@ export * from './app-theme.type';
 export * from './auth-response.type';
 export * from './category-apply-type.type';
 export * from './change-password-request.type';
+export * from './create-account-request.type';
 export * from './delete-user-request.type';
 export * from './forgot-password-request.type';
 export * from './login-request.type';
