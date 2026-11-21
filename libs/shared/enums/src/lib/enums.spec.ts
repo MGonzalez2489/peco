@@ -1,6 +1,7 @@
 import {describe, expect, it} from 'vitest';
 import {
   AccountTypeEnum,
+  AccountWriteStatusEnum,
   ApiErrorCodeEnum,
   AppThemeEnum,
   CategoryApplyTypeEnum,
@@ -22,6 +23,29 @@ describe('shared enums', () => {
     expect(ScheduledExecutionStatusEnum.SKIPPED.toString()).toBe('SKIPPED');
     expect(AppThemeEnum.SYSTEM.toString()).toBe('system');
     expect(RefreshRotationStatusEnum.REUSED.toString()).toBe('reused');
+    expect(AccountWriteStatusEnum.UPDATED.toString()).toBe('updated');
+    expect(AccountWriteStatusEnum.DELETED.toString()).toBe('deleted');
+    expect(AccountWriteStatusEnum.NOT_FOUND.toString()).toBe('not-found');
+    expect(AccountWriteStatusEnum.CONFLICT.toString()).toBe('conflict');
+    expect(AccountWriteStatusEnum.ROOT_PROTECTED.toString()).toBe('root-protected');
+    expect(AccountWriteStatusEnum.SELF_TRANSFER.toString()).toBe('self-transfer');
+    expect(AccountWriteStatusEnum.TRANSFER_REQUIRED.toString()).toBe('transfer-required');
+    expect(AccountWriteStatusEnum.NEGATIVE_BALANCE.toString()).toBe('negative-balance');
+    expect(AccountWriteStatusEnum.PERIOD_CLOSED.toString()).toBe('period-closed');
+  });
+
+  it('keeps every account write status in a single registry', () => {
+    expect(Object.values(AccountWriteStatusEnum).map((status) => status.toString())).toEqual([
+      'updated',
+      'deleted',
+      'not-found',
+      'conflict',
+      'root-protected',
+      'self-transfer',
+      'transfer-required',
+      'negative-balance',
+      'period-closed',
+    ]);
   });
 
   it('keeps every API error code in a single registry', () => {

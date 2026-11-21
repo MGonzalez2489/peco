@@ -4,6 +4,7 @@ import type {
   UpdateAccountPinRequest,
   UpdateAccountRequest,
 } from '@peco/contracts';
+import {AccountWriteStatusEnum} from '@peco/enums';
 import {buildAccountSummary, isLiabilityAccount} from '@peco/utils';
 import {UserProfileRepository} from '../users/services/user-profile.repository';
 import {userNotFoundException} from '../users/utils/user-not-found.exception';
@@ -109,10 +110,10 @@ export class AccountsService {
     }
 
     const result = await this.accounts.update(user.id, accountPublicId, request);
-    if (result.status === 'not-found') {
+    if (result.status === AccountWriteStatusEnum.NOT_FOUND.toString()) {
       throw accountNotFoundException();
     }
-    if (result.status === 'conflict') {
+    if (result.status === AccountWriteStatusEnum.CONFLICT.toString()) {
       throw versionConflictException(request.version ?? account.version, result.currentVersion);
     }
 
@@ -144,10 +145,10 @@ export class AccountsService {
       pinToHome: request.pinToHome,
       version: request.version,
     });
-    if (result.status === 'not-found') {
+    if (result.status === AccountWriteStatusEnum.NOT_FOUND.toString()) {
       throw accountNotFoundException();
     }
-    if (result.status === 'conflict') {
+    if (result.status === AccountWriteStatusEnum.CONFLICT.toString()) {
       throw versionConflictException(request.version ?? account.version, result.currentVersion);
     }
 
@@ -170,22 +171,22 @@ export class AccountsService {
       accountPublicId,
       transferToPublicId,
     );
-    if (result.status === 'not-found') {
+    if (result.status === AccountWriteStatusEnum.NOT_FOUND.toString()) {
       throw accountNotFoundException();
     }
-    if (result.status === 'root-protected') {
+    if (result.status === AccountWriteStatusEnum.ROOT_PROTECTED.toString()) {
       throw rootAccountProtectedException();
     }
-    if (result.status === 'self-transfer') {
+    if (result.status === AccountWriteStatusEnum.SELF_TRANSFER.toString()) {
       throw selfTransferException();
     }
-    if (result.status === 'transfer-required') {
+    if (result.status === AccountWriteStatusEnum.TRANSFER_REQUIRED.toString()) {
       throw transferRequiredException();
     }
-    if (result.status === 'negative-balance') {
+    if (result.status === AccountWriteStatusEnum.NEGATIVE_BALANCE.toString()) {
       throw negativeBalanceConflictException();
     }
-    if (result.status === 'period-closed') {
+    if (result.status === AccountWriteStatusEnum.PERIOD_CLOSED.toString()) {
       throw periodClosedException();
     }
 

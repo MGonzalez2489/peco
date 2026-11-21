@@ -1,4 +1,5 @@
 export * from './lib/account-type.enum';
+export * from './lib/account-write-status.enum';
 export * from './lib/api-error-code.enum';
 export * from './lib/app-theme.enum';
 export * from './lib/category-apply-type.enum';

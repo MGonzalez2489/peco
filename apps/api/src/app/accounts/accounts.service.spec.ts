@@ -1,5 +1,5 @@
 import {HttpStatus} from '@nestjs/common';
-import {AccountTypeEnum, ApiErrorCodeEnum} from '@peco/enums';
+import {AccountTypeEnum, AccountWriteStatusEnum, ApiErrorCodeEnum} from '@peco/enums';
 import type {AccountEntity, UserEntity} from '../database/entities';
 import {UserProfileRepository} from '../users/services/user-profile.repository';
 import {AccountsService} from './accounts.service';
@@ -266,7 +266,7 @@ describe('AccountsService (US-301/US-302/US-303/US-304/US-305)', () => {
       }),
     );
     repository.update.mockResolvedValue({
-      status: 'updated',
+      status: AccountWriteStatusEnum.UPDATED.toString(),
       account: account({
         name: UPDATE_REQUEST.name,
         type: AccountTypeEnum.CREDIT.toString(),
@@ -310,7 +310,10 @@ describe('AccountsService (US-301/US-302/US-303/US-304/US-305)', () => {
     repository.findActiveByPublicId.mockResolvedValue(
       account({type: AccountTypeEnum.CREDIT.toString(), creditLimit: 500000}),
     );
-    repository.update.mockResolvedValue({status: 'conflict', currentVersion: 3});
+    repository.update.mockResolvedValue({
+      status: AccountWriteStatusEnum.CONFLICT.toString(),
+      currentVersion: 3,
+    });
 
     await expect(
       service.update('user-public-id', 'account-public-id', UPDATE_REQUEST),
@@ -326,7 +329,7 @@ describe('AccountsService (US-301/US-302/US-303/US-304/US-305)', () => {
     repository.findActiveByPublicId.mockResolvedValue(
       account({type: AccountTypeEnum.CREDIT.toString(), creditLimit: 500000}),
     );
-    repository.update.mockResolvedValue({status: 'not-found'});
+    repository.update.mockResolvedValue({status: AccountWriteStatusEnum.NOT_FOUND.toString()});
 
     await expect(
       service.update('user-public-id', 'account-public-id', UPDATE_REQUEST),
@@ -395,7 +398,7 @@ describe('AccountsService (US-301/US-302/US-303/US-304/US-305)', () => {
     profile.findActiveByPublicId.mockResolvedValue({id: 42} as UserEntity);
     repository.findActiveByPublicId.mockResolvedValue(account({pinToHome: true, version: 2}));
     repository.update.mockResolvedValue({
-      status: 'updated',
+      status: AccountWriteStatusEnum.UPDATED.toString(),
       account: account({pinToHome: false, version: 3}),
     });
 
@@ -419,7 +422,7 @@ describe('AccountsService (US-301/US-302/US-303/US-304/US-305)', () => {
     profile.findActiveByPublicId.mockResolvedValue({id: 42} as UserEntity);
     repository.findActiveByPublicId.mockResolvedValue(account({pinToHome: false}));
     repository.update.mockResolvedValue({
-      status: 'updated',
+      status: AccountWriteStatusEnum.UPDATED.toString(),
       account: account({pinToHome: true, version: 1}),
     });
 
@@ -450,8 +453,11 @@ describe('AccountsService (US-301/US-302/US-303/US-304/US-305)', () => {
     profile.findActiveByPublicId.mockResolvedValue({id: 42} as UserEntity);
     repository.findActiveByPublicId.mockResolvedValue(account());
     repository.update
-      .mockResolvedValueOnce({status: 'conflict', currentVersion: 4})
-      .mockResolvedValueOnce({status: 'not-found'});
+      .mockResolvedValueOnce({
+        status: AccountWriteStatusEnum.CONFLICT.toString(),
+        currentVersion: 4,
+      })
+      .mockResolvedValueOnce({status: AccountWriteStatusEnum.NOT_FOUND.toString()});
 
     await expect(
       service.setPin('user-public-id', 'account-public-id', {pinToHome: true, version: 0}),
@@ -534,7 +540,7 @@ describe('AccountsService (US-301/US-302/US-303/US-304/US-305)', () => {
   it('deletes a zero-balance account without a destination or transfer movement', async () => {
     profile.findActiveByPublicId.mockResolvedValue({id: 42} as UserEntity);
     deletions.deleteWithTransfer.mockResolvedValue({
-      status: 'deleted',
+      status: AccountWriteStatusEnum.DELETED.toString(),
       source: sourceAccount(),
       destination: null,
       movement: null,
@@ -556,7 +562,7 @@ describe('AccountsService (US-301/US-302/US-303/US-304/US-305)', () => {
   it('returns the transfer movement and both refreshed balances', async () => {
     profile.findActiveByPublicId.mockResolvedValue({id: 42} as UserEntity);
     deletions.deleteWithTransfer.mockResolvedValue({
-      status: 'deleted',
+      status: AccountWriteStatusEnum.DELETED.toString(),
       source: sourceAccount(),
       destination: destinationAccount(),
       movement: transferMovement(),
@@ -587,16 +593,36 @@ describe('AccountsService (US-301/US-302/US-303/US-304/US-305)', () => {
   });
 
   it.each([
-    ['not-found', HttpStatus.NOT_FOUND, ApiErrorCodeEnum.NOT_FOUND.toString()],
-    ['root-protected', HttpStatus.CONFLICT, ApiErrorCodeEnum.ROOT_ACCOUNT_PROTECTED.toString()],
-    ['self-transfer', HttpStatus.UNPROCESSABLE_ENTITY, ApiErrorCodeEnum.UNPROCESSABLE_ENTITY.toString()],
-    ['transfer-required', HttpStatus.CONFLICT, ApiErrorCodeEnum.TRANSFER_REQUIRED.toString()],
     [
-      'negative-balance',
+      AccountWriteStatusEnum.NOT_FOUND.toString(),
+      HttpStatus.NOT_FOUND,
+      ApiErrorCodeEnum.NOT_FOUND.toString(),
+    ],
+    [
+      AccountWriteStatusEnum.ROOT_PROTECTED.toString(),
+      HttpStatus.CONFLICT,
+      ApiErrorCodeEnum.ROOT_ACCOUNT_PROTECTED.toString(),
+    ],
+    [
+      AccountWriteStatusEnum.SELF_TRANSFER.toString(),
+      HttpStatus.UNPROCESSABLE_ENTITY,
+      ApiErrorCodeEnum.UNPROCESSABLE_ENTITY.toString(),
+    ],
+    [
+      AccountWriteStatusEnum.TRANSFER_REQUIRED.toString(),
+      HttpStatus.CONFLICT,
+      ApiErrorCodeEnum.TRANSFER_REQUIRED.toString(),
+    ],
+    [
+      AccountWriteStatusEnum.NEGATIVE_BALANCE.toString(),
       HttpStatus.CONFLICT,
       ApiErrorCodeEnum.NEGATIVE_BALANCE_NOT_ALLOWED.toString(),
     ],
-    ['period-closed', HttpStatus.CONFLICT, ApiErrorCodeEnum.PERIOD_CLOSED.toString()],
+    [
+      AccountWriteStatusEnum.PERIOD_CLOSED.toString(),
+      HttpStatus.CONFLICT,
+      ApiErrorCodeEnum.PERIOD_CLOSED.toString(),
+    ],
   ] as const)('maps %s to the stable %s error', async (status, httpStatus, code) => {
     profile.findActiveByPublicId.mockResolvedValue({id: 42} as UserEntity);
     deletions.deleteWithTransfer.mockResolvedValue({status});

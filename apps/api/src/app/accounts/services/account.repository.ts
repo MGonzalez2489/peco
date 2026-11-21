@@ -1,5 +1,6 @@
 import {Injectable} from '@nestjs/common';
 import type {CreateAccountRequest, UpdateAccountRequest} from '@peco/contracts';
+import {AccountWriteStatusEnum} from '@peco/enums';
 import {DataSource, IsNull, type QueryDeepPartialEntity} from 'typeorm';
 import {UtcClock} from '../../database/clock/utc-clock';
 import {AccountEntity} from '../../database/entities';
@@ -66,12 +67,15 @@ export class AccountRepository {
       where: {userId, publicId, deletedAt: IsNull()},
     });
     if (!account) {
-      return {status: 'not-found'};
+      return {status: AccountWriteStatusEnum.NOT_FOUND.toString()};
     }
 
     const expectedVersion = request.version;
     if (expectedVersion !== undefined && account.version !== expectedVersion) {
-      return {status: 'conflict', currentVersion: account.version};
+      return {
+        status: AccountWriteStatusEnum.CONFLICT.toString(),
+        currentVersion: account.version,
+      };
     }
 
     const values: QueryDeepPartialEntity<AccountEntity> = {
@@ -110,7 +114,7 @@ export class AccountRepository {
       (key) => key !== 'version' && key !== 'updatedAt',
     );
     if (!hasMetadataChanges) {
-      return {status: 'updated', account};
+      return {status: AccountWriteStatusEnum.UPDATED.toString(), account};
     }
 
     const query = repository
@@ -128,12 +132,14 @@ export class AccountRepository {
       const current = await this.findActiveByPublicId(userId, publicId);
 
       return current
-        ? {status: 'conflict', currentVersion: current.version}
-        : {status: 'not-found'};
+        ? {status: AccountWriteStatusEnum.CONFLICT.toString(), currentVersion: current.version}
+        : {status: AccountWriteStatusEnum.NOT_FOUND.toString()};
     }
 
     const updated = await this.findActiveByPublicId(userId, publicId);
 
-    return updated ? {status: 'updated', account: updated} : {status: 'not-found'};
+    return updated
+      ? {status: AccountWriteStatusEnum.UPDATED.toString(), account: updated}
+      : {status: AccountWriteStatusEnum.NOT_FOUND.toString()};
   }
 }

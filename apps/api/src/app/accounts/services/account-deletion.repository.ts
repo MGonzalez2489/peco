@@ -1,5 +1,5 @@
 import {Injectable} from '@nestjs/common';
-import {CategoryApplyTypeEnum, MovementTypeEnum} from '@peco/enums';
+import {AccountWriteStatusEnum, CategoryApplyTypeEnum, MovementTypeEnum} from '@peco/enums';
 import {isLiabilityAccount} from '@peco/utils';
 import {DataSource, IsNull, type EntityManager} from 'typeorm';
 import {UtcClock} from '../../database/clock/utc-clock';
@@ -36,24 +36,24 @@ export class AccountDeletionRepository {
         lock: {mode: 'pessimistic_write'},
       });
       if (!user) {
-        return {status: 'not-found'};
+        return {status: AccountWriteStatusEnum.NOT_FOUND.toString()};
       }
 
       const sourceLookup = await manager.findOne(AccountEntity, {
         where: {userId, publicId: sourcePublicId, deletedAt: IsNull()},
       });
       if (!sourceLookup) {
-        return {status: 'not-found'};
+        return {status: AccountWriteStatusEnum.NOT_FOUND.toString()};
       }
       if (sourceLookup.isRoot) {
-        return {status: 'root-protected'};
+        return {status: AccountWriteStatusEnum.ROOT_PROTECTED.toString()};
       }
       if (destinationPublicId && destinationPublicId === sourcePublicId) {
-        return {status: 'self-transfer'};
+        return {status: AccountWriteStatusEnum.SELF_TRANSFER.toString()};
       }
 
       if (sourceLookup.currentBalance !== 0 && !destinationPublicId) {
-        return {status: 'transfer-required'};
+        return {status: AccountWriteStatusEnum.TRANSFER_REQUIRED.toString()};
       }
 
       let destinationLookup: AccountEntity | null = null;
@@ -62,7 +62,7 @@ export class AccountDeletionRepository {
           where: {userId, publicId: destinationPublicId, deletedAt: IsNull()},
         });
         if (!destinationLookup) {
-          return {status: 'not-found'};
+          return {status: AccountWriteStatusEnum.NOT_FOUND.toString()};
         }
       }
 
@@ -72,14 +72,14 @@ export class AccountDeletionRepository {
         ...(destinationLookup ? [destinationLookup] : []),
       ]);
       if (!locked) {
-        return {status: 'not-found'};
+        return {status: AccountWriteStatusEnum.NOT_FOUND.toString()};
       }
       const source = locked.find((row) => row.id === sourceLookup.id);
       const destination = destinationLookup
         ? locked.find((row) => row.id === destinationLookup.id) ?? null
         : null;
       if (!source) {
-        return {status: 'not-found'};
+        return {status: AccountWriteStatusEnum.NOT_FOUND.toString()};
       }
 
       const now = this.clock.now();
@@ -87,7 +87,7 @@ export class AccountDeletionRepository {
         where: {userId, period: now.slice(0, 7)},
       });
       if (closed) {
-        return {status: 'period-closed'};
+        return {status: AccountWriteStatusEnum.PERIOD_CLOSED.toString()};
       }
 
       let movement: MovementEntity | null = null;
@@ -98,7 +98,7 @@ export class AccountDeletionRepository {
       if (destination && source.currentBalance !== 0) {
         const nextBalance = destination.currentBalance + source.currentBalance;
         if (nextBalance < 0 && !isLiabilityAccount(destination.type)) {
-          return {status: 'negative-balance'};
+          return {status: AccountWriteStatusEnum.NEGATIVE_BALANCE.toString()};
         }
 
         category = await this.transferCategory(manager);
@@ -138,7 +138,15 @@ export class AccountDeletionRepository {
       source.version += 1;
       await manager.save(source);
 
-      return {status: 'deleted', source, destination, movement, movementAccount, targetAccount, category};
+      return {
+        status: AccountWriteStatusEnum.DELETED.toString(),
+        source,
+        destination,
+        movement,
+        movementAccount,
+        targetAccount,
+        category,
+      };
     });
   }
 
