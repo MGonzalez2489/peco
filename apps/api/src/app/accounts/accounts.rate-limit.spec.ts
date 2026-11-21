@@ -47,7 +47,7 @@ const UPDATE_BODY = {
 
 const PIN_BODY = {pinToHome: true};
 
-describe('AccountsController rate limits (US-301/US-302/US-304)', () => {
+describe('AccountsController rate limits (US-301/US-302/US-304/US-305)', () => {
   let app: INestApplication;
 
   beforeEach(async () => {
@@ -74,6 +74,11 @@ describe('AccountsController rate limits (US-301/US-302/US-304)', () => {
             findOne: jest.fn().mockResolvedValue({publicId: 'account-public-id'}),
             update: jest.fn().mockResolvedValue({publicId: 'account-public-id'}),
             setPin: jest.fn().mockResolvedValue({publicId: 'account-public-id'}),
+            remove: jest.fn().mockResolvedValue({
+              deletedAccountPublicId: 'account-public-id',
+              transferMovement: null,
+              balances: [],
+            }),
           },
         },
         AuthRateLimitGuard,
@@ -191,6 +196,22 @@ describe('AccountsController rate limits (US-301/US-302/US-304)', () => {
       .patch('/accounts/account-public-id/pin')
       .send(PIN_BODY)
       .set('X-Forwarded-For', '203.0.113.86')
+      .expect(HttpStatus.TOO_MANY_REQUESTS);
+
+    expect(response.body.error.code).toBe('RATE_LIMITED');
+  });
+
+  it('rejects account deletion above the configured per-user budget', async () => {
+    for (let attempt = 0; attempt < RATE_LIMITS.mutation.user.limit; attempt += 1) {
+      await request(app.getHttpServer())
+        .delete('/accounts/account-public-id')
+        .set('X-Forwarded-For', '203.0.113.87')
+        .expect(HttpStatus.OK);
+    }
+
+    const response = await request(app.getHttpServer())
+      .delete('/accounts/account-public-id')
+      .set('X-Forwarded-For', '203.0.113.88')
       .expect(HttpStatus.TOO_MANY_REQUESTS);
 
     expect(response.body.error.code).toBe('RATE_LIMITED');

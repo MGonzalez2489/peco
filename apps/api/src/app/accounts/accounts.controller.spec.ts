@@ -18,6 +18,10 @@ import {AccountsService} from './accounts.service';
 import {accountNotFoundException} from './utils/account-not-found.exception';
 import {negativeBalanceConflictException} from './utils/negative-balance-conflict.exception';
 import {negativeBalanceNotAllowedException} from './utils/negative-balance-not-allowed.exception';
+import {periodClosedException} from './utils/period-closed.exception';
+import {rootAccountProtectedException} from './utils/root-account-protected.exception';
+import {selfTransferException} from './utils/self-transfer.exception';
+import {transferRequiredException} from './utils/transfer-required.exception';
 import {versionConflictException} from './utils/version-conflict.exception';
 
 const ACCOUNT = {
@@ -71,6 +75,12 @@ const UPDATE_BODY = {
   version: 0,
 };
 
+const DELETE_RESULT = {
+  deletedAccountPublicId: 'account-public-id',
+  transferMovement: null,
+  balances: [{accountPublicId: 'account-public-id', currentBalance: 0, version: 1}],
+};
+
 const SILENT_LOGGER: LoggerService = {
   log: jest.fn(),
   error: jest.fn(),
@@ -80,13 +90,14 @@ const SILENT_LOGGER: LoggerService = {
   fatal: jest.fn(),
 };
 
-describe('AccountsController HTTP contract (US-301/US-302/US-303)', () => {
+describe('AccountsController HTTP contract (US-301/US-302/US-303/US-305)', () => {
   let app: INestApplication;
   let list: jest.Mock;
   let create: jest.Mock;
   let findOne: jest.Mock;
   let update: jest.Mock;
   let setPin: jest.Mock;
+  let remove: jest.Mock;
   let authenticated = true;
 
   const authGuard: CanActivate = {
@@ -106,11 +117,12 @@ describe('AccountsController HTTP contract (US-301/US-302/US-303)', () => {
     findOne = jest.fn().mockResolvedValue(ACCOUNT);
     update = jest.fn().mockResolvedValue(ACCOUNT);
     setPin = jest.fn().mockResolvedValue(ACCOUNT);
+    remove = jest.fn().mockResolvedValue(DELETE_RESULT);
 
     const moduleRef = await Test.createTestingModule({
       controllers: [AccountsController],
       providers: [
-        {provide: AccountsService, useValue: {list, create, findOne, update, setPin}},
+        {provide: AccountsService, useValue: {list, create, findOne, update, setPin, remove}},
         {provide: APP_GUARD, useValue: authGuard},
       ],
     })
@@ -480,7 +492,7 @@ describe('AccountsController HTTP contract (US-301/US-302/US-303)', () => {
     expect(create).not.toHaveBeenCalled();
   });
 
-  it('returns 401 UNAUTHORIZED for detail, update and pinning without a principal', async () => {
+  it('returns 401 UNAUTHORIZED for detail, update, pinning and deletion without a principal', async () => {
     authenticated = false;
 
     const detail = await request(app.getHttpServer())
@@ -494,12 +506,55 @@ describe('AccountsController HTTP contract (US-301/US-302/US-303)', () => {
       .patch('/accounts/account-public-id/pin')
       .send({pinToHome: true})
       .expect(401);
+    const deletion = await request(app.getHttpServer())
+      .delete('/accounts/account-public-id')
+      .expect(401);
 
     expect(detail.body.error.code).toBe('UNAUTHORIZED');
     expect(patch.body.error.code).toBe('UNAUTHORIZED');
     expect(pin.body.error.code).toBe('UNAUTHORIZED');
+    expect(deletion.body.error.code).toBe('UNAUTHORIZED');
     expect(findOne).not.toHaveBeenCalled();
     expect(update).not.toHaveBeenCalled();
     expect(setPin).not.toHaveBeenCalled();
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  it('deletes an account and returns the standard envelope with balances', async () => {
+    const response = await request(app.getHttpServer())
+      .delete('/accounts/account-public-id')
+      .expect(200);
+
+    expect(response.body).toEqual({data: DELETE_RESULT, error: null});
+    expect(remove).toHaveBeenCalledWith('user-public-id', 'account-public-id', undefined);
+  });
+
+  it('forwards an optional transfer destination as a query parameter', async () => {
+    await request(app.getHttpServer())
+      .delete('/accounts/account-public-id?transferToPublicId=destination-id')
+      .expect(200);
+
+    expect(remove).toHaveBeenCalledWith('user-public-id', 'account-public-id', 'destination-id');
+  });
+
+  it.each([
+    [accountNotFoundException, 404, 'NOT_FOUND'],
+    [rootAccountProtectedException, 409, 'ROOT_ACCOUNT_PROTECTED'],
+    [transferRequiredException, 409, 'TRANSFER_REQUIRED'],
+    [negativeBalanceConflictException, 409, 'NEGATIVE_BALANCE_NOT_ALLOWED'],
+    [periodClosedException, 409, 'PERIOD_CLOSED'],
+    [selfTransferException, 422, 'UNPROCESSABLE_ENTITY'],
+  ])('maps the deletion factory to %s', async (factory, status, code) => {
+    remove.mockRejectedValueOnce(factory());
+
+    const response = await request(app.getHttpServer())
+      .delete('/accounts/account-public-id')
+      .expect(status);
+
+    expect(response.body.error).toMatchObject({
+      statusCode: status,
+      code,
+      message: expect.any(String),
+    });
   });
 });

@@ -7,14 +7,22 @@ import type {
 import {buildAccountSummary, isLiabilityAccount} from '@peco/utils';
 import {UserProfileRepository} from '../users/services/user-profile.repository';
 import {userNotFoundException} from '../users/utils/user-not-found.exception';
+import {AccountBalanceUpdateDto} from './dto/account-balance-update.dto';
 import {AccountResponseDto} from './dto/account-response.dto';
 import {AccountSummaryDto} from './dto/account-summary.dto';
+import {DeleteAccountResultDto} from './dto/delete-account-result.dto';
+import {MovementResponseDto} from './dto/movement-response.dto';
+import {AccountDeletionRepository} from './services/account-deletion.repository';
 import {AccountRepository} from './services/account.repository';
 import type {AccountListResult} from './types/account-list-result.type';
 import {accountNotFoundException} from './utils/account-not-found.exception';
 import {creditLimitNotAllowedException} from './utils/credit-limit-not-allowed.exception';
 import {negativeBalanceConflictException} from './utils/negative-balance-conflict.exception';
 import {negativeBalanceNotAllowedException} from './utils/negative-balance-not-allowed.exception';
+import {periodClosedException} from './utils/period-closed.exception';
+import {rootAccountProtectedException} from './utils/root-account-protected.exception';
+import {selfTransferException} from './utils/self-transfer.exception';
+import {transferRequiredException} from './utils/transfer-required.exception';
 import {versionConflictException} from './utils/version-conflict.exception';
 
 /** Owner-scoped account reads, metadata updates and explicit pinning (US-301–US-304). */
@@ -23,6 +31,7 @@ export class AccountsService {
   constructor(
     private readonly profile: UserProfileRepository,
     private readonly accounts: AccountRepository,
+    private readonly deletions: AccountDeletionRepository,
   ) {}
 
   async list(publicId: string): Promise<AccountListResult> {
@@ -143,5 +152,70 @@ export class AccountsService {
     }
 
     return new AccountResponseDto(result.account);
+  }
+
+  /** Soft-deletes a non-root account and transfers its balance in one transaction (8.8/D96/US-305). */
+  async remove(
+    publicId: string,
+    accountPublicId: string,
+    transferToPublicId?: string,
+  ): Promise<DeleteAccountResultDto> {
+    const user = await this.profile.findActiveByPublicId(publicId);
+    if (!user) {
+      throw userNotFoundException();
+    }
+
+    const result = await this.deletions.deleteWithTransfer(
+      user.id,
+      accountPublicId,
+      transferToPublicId,
+    );
+    if (result.status === 'not-found') {
+      throw accountNotFoundException();
+    }
+    if (result.status === 'root-protected') {
+      throw rootAccountProtectedException();
+    }
+    if (result.status === 'self-transfer') {
+      throw selfTransferException();
+    }
+    if (result.status === 'transfer-required') {
+      throw transferRequiredException();
+    }
+    if (result.status === 'negative-balance') {
+      throw negativeBalanceConflictException();
+    }
+    if (result.status === 'period-closed') {
+      throw periodClosedException();
+    }
+
+    const balances = [
+      new AccountBalanceUpdateDto(
+        result.source.publicId,
+        result.source.currentBalance,
+        result.source.version,
+      ),
+    ];
+    if (result.destination) {
+      balances.push(
+        new AccountBalanceUpdateDto(
+          result.destination.publicId,
+          result.destination.currentBalance,
+          result.destination.version,
+        ),
+      );
+    }
+
+    const movement =
+      result.movement && result.movementAccount && result.targetAccount && result.category
+        ? new MovementResponseDto(
+            result.movement,
+            result.movementAccount,
+            result.targetAccount,
+            result.category,
+          )
+        : null;
+
+    return new DeleteAccountResultDto(result.source.publicId, movement, balances);
   }
 }

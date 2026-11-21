@@ -3,6 +3,7 @@ import {AccountTypeEnum, ApiErrorCodeEnum} from '@peco/enums';
 import type {AccountEntity, UserEntity} from '../database/entities';
 import {UserProfileRepository} from '../users/services/user-profile.repository';
 import {AccountsService} from './accounts.service';
+import {AccountDeletionRepository} from './services/account-deletion.repository';
 import {AccountRepository} from './services/account.repository';
 
 const account = (overrides: Partial<AccountEntity> = {}): AccountEntity =>
@@ -51,7 +52,7 @@ const UPDATE_REQUEST = {
   version: 0,
 };
 
-describe('AccountsService (US-301/US-302/US-303/US-304)', () => {
+describe('AccountsService (US-301/US-302/US-303/US-304/US-305)', () => {
   let profile: {findActiveByPublicId: jest.Mock};
   let repository: {
     findActiveByUser: jest.Mock;
@@ -59,6 +60,7 @@ describe('AccountsService (US-301/US-302/US-303/US-304)', () => {
     create: jest.Mock;
     update: jest.Mock;
   };
+  let deletions: {deleteWithTransfer: jest.Mock};
   let service: AccountsService;
 
   beforeEach(() => {
@@ -69,9 +71,11 @@ describe('AccountsService (US-301/US-302/US-303/US-304)', () => {
       create: jest.fn(),
       update: jest.fn(),
     };
+    deletions = {deleteWithTransfer: jest.fn()};
     service = new AccountsService(
       profile as unknown as UserProfileRepository,
       repository as unknown as AccountRepository,
+      deletions as unknown as AccountDeletionRepository,
     );
   });
 
@@ -497,5 +501,119 @@ describe('AccountsService (US-301/US-302/US-303/US-304)', () => {
     });
     expect(repository.findActiveByPublicId).not.toHaveBeenCalled();
     expect(repository.update).not.toHaveBeenCalled();
+  });
+
+  const sourceAccount = () =>
+    account({publicId: 'source-id', currentBalance: 0, isRoot: false, version: 1});
+  const destinationAccount = () =>
+    account({id: 2, publicId: 'destination-id', currentBalance: 200000, isRoot: false});
+  const transferMovement = () =>
+    ({
+      publicId: 'movement-id',
+      type: 'TRANSFER',
+      amount: 50000,
+      date: '2026-11-21T10:00:00.000Z',
+      note: null,
+      isReversal: false,
+      isReversed: false,
+      isCanceled: false,
+      version: 0,
+      createdAt: '2026-11-21T10:00:00.000Z',
+      updatedAt: '2026-11-21T10:00:00.000Z',
+    }) as unknown as import('../database/entities').MovementEntity;
+  const transferCategory = () =>
+    ({
+      publicId: 'category-id',
+      name: 'transfer',
+      displayName: 'Transferencia',
+      color: '#6366F1',
+      icon: 'arrow-left-right',
+      applyType: 'TRANSFER',
+    }) as unknown as import('../database/entities').CategoryEntity;
+
+  it('deletes a zero-balance account without a destination or transfer movement', async () => {
+    profile.findActiveByPublicId.mockResolvedValue({id: 42} as UserEntity);
+    deletions.deleteWithTransfer.mockResolvedValue({
+      status: 'deleted',
+      source: sourceAccount(),
+      destination: null,
+      movement: null,
+      movementAccount: null,
+      targetAccount: null,
+      category: null,
+    });
+
+    const result = await service.remove('user-public-id', 'source-id');
+
+    expect(deletions.deleteWithTransfer).toHaveBeenCalledWith(42, 'source-id', undefined);
+    expect(result).toMatchObject({
+      deletedAccountPublicId: 'source-id',
+      transferMovement: null,
+      balances: [{accountPublicId: 'source-id', currentBalance: 0, version: 1}],
+    });
+  });
+
+  it('returns the transfer movement and both refreshed balances', async () => {
+    profile.findActiveByPublicId.mockResolvedValue({id: 42} as UserEntity);
+    deletions.deleteWithTransfer.mockResolvedValue({
+      status: 'deleted',
+      source: sourceAccount(),
+      destination: destinationAccount(),
+      movement: transferMovement(),
+      movementAccount: sourceAccount(),
+      targetAccount: destinationAccount(),
+      category: transferCategory(),
+    });
+
+    const result = await service.remove('user-public-id', 'source-id', 'destination-id');
+
+    expect(deletions.deleteWithTransfer).toHaveBeenCalledWith(
+      42,
+      'source-id',
+      'destination-id',
+    );
+    expect(result.transferMovement).toMatchObject({
+      publicId: 'movement-id',
+      type: 'TRANSFER',
+      amount: 50000,
+      account: {publicId: 'source-id'},
+      targetAccount: {publicId: 'destination-id'},
+      category: {publicId: 'category-id'},
+    });
+    expect(result.balances).toEqual([
+      {accountPublicId: 'source-id', currentBalance: 0, version: 1},
+      {accountPublicId: 'destination-id', currentBalance: 200000, version: 0},
+    ]);
+  });
+
+  it.each([
+    ['not-found', HttpStatus.NOT_FOUND, ApiErrorCodeEnum.NOT_FOUND.toString()],
+    ['root-protected', HttpStatus.CONFLICT, ApiErrorCodeEnum.ROOT_ACCOUNT_PROTECTED.toString()],
+    ['self-transfer', HttpStatus.UNPROCESSABLE_ENTITY, ApiErrorCodeEnum.UNPROCESSABLE_ENTITY.toString()],
+    ['transfer-required', HttpStatus.CONFLICT, ApiErrorCodeEnum.TRANSFER_REQUIRED.toString()],
+    [
+      'negative-balance',
+      HttpStatus.CONFLICT,
+      ApiErrorCodeEnum.NEGATIVE_BALANCE_NOT_ALLOWED.toString(),
+    ],
+    ['period-closed', HttpStatus.CONFLICT, ApiErrorCodeEnum.PERIOD_CLOSED.toString()],
+  ] as const)('maps %s to the stable %s error', async (status, httpStatus, code) => {
+    profile.findActiveByPublicId.mockResolvedValue({id: 42} as UserEntity);
+    deletions.deleteWithTransfer.mockResolvedValue({status});
+
+    await expect(service.remove('user-public-id', 'source-id')).rejects.toMatchObject({
+      status: httpStatus,
+      code,
+    });
+  });
+
+  it('rejects deletion for an inactive principal before touching the repository', async () => {
+    profile.findActiveByPublicId.mockResolvedValue(null);
+
+    await expect(service.remove('missing-user', 'source-id')).rejects.toMatchObject({
+      status: HttpStatus.NOT_FOUND,
+      code: ApiErrorCodeEnum.NOT_FOUND.toString(),
+    });
+    expect(deletions.deleteWithTransfer).not.toHaveBeenCalled();
   });
 });

@@ -1,12 +1,14 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -17,9 +19,11 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiTags,
   ApiTooManyRequestsResponse,
   ApiUnauthorizedResponse,
+  ApiUnprocessableEntityResponse,
 } from '@nestjs/swagger';
 import {SkipThrottle, Throttle} from '@nestjs/throttler';
 import {AuthRateLimitGuard} from '../auth/guards/auth-rate-limit.guard';
@@ -31,6 +35,7 @@ import {AccountsService} from './accounts.service';
 import {AccountResponseDto} from './dto/account-response.dto';
 import {AccountSummaryDto} from './dto/account-summary.dto';
 import {CreateAccountRequestDto} from './dto/create-account-request.dto';
+import {DeleteAccountResultDto} from './dto/delete-account-result.dto';
 import {PinAccountRequestDto} from './dto/pin-account-request.dto';
 import {UpdateAccountRequestDto} from './dto/update-account-request.dto';
 
@@ -201,5 +206,45 @@ export class AccountsController {
     @Body() request: UpdateAccountRequestDto,
   ): Promise<AccountResponseDto> {
     return this.accounts.update(publicId, accountPublicId, request);
+  }
+
+  @Delete(':publicId')
+  @HttpCode(HttpStatus.OK)
+  @RateLimited()
+  // The shared guard evaluates every named throttler; only the user policy applies (13.1).
+  @SkipThrottle({ip: true, identity: true, read: true})
+  @Throttle({
+    user: {limit: RATE_LIMITS.mutation.user.limit, ttl: RATE_LIMITS.mutation.user.ttl},
+  })
+  @ApiOperation({summary: 'Eliminar una cuenta propia transfiriendo su saldo'})
+  @ApiParam({name: 'publicId', description: 'Identificador público de la cuenta.'})
+  @ApiQuery({
+    name: 'transferToPublicId',
+    description: 'Cuenta destino del saldo restante; obligatoria salvo que el saldo sea cero.',
+    required: false,
+  })
+  @ApiOkResponse({
+    description: 'Cuenta eliminada en el envelope estándar {data, error}.',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {type: 'object'},
+        error: {type: 'null', nullable: true, example: null},
+      },
+    },
+  })
+  @ApiNotFoundResponse({description: 'La cuenta no existe o pertenece a otro usuario.'})
+  @ApiConflictResponse({
+    description: 'Cuenta principal, saldo sin destino, saldo negativo no permitido o período cerrado.',
+  })
+  @ApiUnprocessableEntityResponse({description: 'El destino es la propia cuenta.'})
+  @ApiUnauthorizedResponse({description: 'Falta un token de acceso válido.'})
+  @ApiTooManyRequestsResponse({description: 'Límite de mutaciones excedido.'})
+  remove(
+    @CurrentUser() publicId: string,
+    @Param('publicId') accountPublicId: string,
+    @Query('transferToPublicId') transferToPublicId?: string,
+  ): Promise<DeleteAccountResultDto> {
+    return this.accounts.remove(publicId, accountPublicId, transferToPublicId);
   }
 }

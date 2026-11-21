@@ -1,11 +1,18 @@
 import {AccountTypeEnum} from '@peco/enums';
 import {MySqlContainer, StartedMySqlContainer} from '@testcontainers/mysql';
-import {DataSource, DataSourceOptions} from 'typeorm';
+import {DataSource, DataSourceOptions, IsNull} from 'typeorm';
 import {UtcClock} from '../database/clock/utc-clock';
 import {createTypeOrmOptions} from '../database/database.config';
-import {AccountEntity, UserEntity} from '../database/entities';
+import {
+  AccountEntity,
+  CategoryEntity,
+  MovementEntity,
+  PeriodSnapshotEntity,
+  UserEntity,
+} from '../database/entities';
 import {UserProfileRepository} from '../users/services/user-profile.repository';
 import {AccountsService} from './accounts.service';
+import {AccountDeletionRepository} from './services/account-deletion.repository';
 import {AccountRepository} from './services/account.repository';
 
 jest.setTimeout(180_000);
@@ -23,7 +30,7 @@ const CREATE_REQUEST = {
   note: 'Cuenta de prueba',
 };
 
-describe('account flow (MySQL 8, US-301/US-302/US-303/US-304)', () => {
+describe('account flow (MySQL 8, US-301/US-302/US-303/US-304/US-305)', () => {
   let container: StartedMySqlContainer;
   let dataSource: DataSource;
   let service: AccountsService;
@@ -85,9 +92,11 @@ describe('account flow (MySQL 8, US-301/US-302/US-303/US-304)', () => {
     await dataSource.initialize();
     await dataSource.runMigrations();
 
+    const clock = new UtcClock();
     service = new AccountsService(
       new UserProfileRepository(dataSource),
-      new AccountRepository(dataSource, new UtcClock()),
+      new AccountRepository(dataSource, clock),
+      new AccountDeletionRepository(dataSource, clock),
     );
   });
 
@@ -97,7 +106,10 @@ describe('account flow (MySQL 8, US-301/US-302/US-303/US-304)', () => {
   });
 
   beforeEach(async () => {
+    await dataSource.query('DELETE FROM movements');
+    await dataSource.query('DELETE FROM periodSnapshots');
     await dataSource.query('DELETE FROM accounts');
+    await dataSource.query('DELETE FROM categories');
     await dataSource.query('DELETE FROM users');
   });
 
@@ -447,5 +459,174 @@ describe('account flow (MySQL 8, US-301/US-302/US-303/US-304)', () => {
     await expect(
       service.setPin(user.publicId, 'unknown-public-id', {pinToHome: true}),
     ).rejects.toMatchObject({status: 404, code: 'NOT_FOUND'});
+  });
+
+  it('soft-deletes a zero-balance account without requiring a destination', async () => {
+    const user = await seedUser('delete-zero@example.com');
+    const source = await seedAccount(user, {currentBalance: 0, version: 2});
+
+    const result = await service.remove(user.publicId, source.publicId);
+
+    const stored = await dataSource
+      .getRepository(AccountEntity)
+      .findOne({where: {publicId: source.publicId}});
+    expect(result).toMatchObject({
+      deletedAccountPublicId: source.publicId,
+      transferMovement: null,
+      balances: [{accountPublicId: source.publicId, currentBalance: 0, version: 3}],
+    });
+    expect(stored).toMatchObject({currentBalance: 0, version: 3});
+    expect(stored?.deletedAt).toEqual(expect.any(String));
+    expect(await dataSource.getRepository(MovementEntity).count()).toBe(0);
+  });
+
+  it('transfers a positive balance atomically and writes a single global TRANSFER category', async () => {
+    const user = await seedUser('delete-transfer@example.com');
+    const source = await seedAccount(user, {name: 'Ahorros', currentBalance: 50000, version: 1});
+    const destination = await seedAccount(user, {
+      name: 'Efectivo',
+      currentBalance: 200000,
+      version: 4,
+    });
+
+    const result = await service.remove(user.publicId, source.publicId, destination.publicId);
+
+    const sourceRow = await dataSource
+      .getRepository(AccountEntity)
+      .findOne({where: {publicId: source.publicId}});
+    const destinationRow = await dataSource
+      .getRepository(AccountEntity)
+      .findOne({where: {publicId: destination.publicId}});
+    const movement = await dataSource.getRepository(MovementEntity).findOne({
+      where: {publicId: result.transferMovement?.publicId ?? ''},
+      relations: {account: true, targetAccount: true, category: true},
+    });
+    const categories = await dataSource.getRepository(CategoryEntity).find({
+      where: {name: 'transfer'},
+    });
+
+    expect(sourceRow).toMatchObject({currentBalance: 0, version: 2});
+    expect(sourceRow?.deletedAt).toEqual(expect.any(String));
+    expect(destinationRow).toMatchObject({currentBalance: 250000, version: 5});
+    expect(movement).toMatchObject({
+      type: 'TRANSFER',
+      amount: 50000,
+      isReversal: false,
+      isReversed: false,
+      isCanceled: false,
+      account: {publicId: source.publicId},
+      targetAccount: {publicId: destination.publicId},
+      category: {name: 'transfer', applyType: 'TRANSFER', isSystem: true},
+    });
+    expect(movement?.publicId).not.toBe(source.id.toString());
+    expect(categories).toHaveLength(1);
+    expect(result.balances).toEqual([
+      {accountPublicId: source.publicId, currentBalance: 0, version: 2},
+      {accountPublicId: destination.publicId, currentBalance: 250000, version: 5},
+    ]);
+
+    const secondSource = await seedAccount(user, {currentBalance: 10000});
+    await service.remove(user.publicId, secondSource.publicId, destination.publicId);
+    expect(await dataSource.getRepository(CategoryEntity).count({where: {name: 'transfer'}})).toBe(
+      1,
+    );
+  });
+
+  it('absorbs a negative balance into a CREDIT destination with a positive movement magnitude', async () => {
+    const user = await seedUser('delete-negative@example.com');
+    const source = await seedAccount(user, {currentBalance: -30000, version: 1});
+    const destination = await seedAccount(user, {
+      type: AccountTypeEnum.CREDIT.toString(),
+      currentBalance: 200000,
+      creditLimit: 500000,
+    });
+
+    const result = await service.remove(user.publicId, source.publicId, destination.publicId);
+    const movement = await dataSource.getRepository(MovementEntity).findOne({
+      where: {publicId: result.transferMovement?.publicId ?? ''},
+      relations: {account: true, targetAccount: true},
+    });
+
+    expect(movement).toMatchObject({
+      type: 'TRANSFER',
+      amount: 30000,
+      account: {publicId: destination.publicId},
+      targetAccount: {publicId: source.publicId},
+    });
+    const destinationRow = await dataSource
+      .getRepository(AccountEntity)
+      .findOne({where: {publicId: destination.publicId}});
+    expect(destinationRow?.currentBalance).toBe(170000);
+  });
+
+  it('rejects a negative balance transfer into a non-credit destination without writing', async () => {
+    const user = await seedUser('delete-negative-blocked@example.com');
+    const source = await seedAccount(user, {currentBalance: -30000});
+    const destination = await seedAccount(user, {currentBalance: 10000});
+
+    await expect(
+      service.remove(user.publicId, source.publicId, destination.publicId),
+    ).rejects.toMatchObject({status: 409, code: 'NEGATIVE_BALANCE_NOT_ALLOWED'});
+    expect(await dataSource.getRepository(MovementEntity).count()).toBe(0);
+    expect(
+      await dataSource.getRepository(AccountEntity).count({where: {deletedAt: IsNull()}}),
+    ).toBe(2);
+  });
+
+  it('protects the root account and rejects missing, self and foreign destinations', async () => {
+    const user = await seedUser('delete-guards@example.com');
+    const otherUser = await seedUser('delete-guards-other@example.com');
+    const root = await seedAccount(user, {isRoot: true, currentBalance: 0});
+    const source = await seedAccount(user, {currentBalance: 10000});
+    const foreign = await seedAccount(otherUser, {currentBalance: 0});
+
+    await expect(service.remove(user.publicId, root.publicId)).rejects.toMatchObject({
+      status: 409,
+      code: 'ROOT_ACCOUNT_PROTECTED',
+    });
+    await expect(service.remove(user.publicId, source.publicId)).rejects.toMatchObject({
+      status: 409,
+      code: 'TRANSFER_REQUIRED',
+    });
+    await expect(
+      service.remove(user.publicId, source.publicId, source.publicId),
+    ).rejects.toMatchObject({status: 422, code: 'UNPROCESSABLE_ENTITY'});
+    await expect(
+      service.remove(user.publicId, source.publicId, foreign.publicId),
+    ).rejects.toMatchObject({status: 404, code: 'NOT_FOUND'});
+    await expect(service.remove(user.publicId, 'unknown-id')).rejects.toMatchObject({
+      status: 404,
+      code: 'NOT_FOUND',
+    });
+    expect(await dataSource.getRepository(MovementEntity).count()).toBe(0);
+  });
+
+  it('blocks deletion when the current UTC month already has a snapshot', async () => {
+    const user = await seedUser('delete-closed@example.com');
+    const source = await seedAccount(user, {currentBalance: 0});
+    const period = new Date().toISOString().slice(0, 7);
+    await dataSource.getRepository(PeriodSnapshotEntity).save(
+      dataSource.getRepository(PeriodSnapshotEntity).create({
+        userId: user.id,
+        period,
+        startDate: `${period}-01`,
+        endDate: `${period}-28`,
+        globalInitialBalance: 0,
+        globalFinalBalance: 0,
+        totalInflows: 0,
+        totalOutflows: 0,
+        totalTransfers: 0,
+        totalTransactionsCount: 0,
+      }),
+    );
+
+    await expect(service.remove(user.publicId, source.publicId)).rejects.toMatchObject({
+      status: 409,
+      code: 'PERIOD_CLOSED',
+    });
+    const stored = await dataSource
+      .getRepository(AccountEntity)
+      .findOne({where: {publicId: source.publicId}});
+    expect(stored?.deletedAt).toBeNull();
   });
 });
