@@ -194,6 +194,77 @@ describe('auth flows (MySQL 8, US-201/US-202/US-203/US-204/US-205/US-206)', () =
     }
   });
 
+  describe('root invariant under concurrency (US-306)', () => {
+    const seedSecondRoot = async (userId: number): Promise<unknown> => {
+      const repository = dataSource.getRepository(AccountEntity);
+      return repository
+        .save(
+          repository.create({
+            userId,
+            name: 'Efectivo duplicado',
+            type: AccountTypeEnum.CASH.toString(),
+            initialBalance: 0,
+            currentBalance: 0,
+            includeInTotal: true,
+            targetGoal: null,
+            creditLimit: null,
+            color: null,
+            icon: null,
+            pinToHome: true,
+            isRoot: true,
+            note: null,
+            version: 0,
+            deletedAt: null,
+          }),
+        )
+        .catch((error: unknown) => error);
+    };
+
+    it('creates exactly one root per user when registrations run concurrently', async () => {
+      const registered = await Promise.all([
+        service.register({...VALID_REGISTRATION, email: 'first@example.com', name: 'First'}),
+        service.register({...VALID_REGISTRATION, email: 'second@example.com', name: 'Second'}),
+      ]);
+
+      expect(registered).toHaveLength(2);
+      const users = await dataSource.getRepository(UserEntity).find();
+      const roots = await dataSource.getRepository(AccountEntity).find({where: {isRoot: true}});
+      expect(users).toHaveLength(2);
+      expect(roots).toHaveLength(2);
+      for (const user of users) {
+        const userRoots = roots.filter((root) => root.userId === user.id);
+        expect(userRoots).toHaveLength(1);
+        expect(userRoots[0].rootKey).toBe(user.id);
+        expect(userRoots[0].name).toBe('Efectivo');
+      }
+    });
+
+    it('rejects a direct second root insert with the UQAccountsRootKey guard', async () => {
+      await service.register(VALID_REGISTRATION);
+      const [user] = await dataSource.getRepository(UserEntity).find();
+
+      const failure = await seedSecondRoot(user.id);
+
+      expect(failure).toMatchObject({code: 'ER_DUP_ENTRY'});
+      expect(String(failure)).toContain('UQAccountsRootKey');
+      expect(await dataSource.getRepository(AccountEntity).count({where: {isRoot: true}})).toBe(1);
+    });
+
+    it('leaves no user without exactly one root after a batch of registrations', async () => {
+      const emails = Array.from({length: 5}, (_, index) => `batch-${index}@example.com`);
+
+      await Promise.all(emails.map((email) => service.register({...VALID_REGISTRATION, email})));
+
+      const users = await dataSource.getRepository(UserEntity).find();
+      const roots = await dataSource.getRepository(AccountEntity).find({where: {isRoot: true}});
+      expect(users).toHaveLength(emails.length);
+      expect(roots).toHaveLength(emails.length);
+      expect(
+        users.every((user) => roots.filter((root) => root.userId === user.id).length === 1),
+      ).toBe(true);
+    });
+  });
+
   describe('login (US-202)', () => {
     it('logs in with a normalized email and stores a fresh hashed refresh token', async () => {
       const registered = await service.register(VALID_REGISTRATION);

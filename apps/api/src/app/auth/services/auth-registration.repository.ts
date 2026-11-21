@@ -1,6 +1,6 @@
 import {Injectable} from '@nestjs/common';
 import {AccountTypeEnum} from '@peco/enums';
-import {DataSource} from 'typeorm';
+import {DataSource, IsNull} from 'typeorm';
 import {AccountEntity, RefreshTokenEntity, UserEntity} from '../../database/entities';
 import {ROOT_ACCOUNT_NAME} from '../constants/root-account-name.constant';
 import type {RegistrationInput} from '../types/registration-input.type';
@@ -34,6 +34,15 @@ export class AuthRegistrationRepository {
             deletedAt: null,
           }),
         );
+
+        // Defensive invariant check (7.4/D35): a second active root would break
+        // UQAccountsRootKey, so abort the whole transaction before writing it.
+        const existingRoot = await manager.findOne(AccountEntity, {
+          where: {userId: user.id, isRoot: true, deletedAt: IsNull()},
+        });
+        if (existingRoot) {
+          throw new Error(`Root account already exists for user ${user.id}`);
+        }
 
         await manager.save(
           manager.create(AccountEntity, {

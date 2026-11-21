@@ -15,14 +15,16 @@ const INPUT = {
 
 describe('AuthRegistrationRepository', () => {
   let findOne: jest.Mock;
+  let findRoot: jest.Mock;
   let create: jest.Mock;
   let save: jest.Mock;
   let transaction: jest.Mock;
-  let manager: {getRepository: jest.Mock; create: jest.Mock; save: jest.Mock};
+  let manager: {getRepository: jest.Mock; findOne: jest.Mock; create: jest.Mock; save: jest.Mock};
   let repository: AuthRegistrationRepository;
 
   beforeEach(() => {
     findOne = jest.fn().mockResolvedValue(null);
+    findRoot = jest.fn().mockResolvedValue(null);
     create = jest.fn((entity: new () => object, values: object) =>
       Object.assign(new entity(), values),
     );
@@ -37,7 +39,7 @@ describe('AuthRegistrationRepository', () => {
       }
       return entity;
     });
-    manager = {getRepository: jest.fn(() => ({findOne})), create, save};
+    manager = {getRepository: jest.fn(() => ({findOne})), findOne: findRoot, create, save};
     transaction = jest.fn(async (callback: (manager: unknown) => Promise<unknown>) =>
       callback(manager),
     );
@@ -106,5 +108,19 @@ describe('AuthRegistrationRepository', () => {
     await expect(repository.create(INPUT)).rejects.toThrow('account insert failed');
     expect(save).toHaveBeenCalledTimes(2);
     expect(save.mock.calls[1][0]).toBeInstanceOf(AccountEntity);
+  });
+
+  it('aborts the transaction when an active root already exists for the user', async () => {
+    findRoot.mockResolvedValue({id: 99, isRoot: true});
+
+    await expect(repository.create(INPUT)).rejects.toThrow(
+      'Root account already exists for user 7',
+    );
+
+    expect(findRoot).toHaveBeenCalledWith(AccountEntity, {
+      where: {userId: 7, isRoot: true, deletedAt: expect.anything()},
+    });
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(save.mock.calls[0][0]).toBeInstanceOf(UserEntity);
   });
 });
