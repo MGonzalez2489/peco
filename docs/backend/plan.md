@@ -5217,6 +5217,8 @@ One item is deliberately deferred:
    with `409 CATEGORY_SYSTEM_PROTECTED` (D43). A closed period must stay untouched.
    Confirm the movement and scheduled-transaction write paths are available before
    wiring the reassignment; US-402 (category writes and seeder, D99) is done.
+2. Keep validating US-100–US-105, US-201–US-209, US-301, US-302, US-303,
+   US-304, US-305, US-306, US-401 and US-402 with
    `nx affected` targets (`lint`, `typecheck`, `test`, `build`); the `Refs` line
    of every story points to the section that owns the rule.
 3. Close each milestone when its exit criterion of 16.4 is demonstrated on
