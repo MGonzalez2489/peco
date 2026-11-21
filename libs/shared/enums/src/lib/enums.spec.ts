@@ -6,6 +6,7 @@ import {
   AppThemeEnum,
   CategoryApplyTypeEnum,
   MovementTypeEnum,
+  MovementWriteStatusEnum,
   RecurrenceFrequencyEnum,
   RefreshRotationStatusEnum,
   ScheduledExecutionStatusEnum,
@@ -32,6 +33,15 @@ describe('shared enums', () => {
     expect(AccountWriteStatusEnum.TRANSFER_REQUIRED.toString()).toBe('transfer-required');
     expect(AccountWriteStatusEnum.NEGATIVE_BALANCE.toString()).toBe('negative-balance');
     expect(AccountWriteStatusEnum.PERIOD_CLOSED.toString()).toBe('period-closed');
+    expect(MovementWriteStatusEnum.CREATED.toString()).toBe('created');
+    expect(MovementWriteStatusEnum.NOT_FOUND.toString()).toBe('not-found');
+    expect(MovementWriteStatusEnum.SELF_TRANSFER.toString()).toBe('self-transfer');
+    expect(MovementWriteStatusEnum.TRANSFER_REQUIRED.toString()).toBe('transfer-required');
+    expect(MovementWriteStatusEnum.CATEGORY_NOT_COMPATIBLE.toString()).toBe(
+      'category-not-compatible',
+    );
+    expect(MovementWriteStatusEnum.NEGATIVE_BALANCE.toString()).toBe('negative-balance');
+    expect(MovementWriteStatusEnum.PERIOD_CLOSED.toString()).toBe('period-closed');
   });
 
   it('keeps every account write status in a single registry', () => {
@@ -43,6 +53,18 @@ describe('shared enums', () => {
       'root-protected',
       'self-transfer',
       'transfer-required',
+      'negative-balance',
+      'period-closed',
+    ]);
+  });
+
+  it('keeps every movement write status in a single registry', () => {
+    expect(Object.values(MovementWriteStatusEnum).map((status) => status.toString())).toEqual([
+      'created',
+      'not-found',
+      'self-transfer',
+      'transfer-required',
+      'category-not-compatible',
       'negative-balance',
       'period-closed',
     ]);

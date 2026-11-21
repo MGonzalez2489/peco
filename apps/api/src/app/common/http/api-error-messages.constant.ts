@@ -20,7 +20,7 @@ export const API_ERROR_MESSAGES: Record<ApiErrorCode, string> = {
   ROOT_ACCOUNT_PROTECTED: 'La cuenta principal no se puede eliminar.',
   CATEGORY_SYSTEM_PROTECTED: 'La categoría del sistema no se puede modificar.',
   CATEGORY_NAME_TAKEN: 'Ya existe una categoría activa con ese nombre.',
-  TRANSFER_REQUIRED: 'Transfiere el saldo antes de eliminar la cuenta.',
+  TRANSFER_REQUIRED: 'Se requiere una cuenta de destino válida.',
   NEGATIVE_BALANCE_NOT_ALLOWED: 'Solo las tarjetas de crédito pueden tener saldo negativo.',
   PERIOD_NOT_CLOSABLE: 'Solo se pueden cerrar períodos anteriores al actual.',
   PERIOD_BEFORE_ACTIVITY: 'El período es anterior al primer movimiento.',

@@ -6,6 +6,7 @@ import {AuthModule} from './auth/auth.module';
 import {CategoriesModule} from './categories/categories.module';
 import {ConfigModule} from './config/config.module';
 import {HealthModule} from './health/health.module';
+import {MovementsModule} from './movements/movements.module';
 import {UsersModule} from './users/users.module';
 
 /**
@@ -14,7 +15,15 @@ import {UsersModule} from './users/users.module';
  * `/health` with `503` while MySQL is down.
  */
 @Module({
-  imports: [ConfigModule, HealthModule, AuthModule, UsersModule, AccountsModule, CategoriesModule],
+  imports: [
+    ConfigModule,
+    HealthModule,
+    AuthModule,
+    UsersModule,
+    AccountsModule,
+    CategoriesModule,
+    MovementsModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })

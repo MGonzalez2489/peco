@@ -4,6 +4,7 @@ export * from './lib/api-error-code.enum';
 export * from './lib/app-theme.enum';
 export * from './lib/category-apply-type.enum';
 export * from './lib/movement-type.enum';
+export * from './lib/movement-write-status.enum';
 export * from './lib/recurrence-frequency.enum';
 export * from './lib/refresh-rotation-status.enum';
 export * from './lib/scheduled-execution-status.enum';
