@@ -13,8 +13,10 @@ import {
 } from '../database/entities';
 import {CategoryRepository} from '../categories/services/category.repository';
 import {UserProfileRepository} from '../users/services/user-profile.repository';
+import type {ListMovementsQueryDto} from './dto/list-movements-query.dto';
 import {MovementsService} from './movements.service';
 import {MovementCreationRepository} from './services/movement-creation.repository';
+import {MovementQueryRepository} from './services/movement-query.repository';
 
 jest.setTimeout(180_000);
 
@@ -79,6 +81,37 @@ describe('ledger creation (MySQL 8, US-501)', () => {
       }),
     );
 
+  const seedMovement = async (
+    user: UserEntity,
+    account: AccountEntity,
+    category: CategoryEntity,
+    overrides: Partial<MovementEntity> = {},
+  ): Promise<MovementEntity> =>
+    dataSource.getRepository(MovementEntity).save(
+      dataSource.getRepository(MovementEntity).create({
+        userId: user.id,
+        accountId: account.id,
+        targetAccountId: null,
+        categoryId: category.id,
+        type: MovementTypeEnum.INCOME.toString(),
+        amount: 1000,
+        date: DATE,
+        note: null,
+        reversalId: null,
+        replacesMovementId: null,
+        isReversal: false,
+        isReversed: false,
+        isCanceled: false,
+        scheduledTransactionId: null,
+        version: 0,
+        deletedAt: null,
+        ...overrides,
+      }),
+    );
+
+  const list = (overrides: Partial<ListMovementsQueryDto> = {}): ListMovementsQueryDto =>
+    ({period: '2026-11', limit: 20, ...overrides}) as ListMovementsQueryDto;
+
   const seedClosedPeriod = async (user: UserEntity): Promise<void> => {
     await dataSource.getRepository(PeriodSnapshotEntity).save(
       dataSource.getRepository(PeriodSnapshotEntity).create({
@@ -129,6 +162,7 @@ describe('ledger creation (MySQL 8, US-501)', () => {
     service = new MovementsService(
       new UserProfileRepository(dataSource),
       new MovementCreationRepository(dataSource, clock),
+      new MovementQueryRepository(dataSource),
       clock,
     );
   });
@@ -323,5 +357,171 @@ describe('ledger creation (MySQL 8, US-501)', () => {
     expect(stored.currentBalance).toBe(3000);
     expect(stored.version).toBe(2);
     expect(await dataSource.getRepository(MovementEntity).count()).toBe(2);
+  });
+
+  it('orders by date/id desc, paginates with an opaque cursor and totals the whole filter', async () => {
+    const user = await seedUser('list@example.com');
+    const account = await seedAccount(user);
+    const category = await seedCategory(null, CategoryApplyTypeEnum.BOTH.toString());
+    await seedMovement(user, account, category, {
+      date: '2026-11-10T10:00:00.000Z',
+      amount: 1000,
+    });
+    await seedMovement(user, account, category, {
+      date: '2026-11-12T10:00:00.000Z',
+      amount: 3000,
+      type: MovementTypeEnum.INCOME.toString(),
+    });
+    await seedMovement(user, account, category, {
+      date: '2026-11-12T10:00:00.000Z',
+      amount: 2000,
+      type: MovementTypeEnum.EXPENSE.toString(),
+    });
+
+    const first = await service.list(user.publicId, list({limit: 2}));
+    expect(first.items.map((item) => item.amount)).toEqual([2000, 3000]);
+    expect(first.nextCursor).toEqual(expect.any(String));
+    expect(first.totals).toEqual({
+      totalIncome: 4000,
+      totalExpenses: 2000,
+      netBalance: 2000,
+      count: 3,
+    });
+
+    const second = await service.list(
+      user.publicId,
+      list({limit: 2, cursor: first.nextCursor ?? undefined}),
+    );
+    expect(second.items.map((item) => item.amount)).toEqual([1000]);
+    expect(second.nextCursor).toBeNull();
+    expect(second.totals).toEqual(first.totals);
+  });
+
+  it('matches a transfer by destination and counts it once without double-counting its amount', async () => {
+    const user = await seedUser('transfer-list@example.com');
+    const source = await seedAccount(user, {name: 'Origen'});
+    const target = await seedAccount(user, {name: 'Destino', type: AccountTypeEnum.SAVINGS.toString()});
+    const category = await seedCategory(null, CategoryApplyTypeEnum.BOTH.toString());
+    const transfer = await seedMovement(user, source, category, {
+      targetAccountId: target.id,
+      type: MovementTypeEnum.TRANSFER.toString(),
+      amount: 5000,
+    });
+
+    const byDestination = await service.list(
+      user.publicId,
+      list({accountPublicId: target.publicId}),
+    );
+    expect(byDestination.items.map((item) => item.publicId)).toEqual([transfer.publicId]);
+    expect(byDestination.items[0]?.targetAccount?.publicId).toBe(target.publicId);
+    expect(byDestination.totals).toEqual({
+      totalIncome: 0,
+      totalExpenses: 0,
+      netBalance: 0,
+      count: 1,
+    });
+
+    const byAccountType = await service.list(
+      user.publicId,
+      list({accountType: AccountTypeEnum.SAVINGS.toString()}),
+    );
+    expect(byAccountType.totals.count).toBe(1);
+  });
+
+  it('filters by case-insensitive note, category, reversals, canceled rows and soft deletes', async () => {
+    const user = await seedUser('filters@example.com');
+    const account = await seedAccount(user);
+    const category = await seedCategory(null, CategoryApplyTypeEnum.BOTH.toString());
+    await seedMovement(user, account, category, {note: 'Supermercado', amount: 5000});
+    await seedMovement(user, account, category, {note: 'Farmacia', amount: 1000});
+    await seedMovement(user, account, category, {
+      note: 'Revertido',
+      isReversed: true,
+      amount: 7000,
+    });
+    await seedMovement(user, account, category, {
+      note: 'Contra',
+      isReversal: true,
+      amount: 7000,
+    });
+    await seedMovement(user, account, category, {note: 'Cancelado', isCanceled: true, amount: 9000});
+    await seedMovement(user, account, category, {
+      note: 'Borrado',
+      amount: 8000,
+      deletedAt: '2026-11-20T00:00:00.000Z',
+    });
+
+    const byNote = await service.list(user.publicId, list({note: ' SUPER '}));
+    expect(byNote.items.map((item) => item.note)).toEqual(['Supermercado']);
+    expect(byNote.totals.count).toBe(1);
+
+    const byCategory = await service.list(user.publicId, list({categoryPublicId: category.publicId}));
+    expect(byCategory.totals.count).toBe(5);
+
+    const strict = await service.list(
+      user.publicId,
+      list({excludeReversals: true, includeCanceled: false}),
+    );
+    expect(strict.items.map((item) => item.note)).toEqual(['Farmacia', 'Supermercado']);
+    expect(strict.totals).toEqual({
+      totalIncome: 6000,
+      totalExpenses: 0,
+      netBalance: 6000,
+      count: 2,
+    });
+
+    const all = await service.list(user.publicId, list());
+    expect(all.totals).toEqual({
+      totalIncome: 20000,
+      totalExpenses: 0,
+      netBalance: 20000,
+      count: 5,
+    });
+  });
+
+  it('returns an empty page for foreign account and category filters', async () => {
+    const user = await seedUser('owner@example.com');
+    const other = await seedUser('foreign@example.com');
+    const account = await seedAccount(user);
+    const foreignAccount = await seedAccount(other);
+    const category = await seedCategory(null, CategoryApplyTypeEnum.BOTH.toString());
+    const foreignCategory = await seedCategory(other, CategoryApplyTypeEnum.BOTH.toString());
+    await seedMovement(user, account, category);
+
+    const byForeignAccount = await service.list(
+      user.publicId,
+      list({accountPublicId: foreignAccount.publicId}),
+    );
+    expect(byForeignAccount.items).toEqual([]);
+    expect(byForeignAccount.totals.count).toBe(0);
+
+    const byForeignCategory = await service.list(
+      user.publicId,
+      list({categoryPublicId: foreignCategory.publicId}),
+    );
+    expect(byForeignCategory.items).toEqual([]);
+    expect(byForeignCategory.totals.count).toBe(0);
+  });
+
+  it('applies inclusive from/to bounds and rejects an inactive caller', async () => {
+    const user = await seedUser('range@example.com');
+    const account = await seedAccount(user);
+    const category = await seedCategory(null, CategoryApplyTypeEnum.BOTH.toString());
+    await seedMovement(user, account, category, {date: '2025-12-31T23:59:59.999Z'});
+    await seedMovement(user, account, category, {date: '2026-01-01T00:00:00.000Z', amount: 2000});
+    await seedMovement(user, account, category, {date: '2026-02-01T00:00:00.000Z', amount: 4000});
+
+    const ranged = await service.list(
+      user.publicId,
+      list({period: undefined, from: '2026-01-01', to: '2026-01-31'}),
+    );
+    expect(ranged.items.map((item) => item.amount)).toEqual([2000]);
+    expect(ranged.totals.count).toBe(1);
+
+    await dataSource.getRepository(UserEntity).update({id: user.id}, {deletedAt: DATE});
+    await expect(service.list(user.publicId, list())).rejects.toMatchObject({
+      status: 404,
+      code: 'NOT_FOUND',
+    });
   });
 });

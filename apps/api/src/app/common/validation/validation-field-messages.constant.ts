@@ -29,6 +29,9 @@ export const VALIDATION_FIELD_MESSAGES: Readonly<Record<string, string>> = {
   arrayNotEmpty: 'La lista no puede estar vacía.',
   isNumberString: 'Debe ser un número.',
   creditLimitOnlyForCredit: 'El límite de crédito solo aplica a cuentas de crédito.',
+  movementCursor: 'El cursor no es válido.',
+  movementPeriodExclusive: 'El período no se puede combinar con un rango de fechas.',
+  movementDateRange: 'El rango no puede superar los 24 meses.',
 };
 
 /** Message used when the constraint has no Spanish translation yet. */

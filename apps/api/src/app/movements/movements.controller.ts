@@ -1,9 +1,10 @@
-import {Body, Controller, HttpCode, HttpStatus, Post, UseGuards} from '@nestjs/common';
+import {Body, Controller, Get, HttpCode, HttpStatus, Post, Query, UseGuards} from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiConflictResponse,
   ApiCreatedResponse,
   ApiNotFoundResponse,
+  ApiOkResponse,
   ApiOperation,
   ApiTags,
   ApiTooManyRequestsResponse,
@@ -11,12 +12,16 @@ import {
   ApiUnprocessableEntityResponse,
 } from '@nestjs/swagger';
 import {SkipThrottle, Throttle} from '@nestjs/throttler';
+import {MovementResponseDto} from '../accounts/dto/movement-response.dto';
 import {AuthRateLimitGuard} from '../auth/guards/auth-rate-limit.guard';
 import {RATE_LIMITS} from '../common/constants/rate-limits.constant';
+import {EnvelopeResult} from '../common/http/envelope-result';
 import {CurrentUser} from '../common/security/decorators/current-user.decorator';
 import {RateLimited} from '../common/security/decorators/rate-limited.decorator';
 import {CreateMovementRequestDto} from './dto/create-movement-request.dto';
 import {CreateMovementResponseDto} from './dto/create-movement-response.dto';
+import {ListMovementsQueryDto} from './dto/list-movements-query.dto';
+import {MovementTotalsDto} from './dto/movement-totals.dto';
 import {MovementsService} from './movements.service';
 
 /** Authenticated ledger mutations (US-501). */
@@ -25,6 +30,50 @@ import {MovementsService} from './movements.service';
 @UseGuards(AuthRateLimitGuard)
 export class MovementsController {
   constructor(private readonly movements: MovementsService) {}
+
+  @Get()
+  @RateLimited()
+  // The shared guard evaluates every named throttler; only the read policy applies (13.1).
+  @SkipThrottle({ip: true, identity: true, user: true})
+  @Throttle({
+    read: {limit: RATE_LIMITS.read.user.limit, ttl: RATE_LIMITS.read.user.ttl},
+  })
+  @ApiOperation({summary: 'Listar movimientos con filtros, cursor y totales del conjunto filtrado'})
+  @ApiOkResponse({
+    description:
+      'Lista en el envelope estándar {data, meta, error}; `meta.nextCursor` y `meta.totals`.',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {type: 'array', items: {type: 'object'}},
+        meta: {
+          type: 'object',
+          properties: {
+            correlationId: {type: 'string'},
+            nextCursor: {type: 'string', nullable: true, example: null},
+            totals: {type: 'object'},
+          },
+        },
+        error: {type: 'null', nullable: true, example: null},
+      },
+    },
+  })
+  @ApiBadRequestResponse({description: 'Filtros, rango o cursor inválidos.'})
+  @ApiUnauthorizedResponse({description: 'Falta un token de acceso válido.'})
+  @ApiTooManyRequestsResponse({description: 'Límite de lecturas excedido.'})
+  async list(
+    @CurrentUser() publicId: string,
+    @Query() query: ListMovementsQueryDto,
+  ): Promise<
+    EnvelopeResult<
+      MovementResponseDto[],
+      {nextCursor: string | null; totals: MovementTotalsDto}
+    >
+  > {
+    const {items, nextCursor, totals} = await this.movements.list(publicId, query);
+
+    return EnvelopeResult.withMeta(items, {nextCursor, totals: new MovementTotalsDto(totals)});
+  }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)

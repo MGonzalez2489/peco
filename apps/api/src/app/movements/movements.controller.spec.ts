@@ -50,6 +50,14 @@ const RESULT = {
   balances: [{accountPublicId: 'source-account', currentBalance: 105000, version: 4}],
 };
 
+const TOTALS = {totalIncome: 300000, totalExpenses: 145000, netBalance: 155000, count: 18};
+
+const LIST_RESULT = {
+  items: [RESULT.movement],
+  nextCursor: 'eyJkIjoiMjAyNi0xMS0xMiIsImkiOjEyfQ',
+  totals: TOTALS,
+};
+
 const BODY = {
   type: 'EXPENSE',
   amount: 45000,
@@ -71,6 +79,7 @@ const SILENT_LOGGER: LoggerService = {
 describe('MovementsController HTTP contract (US-501)', () => {
   let app: INestApplication;
   let create: jest.Mock;
+  let list: jest.Mock;
 
   const authGuard: CanActivate = {
     canActivate: (context: ExecutionContext): boolean => {
@@ -83,11 +92,12 @@ describe('MovementsController HTTP contract (US-501)', () => {
 
   beforeEach(async () => {
     create = jest.fn().mockResolvedValue(RESULT);
+    list = jest.fn().mockResolvedValue(LIST_RESULT);
 
     const moduleRef = await Test.createTestingModule({
       controllers: [MovementsController],
       providers: [
-        {provide: MovementsService, useValue: {create}},
+        {provide: MovementsService, useValue: {create, list}},
         {provide: APP_GUARD, useValue: authGuard},
       ],
     })
@@ -144,5 +154,66 @@ describe('MovementsController HTTP contract (US-501)', () => {
       .expect(400);
 
     expect(create).not.toHaveBeenCalled();
+  });
+
+  it('lists movements with the next cursor and whole-filter totals in meta', async () => {
+    const response = await request(app.getHttpServer()).get('/movements').expect(200);
+
+    expect(response.body).toEqual({
+      data: [RESULT.movement],
+      meta: {
+        correlationId: expect.any(String),
+        nextCursor: LIST_RESULT.nextCursor,
+        totals: TOTALS,
+      },
+      error: null,
+    });
+    expect(list).toHaveBeenCalledWith('user-public-id', expect.objectContaining({limit: 20}));
+  });
+
+  it('passes decoded filters to the service', async () => {
+    await request(app.getHttpServer())
+      .get('/movements')
+      .query({
+        period: '2026-11',
+        type: 'EXPENSE',
+        accountPublicId: ' source-account ',
+        note: '  Super  ',
+        excludeReversals: 'true',
+        includeCanceled: 'false',
+        limit: '5',
+      })
+      .expect(200);
+
+    expect(list).toHaveBeenCalledWith(
+      'user-public-id',
+      expect.objectContaining({
+        period: '2026-11',
+        type: 'EXPENSE',
+        accountPublicId: 'source-account',
+        note: 'Super',
+        excludeReversals: true,
+        includeCanceled: false,
+        limit: 5,
+      }),
+    );
+  });
+
+  it.each([
+    ['limit', {limit: '101'}, 'limit'],
+    ['cursor', {cursor: 'not-a-cursor'}, 'cursor'],
+    ['period with from', {period: '2026-11', from: '2026-01-01'}, 'period'],
+    ['range over 24 months', {from: '2024-01-01', to: '2026-02-01'}, 'to'],
+    ['boolean filter', {excludeReversals: 'yes'}, 'excludeReversals'],
+    ['unknown filter', {invented: 'value'}, 'invented'],
+  ])('rejects an invalid %s with 400 VALIDATION_ERROR', async (_label, query, field) => {
+    const response = await request(app.getHttpServer()).get('/movements').query(query).expect(400);
+
+    expect(response.body.error).toMatchObject({
+      code: 'VALIDATION_ERROR',
+      message: API_ERROR_MESSAGES.VALIDATION_ERROR,
+      details: {fields: {[field]: expect.any(String)}},
+    });
+    expect(list).not.toHaveBeenCalled();
   });
 });

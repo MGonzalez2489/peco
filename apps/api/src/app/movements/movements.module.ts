@@ -6,11 +6,12 @@ import {UsersModule} from '../users/users.module';
 import {MovementsController} from './movements.controller';
 import {MovementsService} from './movements.service';
 import {MovementCreationRepository} from './services/movement-creation.repository';
+import {MovementQueryRepository} from './services/movement-query.repository';
 
-/** Ledger creation with one serialized, atomic balance write (US-501). */
+/** Ledger creation and owner-scoped, paginated reads (US-501/US-502). */
 @Module({
   imports: [DatabaseModule, AuthModule, UsersModule],
   controllers: [MovementsController],
-  providers: [MovementsService, MovementCreationRepository, UtcClock],
+  providers: [MovementsService, MovementCreationRepository, MovementQueryRepository, UtcClock],
 })
 export class MovementsModule {}
