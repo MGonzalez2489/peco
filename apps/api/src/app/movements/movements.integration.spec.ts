@@ -535,6 +535,42 @@ describe('ledger creation (MySQL 8, US-501)', () => {
     });
   });
 
+  it('keeps canceled rows queryable with zero monetary totals (US-508)', async () => {
+    const user = await seedUser('canceled-totals@example.com');
+    const account = await seedAccount(user);
+    const category = await seedCategory(null, CategoryApplyTypeEnum.BOTH.toString());
+    const active = await seedMovement(user, account, category, {note: 'Activo', amount: 5000});
+    const canceled = await seedMovement(user, account, category, {
+      note: 'Cancelado',
+      amount: 9000,
+      isCanceled: true,
+    });
+
+    const strict = await service.list(user.publicId, list({includeCanceled: false}));
+    expect(strict.items.map((item) => item.publicId)).toEqual([active.publicId]);
+    expect(strict.totals).toEqual({
+      totalIncome: 5000,
+      totalExpenses: 0,
+      netBalance: 5000,
+      count: 1,
+    });
+
+    const explicit = await service.list(user.publicId, list({includeCanceled: true}));
+    expect(explicit.items.map((item) => item.publicId)).toEqual([
+      canceled.publicId,
+      active.publicId,
+    ]);
+    expect(explicit.totals).toEqual({
+      totalIncome: 5000,
+      totalExpenses: 0,
+      netBalance: 5000,
+      count: 2,
+    });
+
+    const detail = await service.findOne(user.publicId, canceled.publicId);
+    expect(detail).toMatchObject({publicId: canceled.publicId, amount: 9000, isCanceled: true});
+  });
+
   it('returns an empty page for foreign account and category filters', async () => {
     const user = await seedUser('owner@example.com');
     const other = await seedUser('foreign@example.com');

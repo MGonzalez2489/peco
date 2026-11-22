@@ -110,14 +110,13 @@ export class MovementDeleteRepository {
       return {status: MovementWriteStatusEnum.PERIOD_CLOSED.toString()};
     }
 
-    const impact = movement.isCanceled
-      ? new Map<number, number>()
-      : movementBalanceImpact(
-          movement.type,
-          movement.amount,
-          movement.accountId,
-          movement.targetAccountId,
-        );
+    const impact = movementBalanceImpact(
+      movement.type,
+      movement.amount,
+      movement.accountId,
+      movement.targetAccountId,
+      movement.isCanceled,
+    );
 
     const balances: AccountBalanceUpdate[] = [];
     for (const [accountId, value] of impact) {

@@ -1,14 +1,21 @@
 import {MovementTypeEnum} from '@peco/enums';
 import type {MovementEntity} from '../../database/entities';
 
-/** Signed balance impact per account; a transfer touches source and target (9.3/9.4). */
+/**
+ * Signed balance impact per account; a transfer touches source and target.
+ * A canceled row never moved money, so it contributes zero everywhere (9.2/9.8).
+ */
 export const movementBalanceImpact = (
   type: MovementEntity['type'],
   amount: number,
   sourceId: number,
   targetId: number | null,
+  isCanceled = false,
 ): Map<number, number> => {
   const impact = new Map<number, number>();
+  if (isCanceled) {
+    return impact;
+  }
 
   if (type === MovementTypeEnum.INCOME.toString()) {
     impact.set(sourceId, (impact.get(sourceId) ?? 0) + amount);
