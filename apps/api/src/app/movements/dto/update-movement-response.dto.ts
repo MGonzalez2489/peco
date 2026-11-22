@@ -1,5 +1,5 @@
 import type {UpdateMovementResponse} from '@peco/contracts';
-import {ApiProperty} from '@nestjs/swagger';
+import {ApiProperty, ApiPropertyOptional} from '@nestjs/swagger';
 import {AccountBalanceUpdateDto} from '../../accounts/dto/account-balance-update.dto';
 import {MovementResponseDto} from '../../accounts/dto/movement-response.dto';
 import type {MovementUpdateResult} from '../types/movement-update-result.type';
@@ -16,7 +16,14 @@ export class UpdateMovementResponseDto implements UpdateMovementResponse {
   })
   readonly balances: AccountBalanceUpdateDto[];
 
-  constructor(result: Extract<MovementUpdateResult, {status: 'updated'}>) {
+  @ApiPropertyOptional({
+    description: 'Identificador público del movimiento retirado por un cambio de tipo.',
+  })
+  readonly replacedPublicId?: string;
+
+  constructor(
+    result: Extract<MovementUpdateResult, {status: 'updated'} | {status: 'replaced'}>,
+  ) {
     this.movement = new MovementResponseDto(
       result.movement,
       result.account,
@@ -31,5 +38,8 @@ export class UpdateMovementResponseDto implements UpdateMovementResponse {
           balance.version,
         ),
     );
+    if (result.status === 'replaced') {
+      this.replacedPublicId = result.replacedPublicId;
+    }
   }
 }

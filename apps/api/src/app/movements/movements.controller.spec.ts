@@ -315,4 +315,23 @@ describe('MovementsController HTTP contract (US-501–504)', () => {
       message: API_ERROR_MESSAGES.MOVEMENT_LOCKED,
     });
   });
+
+  it('returns the retired public id when a type change replaces the movement', async () => {
+    update.mockResolvedValueOnce({
+      ...RESULT,
+      replacedPublicId: 'old-movement-public-id',
+    });
+
+    const response = await request(app.getHttpServer())
+      .patch('/movements/movement-public-id')
+      .send({type: 'INCOME', amount: 50000, version: 0})
+      .expect(200);
+
+    expect(response.body.data.replacedPublicId).toBe('old-movement-public-id');
+    expect(update).toHaveBeenCalledWith(
+      'user-public-id',
+      'movement-public-id',
+      expect.objectContaining({type: 'INCOME', amount: 50000, version: 0}),
+    );
+  });
 });

@@ -20,6 +20,7 @@ import {ListMovementsQueryDto} from './dto/list-movements-query.dto';
 import {UpdateMovementResponseDto} from './dto/update-movement-response.dto';
 import {MovementCreationRepository} from './services/movement-creation.repository';
 import {MovementQueryRepository} from './services/movement-query.repository';
+import {MovementReplaceRepository} from './services/movement-replace.repository';
 import {MovementUpdateRepository} from './services/movement-update.repository';
 import type {MovementListFilter} from './types/movement-list-filter.type';
 import {categoryNotCompatibleException} from './utils/category-not-compatible.exception';
@@ -27,10 +28,9 @@ import {movementDateImmutableException} from './utils/movement-date-immutable.ex
 import {movementLockedException} from './utils/movement-locked.exception';
 import {movementNotFoundException} from './utils/movement-not-found.exception';
 import {movementResourceNotFoundException} from './utils/movement-resource-not-found.exception';
-import {movementTypeChangeUnsupportedException} from './utils/movement-type-change-unsupported.exception';
 import {periodUtcBounds} from './utils/period-utc-bounds.util';
 
-/** Ledger reads and writes with stable conflict mapping and UTC normalization (8.10/US-501–504). */
+/** Ledger reads and writes with stable conflict mapping and UTC normalization (8.10/US-501–505). */
 @Injectable()
 export class MovementsService {
   constructor(
@@ -38,6 +38,7 @@ export class MovementsService {
     private readonly creations: MovementCreationRepository,
     private readonly queries: MovementQueryRepository,
     private readonly updates: MovementUpdateRepository,
+    private readonly replacements: MovementReplaceRepository,
     private readonly clock: UtcClock,
   ) {}
 
@@ -81,7 +82,8 @@ export class MovementsService {
 
   /**
    * Owner-scoped partial edit. The pre-read gives the route its precise 404 and
-   * rejects server-owned or deferred fields before the transactional write.
+   * rejects immutable fields; a different `type` takes the atomic replace path
+   * (D46) instead of mutating the stored row.
    */
   async update(
     publicId: string,
@@ -100,12 +102,10 @@ export class MovementsService {
     if ((request as {date?: unknown}).date !== undefined) {
       throw movementDateImmutableException();
     }
-    // US-505 owns the atomic replace path for a different type (D46).
-    if (request.type !== undefined && request.type !== current.type) {
-      throw movementTypeChangeUnsupportedException();
-    }
-
-    const result = await this.updates.update(user.id, movementPublicId, request);
+    const changesType = request.type !== undefined && request.type !== current.type;
+    const result = changesType
+      ? await this.replacements.replace(user.id, movementPublicId, request)
+      : await this.updates.update(user.id, movementPublicId, request);
 
     if (result.status === MovementWriteStatusEnum.NOT_FOUND.toString()) {
       throw movementResourceNotFoundException();

@@ -7,9 +7,10 @@ import {MovementsController} from './movements.controller';
 import {MovementsService} from './movements.service';
 import {MovementCreationRepository} from './services/movement-creation.repository';
 import {MovementQueryRepository} from './services/movement-query.repository';
+import {MovementReplaceRepository} from './services/movement-replace.repository';
 import {MovementUpdateRepository} from './services/movement-update.repository';
 
-/** Ledger creation, same-type edits and owner-scoped, paginated reads (US-501–504). */
+/** Ledger creation, edits, atomic replaces and owner-scoped reads (US-501–505). */
 @Module({
   imports: [DatabaseModule, AuthModule, UsersModule],
   controllers: [MovementsController],
@@ -18,6 +19,7 @@ import {MovementUpdateRepository} from './services/movement-update.repository';
     MovementCreationRepository,
     MovementQueryRepository,
     MovementUpdateRepository,
+    MovementReplaceRepository,
     UtcClock,
   ],
 })

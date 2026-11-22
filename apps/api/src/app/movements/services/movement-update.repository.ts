@@ -18,6 +18,8 @@ import {MOVEMENT_EDIT_AUDIT_ACTION} from '../constants/movement-edit-audit-actio
 import type {MovementUpdateResult} from '../types/movement-update-result.type';
 import {isDeadlockError} from '../utils/is-deadlock-error.util';
 import {lockOwnerAccounts} from '../utils/lock-owner-accounts.util';
+import {movementBalanceDelta} from '../utils/movement-balance-delta.util';
+import {movementBalanceImpact} from '../utils/movement-balance-impact.util';
 import {movementAuditSnapshot} from '../utils/movement-audit-snapshot.util';
 import {movementCategoryAcceptsType} from '../utils/movement-category-accepts-type.util';
 
@@ -184,14 +186,19 @@ export class MovementUpdateRepository {
 
     const nextAmount = request.amount ?? movement.amount;
     const nextNote = request.note !== undefined ? request.note : movement.note;
-    const before = this.impact(
+    const before = movementBalanceImpact(
       movement.type,
       movement.amount,
       movement.accountId,
       movement.targetAccountId,
     );
-    const after = this.impact(nextType, nextAmount, sourceLookup.id, targetLookup?.id ?? null);
-    const deltas = this.delta(before, after);
+    const after = movementBalanceImpact(
+      nextType,
+      nextAmount,
+      sourceLookup.id,
+      targetLookup?.id ?? null,
+    );
+    const deltas = movementBalanceDelta(before, after);
 
     const changedAccounts: AccountEntity[] = [];
     for (const [accountId, delta] of deltas) {
@@ -302,38 +309,4 @@ export class MovementUpdateRepository {
     };
   }
 
-  private impact(
-    type: MovementEntity['type'],
-    amount: number,
-    sourceId: number,
-    targetId: number | null,
-  ): Map<number, number> {
-    const impact = new Map<number, number>();
-
-    if (type === MovementTypeEnum.INCOME.toString()) {
-      impact.set(sourceId, (impact.get(sourceId) ?? 0) + amount);
-    } else if (type === MovementTypeEnum.EXPENSE.toString()) {
-      impact.set(sourceId, (impact.get(sourceId) ?? 0) - amount);
-    } else if (type === MovementTypeEnum.TRANSFER.toString()) {
-      impact.set(sourceId, (impact.get(sourceId) ?? 0) - amount);
-      if (targetId !== null) {
-        impact.set(targetId, (impact.get(targetId) ?? 0) + amount);
-      }
-    }
-
-    return impact;
-  }
-
-  private delta(before: Map<number, number>, after: Map<number, number>): Map<number, number> {
-    const deltas = new Map<number, number>();
-
-    for (const [accountId, value] of before) {
-      deltas.set(accountId, (deltas.get(accountId) ?? 0) - value);
-    }
-    for (const [accountId, value] of after) {
-      deltas.set(accountId, (deltas.get(accountId) ?? 0) + value);
-    }
-
-    return deltas;
-  }
 }

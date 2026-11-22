@@ -38,7 +38,7 @@ import {UpdateMovementRequestDto} from './dto/update-movement-request.dto';
 import {UpdateMovementResponseDto} from './dto/update-movement-response.dto';
 import {MovementsService} from './movements.service';
 
-/** Authenticated ledger reads and mutations (US-501–504). */
+/** Authenticated ledger reads and mutations (US-501–505). */
 @ApiTags('movements')
 @Controller('movements')
 @UseGuards(AuthRateLimitGuard)
@@ -127,10 +127,13 @@ export class MovementsController {
   @Throttle({
     user: {limit: RATE_LIMITS.mutation.user.limit, ttl: RATE_LIMITS.mutation.user.ttl},
   })
-  @ApiOperation({summary: 'Editar un movimiento propio y ajustar los saldos afectados'})
+  @ApiOperation({
+    summary: 'Editar un movimiento propio o reemplazarlo atómicamente al cambiar el tipo',
+  })
   @ApiParam({name: 'publicId', description: 'Identificador público del movimiento.'})
   @ApiOkResponse({
-    description: 'Movimiento y saldos en el envelope estándar {data, error}.',
+    description:
+      'Movimiento, saldos y —si cambió el tipo— `replacedPublicId` en el envelope {data, error}.',
     schema: {
       type: 'object',
       properties: {

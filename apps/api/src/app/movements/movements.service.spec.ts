@@ -12,6 +12,7 @@ import type {ListMovementsQueryDto} from './dto/list-movements-query.dto';
 import {MovementsService} from './movements.service';
 import {MovementCreationRepository} from './services/movement-creation.repository';
 import {MovementQueryRepository} from './services/movement-query.repository';
+import {MovementReplaceRepository} from './services/movement-replace.repository';
 import {MovementUpdateRepository} from './services/movement-update.repository';
 
 const CREATED_AT = '2026-11-21T10:00:00.000Z';
@@ -75,6 +76,7 @@ describe('MovementsService (US-501–504)', () => {
   let creations: {create: jest.Mock};
   let queries: {list: jest.Mock; findOwnerDetail: jest.Mock};
   let updates: {update: jest.Mock};
+  let replacements: {replace: jest.Mock};
   let clock: {now: jest.Mock};
   let service: MovementsService;
 
@@ -83,12 +85,14 @@ describe('MovementsService (US-501–504)', () => {
     creations = {create: jest.fn()};
     queries = {list: jest.fn(), findOwnerDetail: jest.fn()};
     updates = {update: jest.fn()};
+    replacements = {replace: jest.fn()};
     clock = {now: jest.fn().mockReturnValue(CREATED_AT)};
     service = new MovementsService(
       profile as unknown as UserProfileRepository,
       creations as unknown as MovementCreationRepository,
       queries as unknown as MovementQueryRepository,
       updates as unknown as MovementUpdateRepository,
+      replacements as unknown as MovementReplaceRepository,
       clock as unknown as UtcClock,
     );
     profile.findActiveByPublicId.mockResolvedValue({id: 42, publicId: 'user-public-id'});
@@ -384,17 +388,43 @@ describe('MovementsService (US-501–504)', () => {
       expect(updates.update).not.toHaveBeenCalled();
     });
 
-    it('rejects a different type until US-505 implements the atomic replace', async () => {
+    it('dispatches a different type to the atomic replace repository', async () => {
+      replacements.replace.mockResolvedValue({
+        ...editResult(),
+        status: MovementWriteStatusEnum.REPLACED.toString(),
+        movement: {...detailEntity(), publicId: 'replacement-public-id', version: 0},
+        replacedPublicId: 'movement-public-id',
+      });
+
+      const result = await service.update('user-public-id', 'movement-public-id', {
+        type: MovementTypeEnum.EXPENSE.toString(),
+        amount: 5000,
+        version: 0,
+      });
+
+      expect(replacements.replace).toHaveBeenCalledWith(42, 'movement-public-id', {
+        type: MovementTypeEnum.EXPENSE.toString(),
+        amount: 5000,
+        version: 0,
+      });
+      expect(updates.update).not.toHaveBeenCalled();
+      expect(result.replacedPublicId).toBe('movement-public-id');
+      expect(result.movement.publicId).toBe('replacement-public-id');
+    });
+
+    it('maps a scheduled movement type change to 409 MOVEMENT_LOCKED', async () => {
+      replacements.replace.mockResolvedValue({
+        status: MovementWriteStatusEnum.LOCKED.toString(),
+      });
+
       await expect(
         service.update('user-public-id', 'movement-public-id', {
           type: MovementTypeEnum.EXPENSE.toString(),
         }),
       ).rejects.toMatchObject({
-        status: HttpStatus.BAD_REQUEST,
-        code: ApiErrorCodeEnum.VALIDATION_ERROR.toString(),
-        details: {fields: {type: expect.any(String)}},
+        status: HttpStatus.CONFLICT,
+        code: ApiErrorCodeEnum.MOVEMENT_LOCKED.toString(),
       });
-      expect(updates.update).not.toHaveBeenCalled();
     });
 
     it('maps stale versions to 409 VERSION_CONFLICT with both versions', async () => {

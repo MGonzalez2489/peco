@@ -4,6 +4,7 @@ import {stringEnumValue} from './string-enum-value';
 export const MovementWriteStatusEnum = {
   CREATED: stringEnumValue('created'),
   UPDATED: stringEnumValue('updated'),
+  REPLACED: stringEnumValue('replaced'),
   NOT_FOUND: stringEnumValue('not-found'),
   SELF_TRANSFER: stringEnumValue('self-transfer'),
   TRANSFER_REQUIRED: stringEnumValue('transfer-required'),
