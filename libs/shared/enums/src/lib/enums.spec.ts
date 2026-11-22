@@ -36,6 +36,7 @@ describe('shared enums', () => {
     expect(MovementWriteStatusEnum.CREATED.toString()).toBe('created');
     expect(MovementWriteStatusEnum.UPDATED.toString()).toBe('updated');
     expect(MovementWriteStatusEnum.REPLACED.toString()).toBe('replaced');
+    expect(MovementWriteStatusEnum.DELETED.toString()).toBe('deleted');
     expect(MovementWriteStatusEnum.NOT_FOUND.toString()).toBe('not-found');
     expect(MovementWriteStatusEnum.SELF_TRANSFER.toString()).toBe('self-transfer');
     expect(MovementWriteStatusEnum.TRANSFER_REQUIRED.toString()).toBe('transfer-required');
@@ -67,6 +68,7 @@ describe('shared enums', () => {
       'created',
       'updated',
       'replaced',
+      'deleted',
       'not-found',
       'self-transfer',
       'transfer-required',

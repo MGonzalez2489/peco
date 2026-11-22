@@ -16,6 +16,7 @@ export * from './create-category-request.type';
 export * from './create-movement-request.type';
 export * from './create-movement-response.type';
 export * from './delete-account-result.type';
+export * from './delete-movement-result.type';
 export * from './delete-user-request.type';
 export * from './forgot-password-request.type';
 export * from './list-movements-query.type';

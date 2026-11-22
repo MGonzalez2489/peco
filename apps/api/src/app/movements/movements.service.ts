@@ -16,9 +16,11 @@ import type {MovementEntity} from '../database/entities';
 import {UserProfileRepository} from '../users/services/user-profile.repository';
 import {userNotFoundException} from '../users/utils/user-not-found.exception';
 import {CreateMovementResponseDto} from './dto/create-movement-response.dto';
+import {DeleteMovementResultDto} from './dto/delete-movement-result.dto';
 import {ListMovementsQueryDto} from './dto/list-movements-query.dto';
 import {UpdateMovementResponseDto} from './dto/update-movement-response.dto';
 import {MovementCreationRepository} from './services/movement-creation.repository';
+import {MovementDeleteRepository} from './services/movement-delete.repository';
 import {MovementQueryRepository} from './services/movement-query.repository';
 import {MovementReplaceRepository} from './services/movement-replace.repository';
 import {MovementUpdateRepository} from './services/movement-update.repository';
@@ -30,7 +32,7 @@ import {movementNotFoundException} from './utils/movement-not-found.exception';
 import {movementResourceNotFoundException} from './utils/movement-resource-not-found.exception';
 import {periodUtcBounds} from './utils/period-utc-bounds.util';
 
-/** Ledger reads and writes with stable conflict mapping and UTC normalization (8.10/US-501–505). */
+/** Ledger reads and writes with stable conflict mapping and UTC normalization (8.10/US-501–506). */
 @Injectable()
 export class MovementsService {
   constructor(
@@ -39,6 +41,7 @@ export class MovementsService {
     private readonly queries: MovementQueryRepository,
     private readonly updates: MovementUpdateRepository,
     private readonly replacements: MovementReplaceRepository,
+    private readonly deletions: MovementDeleteRepository,
     private readonly clock: UtcClock,
   ) {}
 
@@ -133,6 +136,37 @@ export class MovementsService {
     }
 
     return new UpdateMovementResponseDto(result);
+  }
+
+  /**
+   * Owner-scoped soft delete. The transaction reverts the stored impact and
+   * returns only the accounts whose balance actually changed (9.7/US-506).
+   */
+  async remove(
+    publicId: string,
+    movementPublicId: string,
+  ): Promise<DeleteMovementResultDto> {
+    const user = await this.profile.findActiveByPublicId(publicId);
+    if (!user) {
+      throw userNotFoundException();
+    }
+
+    const result = await this.deletions.delete(user.id, movementPublicId);
+
+    if (result.status === MovementWriteStatusEnum.NOT_FOUND.toString()) {
+      throw movementNotFoundException();
+    }
+    if (result.status === MovementWriteStatusEnum.LOCKED.toString()) {
+      throw movementLockedException();
+    }
+    if (result.status === MovementWriteStatusEnum.NEGATIVE_BALANCE.toString()) {
+      throw negativeBalanceConflictException();
+    }
+    if (result.status === MovementWriteStatusEnum.PERIOD_CLOSED.toString()) {
+      throw periodClosedException();
+    }
+
+    return new DeleteMovementResultDto(result.deletedPublicId, result.balances);
   }
 
   async create(

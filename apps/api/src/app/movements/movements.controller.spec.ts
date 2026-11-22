@@ -89,12 +89,13 @@ const SILENT_LOGGER: LoggerService = {
   fatal: jest.fn(),
 };
 
-describe('MovementsController HTTP contract (US-501–504)', () => {
+describe('MovementsController HTTP contract (US-501–506)', () => {
   let app: INestApplication;
   let create: jest.Mock;
   let list: jest.Mock;
   let findOne: jest.Mock;
   let update: jest.Mock;
+  let remove: jest.Mock;
 
   const authGuard: CanActivate = {
     canActivate: (context: ExecutionContext): boolean => {
@@ -110,11 +111,15 @@ describe('MovementsController HTTP contract (US-501–504)', () => {
     list = jest.fn().mockResolvedValue(LIST_RESULT);
     findOne = jest.fn().mockResolvedValue(DETAIL);
     update = jest.fn().mockResolvedValue(RESULT);
+    remove = jest.fn().mockResolvedValue({
+      deletedPublicId: 'movement-public-id',
+      balances: [{accountPublicId: 'source-account', currentBalance: 97000, version: 1}],
+    });
 
     const moduleRef = await Test.createTestingModule({
       controllers: [MovementsController],
       providers: [
-        {provide: MovementsService, useValue: {create, list, findOne, update}},
+        {provide: MovementsService, useValue: {create, list, findOne, update, remove}},
         {provide: APP_GUARD, useValue: authGuard},
       ],
     })
@@ -333,5 +338,46 @@ describe('MovementsController HTTP contract (US-501–504)', () => {
       'movement-public-id',
       expect.objectContaining({type: 'INCOME', amount: 50000, version: 0}),
     );
+  });
+
+  it('deletes a movement and returns 200 with the single-resource envelope', async () => {
+    const response = await request(app.getHttpServer())
+      .delete('/movements/movement-public-id')
+      .expect(200);
+
+    expect(response.body).toEqual({
+      data: {
+        deletedPublicId: 'movement-public-id',
+        balances: [{accountPublicId: 'source-account', currentBalance: 97000, version: 1}],
+      },
+      error: null,
+    });
+    expect(remove).toHaveBeenCalledWith('user-public-id', 'movement-public-id');
+  });
+
+  it('maps a second delete to 404 MOVEMENT_NOT_FOUND', async () => {
+    remove.mockRejectedValueOnce(movementNotFoundException());
+
+    const response = await request(app.getHttpServer())
+      .delete('/movements/movement-public-id')
+      .expect(404);
+
+    expect(response.body.error).toMatchObject({
+      code: 'MOVEMENT_NOT_FOUND',
+      message: API_ERROR_MESSAGES.MOVEMENT_NOT_FOUND,
+    });
+  });
+
+  it('maps a locked movement on delete to 409 MOVEMENT_LOCKED', async () => {
+    remove.mockRejectedValueOnce(movementLockedException());
+
+    const response = await request(app.getHttpServer())
+      .delete('/movements/movement-public-id')
+      .expect(409);
+
+    expect(response.body.error).toMatchObject({
+      code: 'MOVEMENT_LOCKED',
+      message: API_ERROR_MESSAGES.MOVEMENT_LOCKED,
+    });
   });
 });

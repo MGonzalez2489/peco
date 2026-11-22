@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -32,13 +33,14 @@ import {CurrentUser} from '../common/security/decorators/current-user.decorator'
 import {RateLimited} from '../common/security/decorators/rate-limited.decorator';
 import {CreateMovementRequestDto} from './dto/create-movement-request.dto';
 import {CreateMovementResponseDto} from './dto/create-movement-response.dto';
+import {DeleteMovementResultDto} from './dto/delete-movement-result.dto';
 import {ListMovementsQueryDto} from './dto/list-movements-query.dto';
 import {MovementTotalsDto} from './dto/movement-totals.dto';
 import {UpdateMovementRequestDto} from './dto/update-movement-request.dto';
 import {UpdateMovementResponseDto} from './dto/update-movement-response.dto';
 import {MovementsService} from './movements.service';
 
-/** Authenticated ledger reads and mutations (US-501–505). */
+/** Authenticated ledger reads and mutations (US-501–506). */
 @ApiTags('movements')
 @Controller('movements')
 @UseGuards(AuthRateLimitGuard)
@@ -158,6 +160,44 @@ export class MovementsController {
     @Body() request: UpdateMovementRequestDto,
   ): Promise<UpdateMovementResponseDto> {
     return this.movements.update(publicId, movementPublicId, request);
+  }
+
+  @Delete(':publicId')
+  @HttpCode(HttpStatus.OK)
+  @RateLimited()
+  // The shared guard evaluates every named throttler; only the user policy applies (13.1).
+  @SkipThrottle({ip: true, identity: true, read: true})
+  @Throttle({
+    user: {limit: RATE_LIMITS.mutation.user.limit, ttl: RATE_LIMITS.mutation.user.ttl},
+  })
+  @ApiOperation({
+    summary: 'Eliminar un movimiento propio y revertir su impacto en los saldos',
+  })
+  @ApiParam({name: 'publicId', description: 'Identificador público del movimiento.'})
+  @ApiOkResponse({
+    description:
+      'Movimiento eliminado, con su identificador y los saldos recalculados, en el envelope {data, error}.',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {type: 'object'},
+        error: {type: 'null', nullable: true, example: null},
+      },
+    },
+  })
+  @ApiNotFoundResponse({
+    description: 'El movimiento no existe, pertenece a otro usuario o ya fue eliminado.',
+  })
+  @ApiConflictResponse({
+    description: 'Movimiento bloqueado, saldo negativo no permitido o período cerrado.',
+  })
+  @ApiUnauthorizedResponse({description: 'Falta un token de acceso válido.'})
+  @ApiTooManyRequestsResponse({description: 'Límite de mutaciones excedido.'})
+  remove(
+    @CurrentUser() publicId: string,
+    @Param('publicId') movementPublicId: string,
+  ): Promise<DeleteMovementResultDto> {
+    return this.movements.remove(publicId, movementPublicId);
   }
 
   @Post()

@@ -28,6 +28,7 @@ import {UserProfileRepository} from '../users/services/user-profile.repository';
 import type {ListMovementsQueryDto} from './dto/list-movements-query.dto';
 import {MovementsService} from './movements.service';
 import {MovementCreationRepository} from './services/movement-creation.repository';
+import {MovementDeleteRepository} from './services/movement-delete.repository';
 import {MovementQueryRepository} from './services/movement-query.repository';
 import {MovementReplaceRepository} from './services/movement-replace.repository';
 import {MovementUpdateRepository} from './services/movement-update.repository';
@@ -213,6 +214,7 @@ describe('ledger creation (MySQL 8, US-501)', () => {
       new MovementQueryRepository(dataSource),
       new MovementUpdateRepository(dataSource, clock),
       new MovementReplaceRepository(dataSource, clock),
+      new MovementDeleteRepository(dataSource, clock),
       clock,
     );
   });
@@ -1036,6 +1038,147 @@ describe('ledger creation (MySQL 8, US-501)', () => {
         details: {expectedVersion: 1, currentVersion: 0},
       });
       expect(await dataSource.getRepository(MovementEntity).count()).toBe(1);
+      expect(await dataSource.getRepository(AuditLogEntity).count()).toBe(0);
+    });
+  });
+
+  describe('soft delete with inverse impact (US-506)', () => {
+    it('reverts an expense, retires the row and rejects a second delete', async () => {
+      const user = await seedUser('delete-basic@example.com');
+      const account = await seedAccount(user, {currentBalance: 550});
+      const category = await seedCategory(null, CategoryApplyTypeEnum.BOTH.toString());
+      const movement = await seedMovement(user, account, category, {
+        type: MovementTypeEnum.EXPENSE.toString(),
+        amount: 450,
+      });
+
+      const result = await service.remove(user.publicId, movement.publicId);
+
+      expect(result).toEqual({
+        deletedPublicId: movement.publicId,
+        balances: [{accountPublicId: account.publicId, currentBalance: 1000, version: 1}],
+      });
+
+      const stored = await dataSource.getRepository(MovementEntity).findOneByOrFail({id: movement.id});
+      expect(stored).toMatchObject({deletedAt: expect.any(String), version: 1});
+
+      await expect(service.findOne(user.publicId, movement.publicId)).rejects.toMatchObject({
+        status: 404,
+        code: 'MOVEMENT_NOT_FOUND',
+      });
+      await expect(service.remove(user.publicId, movement.publicId)).rejects.toMatchObject({
+        status: 404,
+        code: 'MOVEMENT_NOT_FOUND',
+      });
+
+      const audit = await dataSource
+        .getRepository(AuditLogEntity)
+        .findOneByOrFail({userId: user.id});
+      expect(audit).toMatchObject({entity: 'movements', action: 'DELETE', after: null});
+      expect(audit.before).toMatchObject({publicId: movement.publicId, version: 0});
+    });
+
+    it('restores both sides of a transfer and reports only changed accounts', async () => {
+      const user = await seedUser('delete-transfer@example.com');
+      const source = await seedAccount(user, {name: 'A', currentBalance: 4000});
+      const target = await seedAccount(user, {name: 'B', currentBalance: 3000});
+      const category = await seedCategory(null, CategoryApplyTypeEnum.BOTH.toString());
+      const movement = await seedMovement(user, source, category, {
+        type: MovementTypeEnum.TRANSFER.toString(),
+        amount: 1000,
+        targetAccountId: target.id,
+      });
+
+      const result = await service.remove(user.publicId, movement.publicId);
+
+      expect(result.balances).toEqual(
+        expect.arrayContaining([
+          {accountPublicId: source.publicId, currentBalance: 5000, version: 1},
+          {accountPublicId: target.publicId, currentBalance: 2000, version: 1},
+        ]),
+      );
+    });
+
+    it('deletes a canceled movement without touching any balance', async () => {
+      const user = await seedUser('delete-canceled@example.com');
+      const account = await seedAccount(user, {currentBalance: 1000});
+      const category = await seedCategory(null, CategoryApplyTypeEnum.BOTH.toString());
+      const movement = await seedMovement(user, account, category, {
+        type: MovementTypeEnum.EXPENSE.toString(),
+        amount: 1000,
+        isCanceled: true,
+      });
+
+      const result = await service.remove(user.publicId, movement.publicId);
+
+      expect(result.balances).toEqual([]);
+      const stored = await dataSource.getRepository(AccountEntity).findOneByOrFail({id: account.id});
+      expect(stored).toMatchObject({currentBalance: 1000, version: 0});
+      const row = await dataSource.getRepository(MovementEntity).findOneByOrFail({id: movement.id});
+      expect(row.deletedAt).toEqual(expect.any(String));
+    });
+
+    it('rejects a closed period without writing anything', async () => {
+      const user = await seedUser('delete-closed@example.com');
+      const account = await seedAccount(user, {currentBalance: 1000});
+      const category = await seedCategory(null, CategoryApplyTypeEnum.BOTH.toString());
+      const movement = await seedMovement(user, account, category, {amount: 100});
+      await seedClosedPeriod(user);
+
+      await expect(service.remove(user.publicId, movement.publicId)).rejects.toMatchObject({
+        status: 409,
+        code: 'PERIOD_CLOSED',
+      });
+
+      const stored = await dataSource.getRepository(MovementEntity).findOneByOrFail({id: movement.id});
+      expect(stored.deletedAt).toBeNull();
+      const balance = await dataSource.getRepository(AccountEntity).findOneByOrFail({id: account.id});
+      expect(balance).toMatchObject({currentBalance: 1000, version: 0});
+      expect(await dataSource.getRepository(AuditLogEntity).count()).toBe(0);
+    });
+
+    it('rejects a reversal and an already reversed original', async () => {
+      const user = await seedUser('delete-locked@example.com');
+      const account = await seedAccount(user, {currentBalance: 1000});
+      const category = await seedCategory(null, CategoryApplyTypeEnum.BOTH.toString());
+      const reversal = await seedMovement(user, account, category, {
+        type: MovementTypeEnum.EXPENSE.toString(),
+        isReversal: true,
+      });
+      const reversed = await seedMovement(user, account, category, {
+        type: MovementTypeEnum.INCOME.toString(),
+        isReversed: true,
+      });
+
+      await expect(service.remove(user.publicId, reversal.publicId)).rejects.toMatchObject({
+        status: 409,
+        code: 'MOVEMENT_LOCKED',
+      });
+      await expect(service.remove(user.publicId, reversed.publicId)).rejects.toMatchObject({
+        status: 409,
+        code: 'MOVEMENT_LOCKED',
+      });
+      expect(await dataSource.getRepository(AuditLogEntity).count()).toBe(0);
+    });
+
+    it('rolls back when the inverse impact would overdraw a non-credit account', async () => {
+      const user = await seedUser('delete-negative@example.com');
+      const account = await seedAccount(user, {currentBalance: 30});
+      const category = await seedCategory(null, CategoryApplyTypeEnum.BOTH.toString());
+      const movement = await seedMovement(user, account, category, {
+        type: MovementTypeEnum.INCOME.toString(),
+        amount: 50,
+      });
+
+      await expect(service.remove(user.publicId, movement.publicId)).rejects.toMatchObject({
+        status: 409,
+        code: 'NEGATIVE_BALANCE_NOT_ALLOWED',
+      });
+
+      const stored = await dataSource.getRepository(AccountEntity).findOneByOrFail({id: account.id});
+      expect(stored).toMatchObject({currentBalance: 30, version: 0});
+      const row = await dataSource.getRepository(MovementEntity).findOneByOrFail({id: movement.id});
+      expect(row.deletedAt).toBeNull();
       expect(await dataSource.getRepository(AuditLogEntity).count()).toBe(0);
     });
   });

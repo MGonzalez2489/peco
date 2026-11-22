@@ -11,6 +11,7 @@ import {UtcClock} from '../database/clock/utc-clock';
 import type {ListMovementsQueryDto} from './dto/list-movements-query.dto';
 import {MovementsService} from './movements.service';
 import {MovementCreationRepository} from './services/movement-creation.repository';
+import {MovementDeleteRepository} from './services/movement-delete.repository';
 import {MovementQueryRepository} from './services/movement-query.repository';
 import {MovementReplaceRepository} from './services/movement-replace.repository';
 import {MovementUpdateRepository} from './services/movement-update.repository';
@@ -71,12 +72,13 @@ const REQUEST = {
   accountPublicId: 'source-account',
 } as const;
 
-describe('MovementsService (US-501–504)', () => {
+describe('MovementsService (US-501–506)', () => {
   let profile: {findActiveByPublicId: jest.Mock};
   let creations: {create: jest.Mock};
   let queries: {list: jest.Mock; findOwnerDetail: jest.Mock};
   let updates: {update: jest.Mock};
   let replacements: {replace: jest.Mock};
+  let deletions: {delete: jest.Mock};
   let clock: {now: jest.Mock};
   let service: MovementsService;
 
@@ -86,6 +88,7 @@ describe('MovementsService (US-501–504)', () => {
     queries = {list: jest.fn(), findOwnerDetail: jest.fn()};
     updates = {update: jest.fn()};
     replacements = {replace: jest.fn()};
+    deletions = {delete: jest.fn()};
     clock = {now: jest.fn().mockReturnValue(CREATED_AT)};
     service = new MovementsService(
       profile as unknown as UserProfileRepository,
@@ -93,6 +96,7 @@ describe('MovementsService (US-501–504)', () => {
       queries as unknown as MovementQueryRepository,
       updates as unknown as MovementUpdateRepository,
       replacements as unknown as MovementReplaceRepository,
+      deletions as unknown as MovementDeleteRepository,
       clock as unknown as UtcClock,
     );
     profile.findActiveByPublicId.mockResolvedValue({id: 42, publicId: 'user-public-id'});
@@ -498,6 +502,57 @@ describe('MovementsService (US-501–504)', () => {
       });
       expect(queries.findOwnerDetail).not.toHaveBeenCalled();
       expect(updates.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('remove (US-506)', () => {
+    it('returns the retired public id and the refreshed balances', async () => {
+      deletions.delete.mockResolvedValue({
+        status: MovementWriteStatusEnum.DELETED.toString(),
+        deletedPublicId: 'movement-public-id',
+        balances: [{accountPublicId: 'source-account', currentBalance: 97000, version: 1}],
+      });
+
+      const result = await service.remove('user-public-id', 'movement-public-id');
+
+      expect(deletions.delete).toHaveBeenCalledWith(42, 'movement-public-id');
+      expect(result).toEqual({
+        deletedPublicId: 'movement-public-id',
+        balances: [{accountPublicId: 'source-account', currentBalance: 97000, version: 1}],
+      });
+    });
+
+    it.each([
+      [
+        MovementWriteStatusEnum.NOT_FOUND,
+        HttpStatus.NOT_FOUND,
+        ApiErrorCodeEnum.MOVEMENT_NOT_FOUND,
+      ],
+      [MovementWriteStatusEnum.LOCKED, HttpStatus.CONFLICT, ApiErrorCodeEnum.MOVEMENT_LOCKED],
+      [
+        MovementWriteStatusEnum.NEGATIVE_BALANCE,
+        HttpStatus.CONFLICT,
+        ApiErrorCodeEnum.NEGATIVE_BALANCE_NOT_ALLOWED,
+      ],
+      [MovementWriteStatusEnum.PERIOD_CLOSED, HttpStatus.CONFLICT, ApiErrorCodeEnum.PERIOD_CLOSED],
+    ] as const)('maps %s to %s %s', async (status, httpStatus, code) => {
+      deletions.delete.mockResolvedValue({status: status.toString()});
+
+      await expect(
+        service.remove('user-public-id', 'movement-public-id'),
+      ).rejects.toMatchObject({status: httpStatus, code: code.toString()});
+    });
+
+    it('rejects an inactive user before touching the ledger', async () => {
+      profile.findActiveByPublicId.mockResolvedValue(null);
+
+      await expect(
+        service.remove('user-public-id', 'movement-public-id'),
+      ).rejects.toMatchObject({
+        status: HttpStatus.NOT_FOUND,
+        code: ApiErrorCodeEnum.NOT_FOUND.toString(),
+      });
+      expect(deletions.delete).not.toHaveBeenCalled();
     });
   });
 });
