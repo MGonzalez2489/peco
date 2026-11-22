@@ -191,7 +191,7 @@ export const parseConfig = (env: Env = process.env): AppConfig => {
       reset: readDuration(env, 'RESET_TOKEN_TTL', '45m'),
     },
     operational: {
-      idempotencyTtlHours: readInteger(env, 'IDEMPOTENCY_TTL_HOURS', 24, 1),
+      idempotencyTtlHours: readInteger(env, 'IDEMPOTENCY_TTL_HOURS', 24, 1, 168),
       inactiveUserDays: readInteger(env, 'INACTIVE_USER_DAYS', 90, 1),
       inactiveGraceDays: readInteger(env, 'INACTIVE_GRACE_DAYS', 7, 1),
       maxBackfillMonths: readInteger(env, 'MAX_BACKFILL_MONTHS', 120, 1),

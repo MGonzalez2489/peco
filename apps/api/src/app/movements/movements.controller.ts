@@ -29,6 +29,8 @@ import {MovementResponseDto} from '../accounts/dto/movement-response.dto';
 import {AuthRateLimitGuard} from '../auth/guards/auth-rate-limit.guard';
 import {RATE_LIMITS} from '../common/constants/rate-limits.constant';
 import {EnvelopeResult} from '../common/http/envelope-result';
+import {ApiIdempotencyKeyHeader} from '../common/idempotency/decorators/api-idempotency-key-header.decorator';
+import {RequireIdempotencyKey} from '../common/idempotency/decorators/require-idempotency-key.decorator';
 import {CurrentUser} from '../common/security/decorators/current-user.decorator';
 import {RateLimited} from '../common/security/decorators/rate-limited.decorator';
 import {CreateMovementRequestDto} from './dto/create-movement-request.dto';
@@ -82,10 +84,7 @@ export class MovementsController {
     @CurrentUser() publicId: string,
     @Query() query: ListMovementsQueryDto,
   ): Promise<
-    EnvelopeResult<
-      MovementResponseDto[],
-      {nextCursor: string | null; totals: MovementTotalsDto}
-    >
+    EnvelopeResult<MovementResponseDto[], {nextCursor: string | null; totals: MovementTotalsDto}>
   > {
     const {items, nextCursor, totals} = await this.movements.list(publicId, query);
 
@@ -124,6 +123,8 @@ export class MovementsController {
   }
 
   @Patch(':publicId')
+  @RequireIdempotencyKey()
+  @ApiIdempotencyKeyHeader()
   @RateLimited()
   // The shared guard evaluates every named throttler; only the user policy applies (13.1).
   @SkipThrottle({ip: true, identity: true, read: true})
@@ -202,6 +203,8 @@ export class MovementsController {
   }
 
   @Post(':publicId/revert')
+  @RequireIdempotencyKey()
+  @ApiIdempotencyKeyHeader()
   @HttpCode(HttpStatus.CREATED)
   @RateLimited()
   // The shared guard evaluates every named throttler; only the user policy applies (13.1).
@@ -241,6 +244,8 @@ export class MovementsController {
   }
 
   @Post()
+  @RequireIdempotencyKey()
+  @ApiIdempotencyKeyHeader()
   @HttpCode(HttpStatus.CREATED)
   @RateLimited()
   // The shared guard evaluates every named throttler; only the user policy applies (13.1).

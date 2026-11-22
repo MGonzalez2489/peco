@@ -1,4 +1,4 @@
-import type {INestApplication, LoggerService} from '@nestjs/common';
+import type {INestApplication, LoggerService, NestInterceptor} from '@nestjs/common';
 import {ApiErrorCodeEnum} from '@peco/enums';
 import {json, type ErrorRequestHandler} from 'express';
 import {MAX_JSON_BODY_SIZE} from '../constants/max-json-body-size.constant';
@@ -35,15 +35,24 @@ const bodyLimitErrorHandler: ErrorRequestHandler = (error, request, response, ne
 
 /**
  * Applies the cross-cutting HTTP contract once for the whole API: correlation
- * id, bounded JSON bodies, request logging, envelopes and global validation.
- * `main.ts` and the HTTP contract tests use this same function.
+ * id, bounded JSON bodies, request logging, idempotency, envelopes and global
+ * validation. `main.ts` and the HTTP contract tests use this same function.
+ *
+ * The idempotency interceptor is registered first so it stores the raw handler
+ * result; the envelope interceptor then wraps fresh responses exactly once.
  */
-export function configureHttp(app: INestApplication, options: {logger: LoggerService}): void {
+export function configureHttp(
+  app: INestApplication,
+  options: {logger: LoggerService; idempotency?: NestInterceptor},
+): void {
   app.use(correlationIdMiddleware);
   app.use(json({limit: MAX_JSON_BODY_SIZE}));
   app.use(bodyLimitErrorHandler);
   app.use(createRequestLogger(options.logger));
   app.useGlobalPipes(createValidationPipe());
   app.useGlobalFilters(new AllExceptionsFilter());
+  if (options.idempotency) {
+    app.useGlobalInterceptors(options.idempotency);
+  }
   app.useGlobalInterceptors(new ResponseEnvelopeInterceptor());
 }

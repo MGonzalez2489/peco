@@ -3,14 +3,18 @@ import {
   type ExecutionContext,
   type INestApplication,
   type LoggerService,
+  type NestInterceptor,
 } from '@nestjs/common';
-import {APP_GUARD} from '@nestjs/core';
+import {APP_GUARD, Reflector} from '@nestjs/core';
 import {Test} from '@nestjs/testing';
 import request from 'supertest';
 import {AuthRateLimitGuard} from '../auth/guards/auth-rate-limit.guard';
 import {versionConflictException} from '../accounts/utils/version-conflict.exception';
 import {API_ERROR_MESSAGES} from '../common/http/api-error-messages.constant';
 import {configureHttp} from '../common/http/configure-http';
+import {IDEMPOTENCY_KEY_HEADER} from '../common/idempotency/constants/idempotency-key-header.constant';
+import {IdempotencyInterceptor} from '../common/idempotency/interceptors/idempotency.interceptor';
+import type {IdempotencyService} from '../common/idempotency/services/idempotency.service';
 import type {AuthenticatedRequest} from '../common/types/authenticated-request.type';
 import {MovementsController} from './movements.controller';
 import {MovementsService} from './movements.service';
@@ -96,6 +100,8 @@ const BODY = {
   categoryPublicId: 'category-public-id',
 };
 
+const IDEMPOTENCY_KEY = 'movement-write-key-2026-11-22';
+
 const SILENT_LOGGER: LoggerService = {
   log: jest.fn(),
   error: jest.fn(),
@@ -113,6 +119,7 @@ describe('MovementsController HTTP contract (US-501–507)', () => {
   let update: jest.Mock;
   let remove: jest.Mock;
   let revert: jest.Mock;
+  let idempotency: NestInterceptor;
 
   const authGuard: CanActivate = {
     canActivate: (context: ExecutionContext): boolean => {
@@ -133,6 +140,15 @@ describe('MovementsController HTTP contract (US-501–507)', () => {
       balances: [{accountPublicId: 'source-account', currentBalance: 97000, version: 1}],
     });
     revert = jest.fn().mockResolvedValue(REVERSAL_RESULT);
+    const idempotencyService = {
+      execute: jest
+        .fn()
+        .mockImplementation(async (_request, run: () => Promise<{value: unknown}>) => ({
+          kind: 'success',
+          value: (await run()).value,
+        })),
+    } as unknown as IdempotencyService;
+    idempotency = new IdempotencyInterceptor(idempotencyService, new Reflector());
 
     const moduleRef = await Test.createTestingModule({
       controllers: [MovementsController],
@@ -146,7 +162,7 @@ describe('MovementsController HTTP contract (US-501–507)', () => {
       .compile();
 
     app = moduleRef.createNestApplication();
-    configureHttp(app, {logger: SILENT_LOGGER});
+    configureHttp(app, {logger: SILENT_LOGGER, idempotency});
     await app.init();
   });
 
@@ -155,10 +171,54 @@ describe('MovementsController HTTP contract (US-501–507)', () => {
   });
 
   it('creates a movement and returns 201 with the single-resource envelope', async () => {
-    const response = await request(app.getHttpServer()).post('/movements').send(BODY).expect(201);
+    const response = await request(app.getHttpServer())
+      .post('/movements')
+      .set(IDEMPOTENCY_KEY_HEADER, IDEMPOTENCY_KEY)
+      .send(BODY)
+      .expect(201);
 
     expect(response.body).toEqual({data: RESULT, error: null});
     expect(create).toHaveBeenCalledWith('user-public-id', BODY);
+  });
+
+  it('requires an idempotency key on POST /movements', async () => {
+    const response = await request(app.getHttpServer()).post('/movements').send(BODY).expect(400);
+
+    expect(response.body.error).toMatchObject({
+      code: 'VALIDATION_ERROR',
+      details: {fields: {idempotencyKey: expect.any(String)}},
+    });
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('rejects an idempotency key shorter than eight characters', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/movements')
+      .set(IDEMPOTENCY_KEY_HEADER, 'short')
+      .send(BODY)
+      .expect(400);
+
+    expect(response.body.error.details.fields).toHaveProperty('idempotencyKey');
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('requires an idempotency key on PATCH /movements/:publicId', async () => {
+    const response = await request(app.getHttpServer())
+      .patch('/movements/movement-public-id')
+      .send({amount: 50000})
+      .expect(400);
+
+    expect(response.body.error.details.fields).toHaveProperty('idempotencyKey');
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('requires an idempotency key on POST /movements/:publicId/revert', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/movements/movement-public-id/revert')
+      .expect(400);
+
+    expect(response.body.error.details.fields).toHaveProperty('idempotencyKey');
+    expect(revert).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -168,6 +228,7 @@ describe('MovementsController HTTP contract (US-501–507)', () => {
   ])('rejects a %s amount with 400 VALIDATION_ERROR', async (_label, amount) => {
     const response = await request(app.getHttpServer())
       .post('/movements')
+      .set(IDEMPOTENCY_KEY_HEADER, IDEMPOTENCY_KEY)
       .send({...BODY, amount})
       .expect(400);
 
@@ -181,6 +242,7 @@ describe('MovementsController HTTP contract (US-501–507)', () => {
   it('rejects an impossible UTC date with 400 VALIDATION_ERROR', async () => {
     await request(app.getHttpServer())
       .post('/movements')
+      .set(IDEMPOTENCY_KEY_HEADER, IDEMPOTENCY_KEY)
       .send({...BODY, date: '2026-02-30T10:00:00.000Z'})
       .expect(400);
 
@@ -190,6 +252,7 @@ describe('MovementsController HTTP contract (US-501–507)', () => {
   it('rejects server-owned fields through the global whitelist', async () => {
     await request(app.getHttpServer())
       .post('/movements')
+      .set(IDEMPOTENCY_KEY_HEADER, IDEMPOTENCY_KEY)
       .send({...BODY, version: 9, userId: 42})
       .expect(400);
 
@@ -285,6 +348,7 @@ describe('MovementsController HTTP contract (US-501–507)', () => {
   it('edits a movement and returns 200 with the single-resource envelope', async () => {
     const response = await request(app.getHttpServer())
       .patch('/movements/movement-public-id')
+      .set(IDEMPOTENCY_KEY_HEADER, IDEMPOTENCY_KEY)
       .send({amount: 50000, note: '  Supermercado  ', version: 0})
       .expect(200);
 
@@ -299,6 +363,7 @@ describe('MovementsController HTTP contract (US-501–507)', () => {
   it('rejects an immutable date with 400 VALIDATION_ERROR on details.fields.date', async () => {
     const response = await request(app.getHttpServer())
       .patch('/movements/movement-public-id')
+      .set(IDEMPOTENCY_KEY_HEADER, IDEMPOTENCY_KEY)
       .send({amount: 50000, date: '2026-11-16T10:00:00.000Z'})
       .expect(400);
 
@@ -315,6 +380,7 @@ describe('MovementsController HTTP contract (US-501–507)', () => {
 
     const response = await request(app.getHttpServer())
       .patch('/movements/movement-public-id')
+      .set(IDEMPOTENCY_KEY_HEADER, IDEMPOTENCY_KEY)
       .send({amount: 50000, version: 0})
       .expect(409);
 
@@ -330,6 +396,7 @@ describe('MovementsController HTTP contract (US-501–507)', () => {
 
     const response = await request(app.getHttpServer())
       .patch('/movements/movement-public-id')
+      .set(IDEMPOTENCY_KEY_HEADER, IDEMPOTENCY_KEY)
       .send({amount: 50000})
       .expect(409);
 
@@ -347,6 +414,7 @@ describe('MovementsController HTTP contract (US-501–507)', () => {
 
     const response = await request(app.getHttpServer())
       .patch('/movements/movement-public-id')
+      .set(IDEMPOTENCY_KEY_HEADER, IDEMPOTENCY_KEY)
       .send({type: 'INCOME', amount: 50000, version: 0})
       .expect(200);
 
@@ -402,6 +470,7 @@ describe('MovementsController HTTP contract (US-501–507)', () => {
   it('reverts a movement and returns 201 with both rows and the balances', async () => {
     const response = await request(app.getHttpServer())
       .post('/movements/movement-public-id/revert')
+      .set(IDEMPOTENCY_KEY_HEADER, IDEMPOTENCY_KEY)
       .expect(201);
 
     expect(response.body).toEqual({data: REVERSAL_RESULT, error: null});
@@ -413,6 +482,7 @@ describe('MovementsController HTTP contract (US-501–507)', () => {
 
     const response = await request(app.getHttpServer())
       .post('/movements/movement-public-id/revert')
+      .set(IDEMPOTENCY_KEY_HEADER, IDEMPOTENCY_KEY)
       .expect(409);
 
     expect(response.body.error).toMatchObject({
@@ -426,6 +496,7 @@ describe('MovementsController HTTP contract (US-501–507)', () => {
 
     const response = await request(app.getHttpServer())
       .post('/movements/movement-public-id/revert')
+      .set(IDEMPOTENCY_KEY_HEADER, IDEMPOTENCY_KEY)
       .expect(404);
 
     expect(response.body.error).toMatchObject({
@@ -439,6 +510,7 @@ describe('MovementsController HTTP contract (US-501–507)', () => {
 
     const response = await request(app.getHttpServer())
       .post('/movements/movement-public-id/revert')
+      .set(IDEMPOTENCY_KEY_HEADER, IDEMPOTENCY_KEY)
       .expect(409);
 
     expect(response.body.error).toMatchObject({

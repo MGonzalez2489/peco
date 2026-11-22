@@ -107,6 +107,11 @@ describe('parseConfig', () => {
       });
     });
 
+    it('rejects an idempotency TTL over the 168-hour maximum and names it', () => {
+      expect(() => parse({IDEMPOTENCY_TTL_HOURS: '169'})).toThrow(/IDEMPOTENCY_TTL_HOURS/);
+      expect(parse({IDEMPOTENCY_TTL_HOURS: '168'}).operational.idempotencyTtlHours).toBe(168);
+    });
+
     it('rejects a negative INACTIVE_USER_DAYS and names it', () => {
       expect(() => parse({INACTIVE_USER_DAYS: '-1'})).toThrow(/INACTIVE_USER_DAYS/);
     });
