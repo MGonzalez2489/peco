@@ -9,9 +9,10 @@ import {MovementCreationRepository} from './services/movement-creation.repositor
 import {MovementDeleteRepository} from './services/movement-delete.repository';
 import {MovementQueryRepository} from './services/movement-query.repository';
 import {MovementReplaceRepository} from './services/movement-replace.repository';
+import {MovementRevertRepository} from './services/movement-revert.repository';
 import {MovementUpdateRepository} from './services/movement-update.repository';
 
-/** Ledger creation, edits, atomic replaces, soft deletes and owner-scoped reads (US-501–506). */
+/** Ledger creation, edits, replaces, deletes, reversals and owner-scoped reads (US-501–507). */
 @Module({
   imports: [DatabaseModule, AuthModule, UsersModule],
   controllers: [MovementsController],
@@ -22,6 +23,7 @@ import {MovementUpdateRepository} from './services/movement-update.repository';
     MovementUpdateRepository,
     MovementReplaceRepository,
     MovementDeleteRepository,
+    MovementRevertRepository,
     UtcClock,
   ],
 })

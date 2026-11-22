@@ -16,6 +16,7 @@ import {MovementsController} from './movements.controller';
 import {MovementsService} from './movements.service';
 import {movementLockedException} from './utils/movement-locked.exception';
 import {movementNotFoundException} from './utils/movement-not-found.exception';
+import {reversalPeriodClosedException} from './utils/reversal-period-closed.exception';
 
 const RESULT = {
   movement: {
@@ -63,6 +64,21 @@ const DETAIL = {
   scheduledTransactionPublicId: 'schedule-public-id',
 };
 
+const REVERSAL_RESULT = {
+  original: {...RESULT.movement, isReversed: true, version: 1},
+  reversal: {
+    ...RESULT.movement,
+    publicId: 'reversal-public-id',
+    type: 'INCOME',
+    note: 'Reversión de egreso movement-public-id',
+    isReversal: true,
+    reversalOfPublicId: 'movement-public-id',
+    createdAt: '2026-11-22T10:00:00.000Z',
+    updatedAt: '2026-11-22T10:00:00.000Z',
+  },
+  balances: [{accountPublicId: 'source-account', currentBalance: 100000, version: 5}],
+};
+
 const TOTALS = {totalIncome: 300000, totalExpenses: 145000, netBalance: 155000, count: 18};
 
 const LIST_RESULT = {
@@ -89,13 +105,14 @@ const SILENT_LOGGER: LoggerService = {
   fatal: jest.fn(),
 };
 
-describe('MovementsController HTTP contract (US-501–506)', () => {
+describe('MovementsController HTTP contract (US-501–507)', () => {
   let app: INestApplication;
   let create: jest.Mock;
   let list: jest.Mock;
   let findOne: jest.Mock;
   let update: jest.Mock;
   let remove: jest.Mock;
+  let revert: jest.Mock;
 
   const authGuard: CanActivate = {
     canActivate: (context: ExecutionContext): boolean => {
@@ -115,11 +132,12 @@ describe('MovementsController HTTP contract (US-501–506)', () => {
       deletedPublicId: 'movement-public-id',
       balances: [{accountPublicId: 'source-account', currentBalance: 97000, version: 1}],
     });
+    revert = jest.fn().mockResolvedValue(REVERSAL_RESULT);
 
     const moduleRef = await Test.createTestingModule({
       controllers: [MovementsController],
       providers: [
-        {provide: MovementsService, useValue: {create, list, findOne, update, remove}},
+        {provide: MovementsService, useValue: {create, list, findOne, update, remove, revert}},
         {provide: APP_GUARD, useValue: authGuard},
       ],
     })
@@ -378,6 +396,54 @@ describe('MovementsController HTTP contract (US-501–506)', () => {
     expect(response.body.error).toMatchObject({
       code: 'MOVEMENT_LOCKED',
       message: API_ERROR_MESSAGES.MOVEMENT_LOCKED,
+    });
+  });
+
+  it('reverts a movement and returns 201 with both rows and the balances', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/movements/movement-public-id/revert')
+      .expect(201);
+
+    expect(response.body).toEqual({data: REVERSAL_RESULT, error: null});
+    expect(revert).toHaveBeenCalledWith('user-public-id', 'movement-public-id');
+  });
+
+  it('maps a second revert to 409 MOVEMENT_LOCKED', async () => {
+    revert.mockRejectedValueOnce(movementLockedException());
+
+    const response = await request(app.getHttpServer())
+      .post('/movements/movement-public-id/revert')
+      .expect(409);
+
+    expect(response.body.error).toMatchObject({
+      code: 'MOVEMENT_LOCKED',
+      message: API_ERROR_MESSAGES.MOVEMENT_LOCKED,
+    });
+  });
+
+  it('maps an unknown movement on revert to 404 MOVEMENT_NOT_FOUND', async () => {
+    revert.mockRejectedValueOnce(movementNotFoundException());
+
+    const response = await request(app.getHttpServer())
+      .post('/movements/movement-public-id/revert')
+      .expect(404);
+
+    expect(response.body.error).toMatchObject({
+      code: 'MOVEMENT_NOT_FOUND',
+      message: API_ERROR_MESSAGES.MOVEMENT_NOT_FOUND,
+    });
+  });
+
+  it('guides the user to a compensating movement when reverting a closed period', async () => {
+    revert.mockRejectedValueOnce(reversalPeriodClosedException());
+
+    const response = await request(app.getHttpServer())
+      .post('/movements/movement-public-id/revert')
+      .expect(409);
+
+    expect(response.body.error).toMatchObject({
+      code: 'PERIOD_CLOSED',
+      message: expect.stringContaining('movimiento compensatorio'),
     });
   });
 });

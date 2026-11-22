@@ -14,6 +14,7 @@ import {MovementCreationRepository} from './services/movement-creation.repositor
 import {MovementDeleteRepository} from './services/movement-delete.repository';
 import {MovementQueryRepository} from './services/movement-query.repository';
 import {MovementReplaceRepository} from './services/movement-replace.repository';
+import {MovementRevertRepository} from './services/movement-revert.repository';
 import {MovementUpdateRepository} from './services/movement-update.repository';
 
 const CREATED_AT = '2026-11-21T10:00:00.000Z';
@@ -72,13 +73,47 @@ const REQUEST = {
   accountPublicId: 'source-account',
 } as const;
 
-describe('MovementsService (US-501–506)', () => {
+const revertedResult = () => {
+  const original = {
+    ...movement(),
+    isReversed: true,
+    version: 1,
+    account: account(),
+    targetAccount: null,
+    category: category(),
+    reversalOf: null,
+    replacesMovement: null,
+    scheduledTransaction: null,
+  } as MovementEntity;
+  const reversal = {
+    ...movement(),
+    publicId: 'reversal-public-id',
+    type: MovementTypeEnum.EXPENSE.toString(),
+    isReversal: true,
+    account: account(),
+    targetAccount: null,
+    category: category(),
+    reversalOf: original,
+    replacesMovement: null,
+    scheduledTransaction: null,
+  } as MovementEntity;
+
+  return {
+    status: MovementWriteStatusEnum.REVERTED.toString(),
+    original,
+    reversal,
+    balances: [{accountPublicId: 'source-account', currentBalance: 97000, version: 1}],
+  };
+};
+
+describe('MovementsService (US-501–507)', () => {
   let profile: {findActiveByPublicId: jest.Mock};
   let creations: {create: jest.Mock};
   let queries: {list: jest.Mock; findOwnerDetail: jest.Mock};
   let updates: {update: jest.Mock};
   let replacements: {replace: jest.Mock};
   let deletions: {delete: jest.Mock};
+  let reversals: {revert: jest.Mock};
   let clock: {now: jest.Mock};
   let service: MovementsService;
 
@@ -89,6 +124,7 @@ describe('MovementsService (US-501–506)', () => {
     updates = {update: jest.fn()};
     replacements = {replace: jest.fn()};
     deletions = {delete: jest.fn()};
+    reversals = {revert: jest.fn()};
     clock = {now: jest.fn().mockReturnValue(CREATED_AT)};
     service = new MovementsService(
       profile as unknown as UserProfileRepository,
@@ -97,6 +133,7 @@ describe('MovementsService (US-501–506)', () => {
       updates as unknown as MovementUpdateRepository,
       replacements as unknown as MovementReplaceRepository,
       deletions as unknown as MovementDeleteRepository,
+      reversals as unknown as MovementRevertRepository,
       clock as unknown as UtcClock,
     );
     profile.findActiveByPublicId.mockResolvedValue({id: 42, publicId: 'user-public-id'});
@@ -553,6 +590,77 @@ describe('MovementsService (US-501–506)', () => {
         code: ApiErrorCodeEnum.NOT_FOUND.toString(),
       });
       expect(deletions.delete).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('revert (US-507)', () => {
+    it('returns both public rows with their state links and refreshed balances', async () => {
+      reversals.revert.mockResolvedValue(revertedResult());
+
+      const result = await service.revert('user-public-id', 'movement-public-id');
+
+      expect(reversals.revert).toHaveBeenCalledWith(42, 'movement-public-id');
+      expect(result.original).toMatchObject({
+        publicId: 'movement-public-id',
+        isReversed: true,
+        reversalOfPublicId: null,
+      });
+      expect(result.reversal).toMatchObject({
+        publicId: 'reversal-public-id',
+        isReversal: true,
+        reversalOfPublicId: 'movement-public-id',
+      });
+      expect(result.balances).toEqual([
+        {accountPublicId: 'source-account', currentBalance: 97000, version: 1},
+      ]);
+      expect(Object.keys(result.reversal)).not.toEqual(
+        expect.arrayContaining(['id', 'userId', 'accountId', 'categoryId']),
+      );
+    });
+
+    it.each([
+      [
+        MovementWriteStatusEnum.NOT_FOUND,
+        HttpStatus.NOT_FOUND,
+        ApiErrorCodeEnum.MOVEMENT_NOT_FOUND,
+      ],
+      [MovementWriteStatusEnum.LOCKED, HttpStatus.CONFLICT, ApiErrorCodeEnum.MOVEMENT_LOCKED],
+      [
+        MovementWriteStatusEnum.NEGATIVE_BALANCE,
+        HttpStatus.CONFLICT,
+        ApiErrorCodeEnum.NEGATIVE_BALANCE_NOT_ALLOWED,
+      ],
+      [MovementWriteStatusEnum.PERIOD_CLOSED, HttpStatus.CONFLICT, ApiErrorCodeEnum.PERIOD_CLOSED],
+    ] as const)('maps %s to %s %s', async (status, httpStatus, code) => {
+      reversals.revert.mockResolvedValue({status: status.toString()});
+
+      await expect(
+        service.revert('user-public-id', 'movement-public-id'),
+      ).rejects.toMatchObject({status: httpStatus, code: code.toString()});
+    });
+
+    it('tells the user to create a compensating movement for a closed period', async () => {
+      reversals.revert.mockResolvedValue({
+        status: MovementWriteStatusEnum.PERIOD_CLOSED.toString(),
+      });
+
+      await expect(
+        service.revert('user-public-id', 'movement-public-id'),
+      ).rejects.toMatchObject({
+        userMessage: expect.stringContaining('movimiento compensatorio'),
+      });
+    });
+
+    it('rejects an inactive user before touching the ledger', async () => {
+      profile.findActiveByPublicId.mockResolvedValue(null);
+
+      await expect(
+        service.revert('user-public-id', 'movement-public-id'),
+      ).rejects.toMatchObject({
+        status: HttpStatus.NOT_FOUND,
+        code: ApiErrorCodeEnum.NOT_FOUND.toString(),
+      });
+      expect(reversals.revert).not.toHaveBeenCalled();
     });
   });
 });

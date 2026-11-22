@@ -27,6 +27,7 @@ export * from './movement-totals.type';
 export * from './movement-type.type';
 export * from './recurrence-frequency.type';
 export * from './refresh-request.type';
+export * from './revert-movement-response.type';
 export * from './register-request.type';
 export * from './reset-password-request.type';
 export * from './scheduled-execution-status.type';

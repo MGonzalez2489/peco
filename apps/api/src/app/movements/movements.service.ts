@@ -18,10 +18,12 @@ import {userNotFoundException} from '../users/utils/user-not-found.exception';
 import {CreateMovementResponseDto} from './dto/create-movement-response.dto';
 import {DeleteMovementResultDto} from './dto/delete-movement-result.dto';
 import {ListMovementsQueryDto} from './dto/list-movements-query.dto';
+import {RevertMovementResponseDto} from './dto/revert-movement-response.dto';
 import {UpdateMovementResponseDto} from './dto/update-movement-response.dto';
 import {MovementCreationRepository} from './services/movement-creation.repository';
 import {MovementDeleteRepository} from './services/movement-delete.repository';
 import {MovementQueryRepository} from './services/movement-query.repository';
+import {MovementRevertRepository} from './services/movement-revert.repository';
 import {MovementReplaceRepository} from './services/movement-replace.repository';
 import {MovementUpdateRepository} from './services/movement-update.repository';
 import type {MovementListFilter} from './types/movement-list-filter.type';
@@ -31,8 +33,9 @@ import {movementLockedException} from './utils/movement-locked.exception';
 import {movementNotFoundException} from './utils/movement-not-found.exception';
 import {movementResourceNotFoundException} from './utils/movement-resource-not-found.exception';
 import {periodUtcBounds} from './utils/period-utc-bounds.util';
+import {reversalPeriodClosedException} from './utils/reversal-period-closed.exception';
 
-/** Ledger reads and writes with stable conflict mapping and UTC normalization (8.10/US-501–506). */
+/** Ledger reads and writes with stable conflict mapping and UTC normalization (8.10/US-501–507). */
 @Injectable()
 export class MovementsService {
   constructor(
@@ -42,6 +45,7 @@ export class MovementsService {
     private readonly updates: MovementUpdateRepository,
     private readonly replacements: MovementReplaceRepository,
     private readonly deletions: MovementDeleteRepository,
+    private readonly reversals: MovementRevertRepository,
     private readonly clock: UtcClock,
   ) {}
 
@@ -167,6 +171,41 @@ export class MovementsService {
     }
 
     return new DeleteMovementResultDto(result.deletedPublicId, result.balances);
+  }
+
+  /**
+   * Owner-scoped reversal: inserts a dated contra entry and returns both immutable
+   * rows with the account balances they changed (9.6/D33/US-507).
+   */
+  async revert(
+    publicId: string,
+    movementPublicId: string,
+  ): Promise<RevertMovementResponseDto> {
+    const user = await this.profile.findActiveByPublicId(publicId);
+    if (!user) {
+      throw userNotFoundException();
+    }
+
+    const result = await this.reversals.revert(user.id, movementPublicId);
+
+    if (result.status === MovementWriteStatusEnum.NOT_FOUND.toString()) {
+      throw movementNotFoundException();
+    }
+    if (result.status === MovementWriteStatusEnum.LOCKED.toString()) {
+      throw movementLockedException();
+    }
+    if (result.status === MovementWriteStatusEnum.NEGATIVE_BALANCE.toString()) {
+      throw negativeBalanceConflictException();
+    }
+    if (result.status === MovementWriteStatusEnum.PERIOD_CLOSED.toString()) {
+      throw reversalPeriodClosedException();
+    }
+
+    return new RevertMovementResponseDto(
+      this.toResponse(result.original),
+      this.toResponse(result.reversal),
+      result.balances,
+    );
   }
 
   async create(

@@ -36,11 +36,12 @@ import {CreateMovementResponseDto} from './dto/create-movement-response.dto';
 import {DeleteMovementResultDto} from './dto/delete-movement-result.dto';
 import {ListMovementsQueryDto} from './dto/list-movements-query.dto';
 import {MovementTotalsDto} from './dto/movement-totals.dto';
+import {RevertMovementResponseDto} from './dto/revert-movement-response.dto';
 import {UpdateMovementRequestDto} from './dto/update-movement-request.dto';
 import {UpdateMovementResponseDto} from './dto/update-movement-response.dto';
 import {MovementsService} from './movements.service';
 
-/** Authenticated ledger reads and mutations (US-501–506). */
+/** Authenticated ledger reads and mutations (US-501–507). */
 @ApiTags('movements')
 @Controller('movements')
 @UseGuards(AuthRateLimitGuard)
@@ -198,6 +199,45 @@ export class MovementsController {
     @Param('publicId') movementPublicId: string,
   ): Promise<DeleteMovementResultDto> {
     return this.movements.remove(publicId, movementPublicId);
+  }
+
+  @Post(':publicId/revert')
+  @HttpCode(HttpStatus.CREATED)
+  @RateLimited()
+  // The shared guard evaluates every named throttler; only the user policy applies (13.1).
+  @SkipThrottle({ip: true, identity: true, read: true})
+  @Throttle({
+    user: {limit: RATE_LIMITS.mutation.user.limit, ttl: RATE_LIMITS.mutation.user.ttl},
+  })
+  @ApiOperation({
+    summary: 'Revertir un movimiento creando una contrapartida y marcando el original',
+  })
+  @ApiParam({name: 'publicId', description: 'Identificador público del movimiento original.'})
+  @ApiCreatedResponse({
+    description:
+      'Original y contrapartida con los saldos actualizados en el envelope {data, error}.',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {type: 'object'},
+        error: {type: 'null', nullable: true, example: null},
+      },
+    },
+  })
+  @ApiNotFoundResponse({
+    description: 'El movimiento no existe, pertenece a otro usuario o ya fue eliminado.',
+  })
+  @ApiConflictResponse({
+    description:
+      'Movimiento bloqueado, saldo negativo no permitido o período cerrado (crea un movimiento compensatorio).',
+  })
+  @ApiUnauthorizedResponse({description: 'Falta un token de acceso válido.'})
+  @ApiTooManyRequestsResponse({description: 'Límite de mutaciones excedido.'})
+  revert(
+    @CurrentUser() publicId: string,
+    @Param('publicId') movementPublicId: string,
+  ): Promise<RevertMovementResponseDto> {
+    return this.movements.revert(publicId, movementPublicId);
   }
 
   @Post()

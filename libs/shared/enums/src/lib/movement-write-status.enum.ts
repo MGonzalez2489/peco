@@ -6,6 +6,7 @@ export const MovementWriteStatusEnum = {
   UPDATED: stringEnumValue('updated'),
   REPLACED: stringEnumValue('replaced'),
   DELETED: stringEnumValue('deleted'),
+  REVERTED: stringEnumValue('reverted'),
   NOT_FOUND: stringEnumValue('not-found'),
   SELF_TRANSFER: stringEnumValue('self-transfer'),
   TRANSFER_REQUIRED: stringEnumValue('transfer-required'),

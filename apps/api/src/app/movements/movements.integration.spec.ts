@@ -31,6 +31,7 @@ import {MovementCreationRepository} from './services/movement-creation.repositor
 import {MovementDeleteRepository} from './services/movement-delete.repository';
 import {MovementQueryRepository} from './services/movement-query.repository';
 import {MovementReplaceRepository} from './services/movement-replace.repository';
+import {MovementRevertRepository} from './services/movement-revert.repository';
 import {MovementUpdateRepository} from './services/movement-update.repository';
 
 jest.setTimeout(180_000);
@@ -215,6 +216,7 @@ describe('ledger creation (MySQL 8, US-501)', () => {
       new MovementUpdateRepository(dataSource, clock),
       new MovementReplaceRepository(dataSource, clock),
       new MovementDeleteRepository(dataSource, clock),
+      new MovementRevertRepository(dataSource, clock),
       clock,
     );
   });
@@ -1180,6 +1182,176 @@ describe('ledger creation (MySQL 8, US-501)', () => {
       const row = await dataSource.getRepository(MovementEntity).findOneByOrFail({id: movement.id});
       expect(row.deletedAt).toBeNull();
       expect(await dataSource.getRepository(AuditLogEntity).count()).toBe(0);
+    });
+  });
+
+  describe('reversals (MySQL 8, US-507)', () => {
+    it('reverses an income with a dated expense contra and audits both rows', async () => {
+      const user = await seedUser('revert-income@example.com');
+      const account = await seedAccount(user, {currentBalance: 550});
+      const category = await seedCategory(null, CategoryApplyTypeEnum.BOTH.toString());
+      const original = await seedMovement(user, account, category, {
+        type: MovementTypeEnum.INCOME.toString(),
+        amount: 450,
+      });
+
+      const result = await service.revert(user.publicId, original.publicId);
+
+      expect(result.original).toMatchObject({
+        publicId: original.publicId,
+        isReversed: true,
+        version: 1,
+      });
+      expect(result.reversal).toMatchObject({
+        type: MovementTypeEnum.EXPENSE.toString(),
+        amount: 450,
+        isReversal: true,
+        isReversed: false,
+        reversalOfPublicId: original.publicId,
+        note: `Reversión de ingreso ${original.publicId}`,
+        version: 0,
+      });
+      expect(result.reversal.date).toEqual(expect.any(String));
+      expect(result.reversal.date).not.toBe(DATE);
+      expect(result.balances).toEqual([
+        {accountPublicId: account.publicId, currentBalance: 100, version: 1},
+      ]);
+
+      const stored = await dataSource
+        .getRepository(MovementEntity)
+        .findOneByOrFail({publicId: result.reversal.publicId});
+      expect(stored).toMatchObject({
+        reversalId: original.id,
+        accountId: account.id,
+        targetAccountId: null,
+        isReversal: true,
+        scheduledTransactionId: null,
+      });
+
+      const audit = await dataSource
+        .getRepository(AuditLogEntity)
+        .findOneByOrFail({userId: user.id});
+      expect(audit).toMatchObject({entity: 'movements', action: 'REVERSAL', entityId: original.publicId});
+      expect(audit.before).toMatchObject({publicId: original.publicId, isReversed: false, version: 0});
+      expect(audit.after).toMatchObject({
+        publicId: original.publicId,
+        isReversed: true,
+        reversalPublicId: result.reversal.publicId,
+      });
+    });
+
+    it('mirrors an expense as an income and rejects a second revert', async () => {
+      const user = await seedUser('revert-expense@example.com');
+      const account = await seedAccount(user, {currentBalance: 100});
+      const category = await seedCategory(null, CategoryApplyTypeEnum.BOTH.toString());
+      const original = await seedMovement(user, account, category, {
+        type: MovementTypeEnum.EXPENSE.toString(),
+        amount: 450,
+      });
+
+      const result = await service.revert(user.publicId, original.publicId);
+
+      expect(result.reversal.type).toBe(MovementTypeEnum.INCOME.toString());
+      expect(result.balances).toEqual([
+        {accountPublicId: account.publicId, currentBalance: 550, version: 1},
+      ]);
+
+      await expect(service.revert(user.publicId, original.publicId)).rejects.toMatchObject({
+        status: 409,
+        code: 'MOVEMENT_LOCKED',
+      });
+      await expect(service.revert(user.publicId, result.reversal.publicId)).rejects.toMatchObject({
+        status: 409,
+        code: 'MOVEMENT_LOCKED',
+      });
+      expect(await dataSource.getRepository(AuditLogEntity).count()).toBe(1);
+    });
+
+    it('swaps source and destination when reversing a transfer', async () => {
+      const user = await seedUser('revert-transfer@example.com');
+      const source = await seedAccount(user, {name: 'A', currentBalance: 4000});
+      const target = await seedAccount(user, {name: 'B', currentBalance: 3000});
+      const category = await seedCategory(null, CategoryApplyTypeEnum.BOTH.toString());
+      const original = await seedMovement(user, source, category, {
+        type: MovementTypeEnum.TRANSFER.toString(),
+        amount: 1000,
+        targetAccountId: target.id,
+      });
+
+      const result = await service.revert(user.publicId, original.publicId);
+
+      expect(result.reversal).toMatchObject({
+        type: MovementTypeEnum.TRANSFER.toString(),
+        amount: 1000,
+        isReversal: true,
+      });
+      expect(result.reversal.account.publicId).toBe(target.publicId);
+      expect(result.reversal.targetAccount?.publicId).toBe(source.publicId);
+      expect(result.balances).toEqual(
+        expect.arrayContaining([
+          {accountPublicId: source.publicId, currentBalance: 5000, version: 1},
+          {accountPublicId: target.publicId, currentBalance: 2000, version: 1},
+        ]),
+      );
+    });
+
+    it('keeps a canceled row immutable', async () => {
+      const user = await seedUser('revert-canceled@example.com');
+      const account = await seedAccount(user, {currentBalance: 1000});
+      const category = await seedCategory(null, CategoryApplyTypeEnum.BOTH.toString());
+      const movement = await seedMovement(user, account, category, {isCanceled: true});
+
+      await expect(service.revert(user.publicId, movement.publicId)).rejects.toMatchObject({
+        status: 409,
+        code: 'MOVEMENT_LOCKED',
+      });
+      expect(await dataSource.getRepository(MovementEntity).count()).toBe(1);
+      expect(await dataSource.getRepository(AuditLogEntity).count()).toBe(0);
+    });
+
+    it('rejects a closed period with compensating guidance and writes nothing', async () => {
+      const user = await seedUser('revert-closed@example.com');
+      const account = await seedAccount(user, {currentBalance: 1000});
+      const category = await seedCategory(null, CategoryApplyTypeEnum.BOTH.toString());
+      const movement = await seedMovement(user, account, category, {amount: 100});
+      await seedClosedPeriod(user);
+
+      await expect(service.revert(user.publicId, movement.publicId)).rejects.toMatchObject({
+        status: 409,
+        code: 'PERIOD_CLOSED',
+        userMessage: expect.stringContaining('movimiento compensatorio'),
+      });
+
+      const original = await dataSource.getRepository(MovementEntity).findOneByOrFail({id: movement.id});
+      expect(original).toMatchObject({isReversed: false, version: 0});
+      const stored = await dataSource.getRepository(AccountEntity).findOneByOrFail({id: account.id});
+      expect(stored).toMatchObject({currentBalance: 1000, version: 0});
+      expect(await dataSource.getRepository(MovementEntity).count()).toBe(1);
+      expect(await dataSource.getRepository(AuditLogEntity).count()).toBe(0);
+    });
+
+    it('reverts a scheduled execution without reopening its occurrence', async () => {
+      const user = await seedUser('revert-scheduled@example.com');
+      const account = await seedAccount(user, {currentBalance: 550});
+      const category = await seedCategory(null, CategoryApplyTypeEnum.BOTH.toString());
+      const schedule = await seedSchedule(user, account, category);
+      const original = await seedMovement(user, account, category, {
+        type: MovementTypeEnum.INCOME.toString(),
+        amount: 450,
+        scheduledTransactionId: schedule.id,
+      });
+
+      const result = await service.revert(user.publicId, original.publicId);
+
+      expect(result.original.scheduledTransactionPublicId).toBe(schedule.publicId);
+      expect(result.reversal.scheduledTransactionPublicId).toBeNull();
+      expect(result.balances).toEqual([
+        {accountPublicId: account.publicId, currentBalance: 100, version: 1},
+      ]);
+      const storedSchedule = await dataSource
+        .getRepository(ScheduledTransactionEntity)
+        .findOneByOrFail({id: schedule.id});
+      expect(storedSchedule).toMatchObject({nextContemplatedDate: '2026-11-15'});
     });
   });
 });
