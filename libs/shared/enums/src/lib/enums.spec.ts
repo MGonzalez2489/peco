@@ -87,6 +87,7 @@ describe('shared enums', () => {
       'IDEMPOTENCY_KEY_REUSED',
       'PERIOD_CLOSED',
       'MOVEMENT_LOCKED',
+      'MOVEMENT_NOT_FOUND',
       'ROOT_ACCOUNT_PROTECTED',
       'CATEGORY_SYSTEM_PROTECTED',
       'CATEGORY_NAME_TAKEN',

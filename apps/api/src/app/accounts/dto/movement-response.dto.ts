@@ -129,10 +129,10 @@ export class MovementResponseDto implements MovementResponse {
     this.category = new MovementCategorySummaryDto(category);
     this.isReversal = movement.isReversal;
     this.isReversed = movement.isReversed;
-    this.reversalOfPublicId = null;
-    this.replacesPublicId = null;
+    this.reversalOfPublicId = movement.reversalOf?.publicId ?? null;
+    this.replacesPublicId = movement.replacesMovement?.publicId ?? null;
     this.isCanceled = movement.isCanceled;
-    this.scheduledTransactionPublicId = null;
+    this.scheduledTransactionPublicId = movement.scheduledTransaction?.publicId ?? null;
     this.version = movement.version;
     this.createdAt = movement.createdAt;
     this.updatedAt = movement.updatedAt;

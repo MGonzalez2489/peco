@@ -13,6 +13,7 @@ import {configureHttp} from '../common/http/configure-http';
 import type {AuthenticatedRequest} from '../common/types/authenticated-request.type';
 import {MovementsController} from './movements.controller';
 import {MovementsService} from './movements.service';
+import {movementNotFoundException} from './utils/movement-not-found.exception';
 
 const RESULT = {
   movement: {
@@ -50,6 +51,16 @@ const RESULT = {
   balances: [{accountPublicId: 'source-account', currentBalance: 105000, version: 4}],
 };
 
+const DETAIL = {
+  ...RESULT.movement,
+  isReversal: true,
+  isReversed: false,
+  isCanceled: false,
+  reversalOfPublicId: 'original-public-id',
+  replacesPublicId: 'replaced-public-id',
+  scheduledTransactionPublicId: 'schedule-public-id',
+};
+
 const TOTALS = {totalIncome: 300000, totalExpenses: 145000, netBalance: 155000, count: 18};
 
 const LIST_RESULT = {
@@ -80,6 +91,7 @@ describe('MovementsController HTTP contract (US-501)', () => {
   let app: INestApplication;
   let create: jest.Mock;
   let list: jest.Mock;
+  let findOne: jest.Mock;
 
   const authGuard: CanActivate = {
     canActivate: (context: ExecutionContext): boolean => {
@@ -93,11 +105,12 @@ describe('MovementsController HTTP contract (US-501)', () => {
   beforeEach(async () => {
     create = jest.fn().mockResolvedValue(RESULT);
     list = jest.fn().mockResolvedValue(LIST_RESULT);
+    findOne = jest.fn().mockResolvedValue(DETAIL);
 
     const moduleRef = await Test.createTestingModule({
       controllers: [MovementsController],
       providers: [
-        {provide: MovementsService, useValue: {create, list}},
+        {provide: MovementsService, useValue: {create, list, findOne}},
         {provide: APP_GUARD, useValue: authGuard},
       ],
     })
@@ -215,5 +228,30 @@ describe('MovementsController HTTP contract (US-501)', () => {
       details: {fields: {[field]: expect.any(String)}},
     });
     expect(list).not.toHaveBeenCalled();
+  });
+
+  it('returns the movement detail with its state links in the single-resource envelope', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/movements/movement-public-id')
+      .expect(200);
+
+    expect(response.body).toEqual({data: DETAIL, error: null});
+    expect(findOne).toHaveBeenCalledWith('user-public-id', 'movement-public-id');
+  });
+
+  it('maps a missing movement to 404 MOVEMENT_NOT_FOUND', async () => {
+    findOne.mockRejectedValueOnce(movementNotFoundException());
+
+    const response = await request(app.getHttpServer()).get('/movements/missing').expect(404);
+
+    expect(response.body).toEqual({
+      data: null,
+      error: {
+        statusCode: 404,
+        code: 'MOVEMENT_NOT_FOUND',
+        message: API_ERROR_MESSAGES.MOVEMENT_NOT_FOUND,
+        correlationId: expect.any(String),
+      },
+    });
   });
 });

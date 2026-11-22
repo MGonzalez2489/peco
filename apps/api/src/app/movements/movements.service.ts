@@ -7,6 +7,7 @@ import {periodClosedException} from '../accounts/utils/period-closed.exception';
 import {selfTransferException} from '../accounts/utils/self-transfer.exception';
 import {transferRequiredException} from '../accounts/utils/transfer-required.exception';
 import {UtcClock} from '../database/clock/utc-clock';
+import type {MovementEntity} from '../database/entities';
 import {UserProfileRepository} from '../users/services/user-profile.repository';
 import {userNotFoundException} from '../users/utils/user-not-found.exception';
 import {CreateMovementResponseDto} from './dto/create-movement-response.dto';
@@ -15,10 +16,11 @@ import {MovementCreationRepository} from './services/movement-creation.repositor
 import {MovementQueryRepository} from './services/movement-query.repository';
 import type {MovementListFilter} from './types/movement-list-filter.type';
 import {categoryNotCompatibleException} from './utils/category-not-compatible.exception';
+import {movementNotFoundException} from './utils/movement-not-found.exception';
 import {movementResourceNotFoundException} from './utils/movement-resource-not-found.exception';
 import {periodUtcBounds} from './utils/period-utc-bounds.util';
 
-/** Ledger creation with stable conflict mapping and UTC date normalization (8.10/9.3/US-501). */
+/** Ledger reads and creation with stable conflict mapping and UTC normalization (8.10/US-501–503). */
 @Injectable()
 export class MovementsService {
   constructor(
@@ -45,18 +47,25 @@ export class MovementsService {
     const page = await this.queries.list(this.toFilter(user.id, query), query.cursor, query.limit);
 
     return {
-      items: page.items.map(
-        (movement) =>
-          new MovementResponseDto(
-            movement,
-            movement.account,
-            movement.targetAccount ?? null,
-            movement.category,
-          ),
-      ),
+      items: page.items.map((movement) => this.toResponse(movement)),
       nextCursor: page.nextCursor,
       totals: page.totals,
     };
+  }
+
+  /** Ownership, soft deletion and state links are resolved in one owner-scoped read (8.10/D37). */
+  async findOne(publicId: string, movementPublicId: string): Promise<MovementResponseDto> {
+    const user = await this.profile.findActiveByPublicId(publicId);
+    if (!user) {
+      throw userNotFoundException();
+    }
+
+    const movement = await this.queries.findOwnerDetail(user.id, movementPublicId);
+    if (!movement) {
+      throw movementNotFoundException();
+    }
+
+    return this.toResponse(movement);
   }
 
   async create(
@@ -91,6 +100,15 @@ export class MovementsService {
     }
 
     return new CreateMovementResponseDto(result);
+  }
+
+  private toResponse(movement: MovementEntity): MovementResponseDto {
+    return new MovementResponseDto(
+      movement,
+      movement.account,
+      movement.targetAccount ?? null,
+      movement.category,
+    );
   }
 
   private toFilter(userId: number, query: ListMovementsQueryDto): MovementListFilter {

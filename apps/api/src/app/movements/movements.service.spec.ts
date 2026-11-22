@@ -72,14 +72,14 @@ const REQUEST = {
 describe('MovementsService (US-501)', () => {
   let profile: {findActiveByPublicId: jest.Mock};
   let creations: {create: jest.Mock};
-  let queries: {list: jest.Mock};
+  let queries: {list: jest.Mock; findOwnerDetail: jest.Mock};
   let clock: {now: jest.Mock};
   let service: MovementsService;
 
   beforeEach(() => {
     profile = {findActiveByPublicId: jest.fn()};
     creations = {create: jest.fn()};
-    queries = {list: jest.fn()};
+    queries = {list: jest.fn(), findOwnerDetail: jest.fn()};
     clock = {now: jest.fn().mockReturnValue(CREATED_AT)};
     service = new MovementsService(
       profile as unknown as UserProfileRepository,
@@ -259,6 +259,55 @@ describe('MovementsService (US-501)', () => {
       undefined,
       20,
     );
+  });
+
+  const detailEntity = (): MovementEntity =>
+    ({
+      ...movement(),
+      account: account(),
+      targetAccount: null,
+      category: category(),
+      reversalOf: {publicId: 'original-public-id'},
+      replacesMovement: {publicId: 'replaced-public-id'},
+      scheduledTransaction: {publicId: 'schedule-public-id'},
+    }) as unknown as MovementEntity;
+
+  it('returns the owner detail with embedded summaries and public state links', async () => {
+    queries.findOwnerDetail.mockResolvedValue(detailEntity());
+
+    const result = await service.findOne('user-public-id', 'movement-public-id');
+
+    expect(queries.findOwnerDetail).toHaveBeenCalledWith(42, 'movement-public-id');
+    expect(result).toMatchObject({
+      publicId: 'movement-public-id',
+      account: {publicId: 'source-account'},
+      category: {publicId: 'root-category'},
+      reversalOfPublicId: 'original-public-id',
+      replacesPublicId: 'replaced-public-id',
+      scheduledTransactionPublicId: 'schedule-public-id',
+    });
+    expect(Object.keys(result)).not.toEqual(
+      expect.arrayContaining(['id', 'userId', 'accountId', 'categoryId']),
+    );
+  });
+
+  it('throws MOVEMENT_NOT_FOUND when the detail is missing or not owned', async () => {
+    queries.findOwnerDetail.mockResolvedValue(null);
+
+    await expect(service.findOne('user-public-id', 'missing')).rejects.toMatchObject({
+      status: HttpStatus.NOT_FOUND,
+      code: ApiErrorCodeEnum.MOVEMENT_NOT_FOUND.toString(),
+    });
+  });
+
+  it('rejects an inactive user before reading the detail', async () => {
+    profile.findActiveByPublicId.mockResolvedValue(null);
+
+    await expect(service.findOne('user-public-id', 'movement-public-id')).rejects.toMatchObject({
+      status: HttpStatus.NOT_FOUND,
+      code: ApiErrorCodeEnum.NOT_FOUND.toString(),
+    });
+    expect(queries.findOwnerDetail).not.toHaveBeenCalled();
   });
 
   it('rejects an inactive user before listing', async () => {

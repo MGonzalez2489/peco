@@ -17,6 +17,7 @@ export const API_ERROR_MESSAGES: Record<ApiErrorCode, string> = {
   IDEMPOTENCY_KEY_REUSED: 'La clave de idempotencia ya fue usada con otros datos.',
   PERIOD_CLOSED: 'El período está cerrado y no admite cambios.',
   MOVEMENT_LOCKED: 'El movimiento está bloqueado y no se puede modificar.',
+  MOVEMENT_NOT_FOUND: 'El movimiento solicitado no existe.',
   ROOT_ACCOUNT_PROTECTED: 'La cuenta principal no se puede eliminar.',
   CATEGORY_SYSTEM_PROTECTED: 'La categoría del sistema no se puede modificar.',
   CATEGORY_NAME_TAKEN: 'Ya existe una categoría activa con ese nombre.',

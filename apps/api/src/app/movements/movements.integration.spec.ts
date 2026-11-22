@@ -1,5 +1,11 @@
 import type {CategoryApplyType, CreateMovementRequest} from '@peco/contracts';
-import {AccountTypeEnum, CategoryApplyTypeEnum, MovementTypeEnum} from '@peco/enums';
+import {
+  AccountTypeEnum,
+  CategoryApplyTypeEnum,
+  MovementTypeEnum,
+  RecurrenceFrequencyEnum,
+  ScheduledTransactionTypeEnum,
+} from '@peco/enums';
 import {MySqlContainer, StartedMySqlContainer} from '@testcontainers/mysql';
 import {DataSource, DataSourceOptions} from 'typeorm';
 import {UtcClock} from '../database/clock/utc-clock';
@@ -9,6 +15,7 @@ import {
   CategoryEntity,
   MovementEntity,
   PeriodSnapshotEntity,
+  ScheduledTransactionEntity,
   UserEntity,
 } from '../database/entities';
 import {CategoryRepository} from '../categories/services/category.repository';
@@ -109,6 +116,35 @@ describe('ledger creation (MySQL 8, US-501)', () => {
       }),
     );
 
+  const seedSchedule = async (
+    user: UserEntity,
+    account: AccountEntity,
+    category: CategoryEntity,
+  ): Promise<ScheduledTransactionEntity> =>
+    dataSource.getRepository(ScheduledTransactionEntity).save(
+      dataSource.getRepository(ScheduledTransactionEntity).create({
+        userId: user.id,
+        name: 'Alquiler',
+        estimatedAmount: 50000,
+        type: ScheduledTransactionTypeEnum.EXPENSE.toString(),
+        categoryId: category.id,
+        sourceAccountId: account.id,
+        destinationAccountId: null,
+        frequency: RecurrenceFrequencyEnum.MONTHLY.toString(),
+        interval: 1,
+        anchorDate: '2026-11-15',
+        nextContemplatedDate: '2026-11-15',
+        nextExecutionDate: '2026-11-15',
+        autoApply: false,
+        active: true,
+        totalOccurrences: null,
+        completedOccurrences: 0,
+        endDate: null,
+        version: 0,
+        deletedAt: null,
+      }),
+    );
+
   const list = (overrides: Partial<ListMovementsQueryDto> = {}): ListMovementsQueryDto =>
     ({period: '2026-11', limit: 20, ...overrides}) as ListMovementsQueryDto;
 
@@ -174,6 +210,7 @@ describe('ledger creation (MySQL 8, US-501)', () => {
 
   beforeEach(async () => {
     await dataSource.query('DELETE FROM movements');
+    await dataSource.query('DELETE FROM scheduledTransactions');
     await dataSource.query('DELETE FROM periodSnapshots');
     await dataSource.query('DELETE FROM accounts');
     await dataSource.query('DELETE FROM categories');
@@ -523,5 +560,64 @@ describe('ledger creation (MySQL 8, US-501)', () => {
       status: 404,
       code: 'NOT_FOUND',
     });
+  });
+
+  it('resolves state links to public ids, even when the replaced original is soft-deleted', async () => {
+    const user = await seedUser('detail@example.com');
+    const account = await seedAccount(user);
+    const category = await seedCategory(null, CategoryApplyTypeEnum.BOTH.toString());
+    const schedule = await seedSchedule(user, account, category);
+    const original = await seedMovement(user, account, category, {isReversed: true});
+    const replacement = await seedMovement(user, account, category, {
+      replacesMovementId: original.id,
+    });
+    const contra = await seedMovement(user, account, category, {
+      isReversal: true,
+      reversalId: replacement.id,
+      scheduledTransactionId: schedule.id,
+    });
+    await dataSource.getRepository(MovementEntity).update({id: original.id}, {deletedAt: DATE});
+
+    const detail = await service.findOne(user.publicId, contra.publicId);
+    expect(detail).toMatchObject({
+      publicId: contra.publicId,
+      isReversal: true,
+      isReversed: false,
+      isCanceled: false,
+      reversalOfPublicId: replacement.publicId,
+      replacesPublicId: null,
+      scheduledTransactionPublicId: schedule.publicId,
+      account: {publicId: account.publicId},
+      category: {publicId: category.publicId},
+    });
+
+    const replacementDetail = await service.findOne(user.publicId, replacement.publicId);
+    expect(replacementDetail.replacesPublicId).toBe(original.publicId);
+    expect(Object.keys(replacementDetail)).not.toEqual(
+      expect.arrayContaining(['id', 'userId', 'accountId', 'categoryId', 'replacesMovementId']),
+    );
+
+    const listed = await service.list(user.publicId, list());
+    expect(
+      listed.items.find((item) => item.publicId === replacement.publicId)?.replacesPublicId,
+    ).toBe(original.publicId);
+  });
+
+  it('hides soft-deleted, foreign and unknown movements behind 404 MOVEMENT_NOT_FOUND', async () => {
+    const user = await seedUser('detail-owner@example.com');
+    const other = await seedUser('detail-foreign@example.com');
+    const account = await seedAccount(user);
+    const foreignAccount = await seedAccount(other);
+    const category = await seedCategory(null, CategoryApplyTypeEnum.BOTH.toString());
+    const own = await seedMovement(user, account, category);
+    const foreign = await seedMovement(other, foreignAccount, category);
+    await dataSource.getRepository(MovementEntity).update({id: own.id}, {deletedAt: DATE});
+
+    for (const publicId of [own.publicId, foreign.publicId, 'unknown-public-id']) {
+      await expect(service.findOne(user.publicId, publicId)).rejects.toMatchObject({
+        status: 404,
+        code: 'MOVEMENT_NOT_FOUND',
+      });
+    }
   });
 });

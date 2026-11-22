@@ -45,24 +45,46 @@ export class MovementQueryRepository {
     return {items, nextCursor, totals: await this.totals(filter)};
   }
 
+  /** Owner-scoped detail; soft-deleted rows are unreachable by publicId (8.10/US-503). */
+  findOwnerDetail(userId: number, publicId: string): Promise<MovementEntity | null> {
+    return this.withRelations(this.baseQuery())
+      .where('movement.userId = :userId', {userId})
+      .andWhere('movement.publicId = :publicId', {publicId})
+      .andWhere('movement.deletedAt IS NULL')
+      .getOne();
+  }
+
+  private baseQuery(): SelectQueryBuilder<MovementEntity> {
+    return this.dataSource.getRepository(MovementEntity).createQueryBuilder('movement');
+  }
+
+  /**
+   * Summaries and state links are joined in the same query so the response never
+   * needs a second round trip (D37/D101).
+   */
+  private withRelations(
+    query: SelectQueryBuilder<MovementEntity>,
+  ): SelectQueryBuilder<MovementEntity> {
+    return query
+      .leftJoinAndSelect('movement.account', 'account')
+      .leftJoinAndSelect('movement.targetAccount', 'targetAccount')
+      .leftJoinAndSelect('movement.category', 'category')
+      .leftJoinAndSelect('movement.reversalOf', 'reversalOf')
+      .leftJoinAndSelect('movement.replacesMovement', 'replacesMovement')
+      .leftJoinAndSelect('movement.scheduledTransaction', 'scheduledTransaction');
+  }
+
   /** Builds the shared predicate for both the page and the aggregate query. */
   private filteredQuery(
     filter: MovementListFilter,
     withRelations: boolean,
   ): SelectQueryBuilder<MovementEntity> {
-    const query = this.dataSource.getRepository(MovementEntity).createQueryBuilder('movement');
-
-    if (withRelations) {
-      query
-        .leftJoinAndSelect('movement.account', 'account')
-        .leftJoinAndSelect('movement.targetAccount', 'targetAccount')
-        .leftJoinAndSelect('movement.category', 'category');
-    } else {
-      query
-        .leftJoin('movement.account', 'account')
-        .leftJoin('movement.targetAccount', 'targetAccount')
-        .leftJoin('movement.category', 'category');
-    }
+    const query = withRelations
+      ? this.withRelations(this.baseQuery())
+      : this.baseQuery()
+          .leftJoin('movement.account', 'account')
+          .leftJoin('movement.targetAccount', 'targetAccount')
+          .leftJoin('movement.category', 'category');
 
     query.where('movement.userId = :userId', {userId: filter.userId}).andWhere(
       'movement.deletedAt IS NULL',

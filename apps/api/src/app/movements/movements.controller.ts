@@ -1,4 +1,14 @@
-import {Body, Controller, Get, HttpCode, HttpStatus, Post, Query, UseGuards} from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiConflictResponse,
@@ -6,6 +16,7 @@ import {
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiParam,
   ApiTags,
   ApiTooManyRequestsResponse,
   ApiUnauthorizedResponse,
@@ -24,7 +35,7 @@ import {ListMovementsQueryDto} from './dto/list-movements-query.dto';
 import {MovementTotalsDto} from './dto/movement-totals.dto';
 import {MovementsService} from './movements.service';
 
-/** Authenticated ledger mutations (US-501). */
+/** Authenticated ledger reads and mutations (US-501–503). */
 @ApiTags('movements')
 @Controller('movements')
 @UseGuards(AuthRateLimitGuard)
@@ -73,6 +84,37 @@ export class MovementsController {
     const {items, nextCursor, totals} = await this.movements.list(publicId, query);
 
     return EnvelopeResult.withMeta(items, {nextCursor, totals: new MovementTotalsDto(totals)});
+  }
+
+  @Get(':publicId')
+  @RateLimited()
+  // The shared guard evaluates every named throttler; only the read policy applies (13.1).
+  @SkipThrottle({ip: true, identity: true, user: true})
+  @Throttle({
+    read: {limit: RATE_LIMITS.read.user.limit, ttl: RATE_LIMITS.read.user.ttl},
+  })
+  @ApiOperation({summary: 'Obtener el detalle de un movimiento propio'})
+  @ApiParam({name: 'publicId', description: 'Identificador público del movimiento.'})
+  @ApiOkResponse({
+    description: 'Movimiento en el envelope estándar {data, error}.',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {type: 'object'},
+        error: {type: 'null', nullable: true, example: null},
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({description: 'Falta un token de acceso válido.'})
+  @ApiNotFoundResponse({
+    description: 'El movimiento no existe, pertenece a otro usuario o fue eliminado.',
+  })
+  @ApiTooManyRequestsResponse({description: 'Límite de lecturas excedido.'})
+  findOne(
+    @CurrentUser() publicId: string,
+    @Param('publicId') movementPublicId: string,
+  ): Promise<MovementResponseDto> {
+    return this.movements.findOne(publicId, movementPublicId);
   }
 
   @Post()
