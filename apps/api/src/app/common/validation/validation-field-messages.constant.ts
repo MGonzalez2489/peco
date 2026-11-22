@@ -32,6 +32,8 @@ export const VALIDATION_FIELD_MESSAGES: Readonly<Record<string, string>> = {
   movementCursor: 'El cursor no es válido.',
   movementPeriodExclusive: 'El período no se puede combinar con un rango de fechas.',
   movementDateRange: 'El rango no puede superar los 24 meses.',
+  movementDateImmutable: 'La fecha del movimiento no se puede cambiar.',
+  movementTypeChangeUnsupported: 'El tipo del movimiento no se puede cambiar sin reemplazarlo.',
 };
 
 /** Message used when the constraint has no Spanish translation yet. */

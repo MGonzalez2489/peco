@@ -12,6 +12,7 @@ import type {ListMovementsQueryDto} from './dto/list-movements-query.dto';
 import {MovementsService} from './movements.service';
 import {MovementCreationRepository} from './services/movement-creation.repository';
 import {MovementQueryRepository} from './services/movement-query.repository';
+import {MovementUpdateRepository} from './services/movement-update.repository';
 
 const CREATED_AT = '2026-11-21T10:00:00.000Z';
 
@@ -69,10 +70,11 @@ const REQUEST = {
   accountPublicId: 'source-account',
 } as const;
 
-describe('MovementsService (US-501)', () => {
+describe('MovementsService (US-501–504)', () => {
   let profile: {findActiveByPublicId: jest.Mock};
   let creations: {create: jest.Mock};
   let queries: {list: jest.Mock; findOwnerDetail: jest.Mock};
+  let updates: {update: jest.Mock};
   let clock: {now: jest.Mock};
   let service: MovementsService;
 
@@ -80,11 +82,13 @@ describe('MovementsService (US-501)', () => {
     profile = {findActiveByPublicId: jest.fn()};
     creations = {create: jest.fn()};
     queries = {list: jest.fn(), findOwnerDetail: jest.fn()};
+    updates = {update: jest.fn()};
     clock = {now: jest.fn().mockReturnValue(CREATED_AT)};
     service = new MovementsService(
       profile as unknown as UserProfileRepository,
       creations as unknown as MovementCreationRepository,
       queries as unknown as MovementQueryRepository,
+      updates as unknown as MovementUpdateRepository,
       clock as unknown as UtcClock,
     );
     profile.findActiveByPublicId.mockResolvedValue({id: 42, publicId: 'user-public-id'});
@@ -318,5 +322,152 @@ describe('MovementsService (US-501)', () => {
       code: ApiErrorCodeEnum.NOT_FOUND.toString(),
     });
     expect(queries.list).not.toHaveBeenCalled();
+  });
+
+  describe('update (US-504)', () => {
+    const editResult = () => ({
+      status: MovementWriteStatusEnum.UPDATED.toString(),
+      movement: {...detailEntity(), amount: 5000, note: 'Mercado', version: 1},
+      account: account(),
+      targetAccount: null,
+      category: category(),
+      balances: [{accountPublicId: 'source-account', currentBalance: 95000, version: 1}],
+    });
+
+    beforeEach(() => {
+      queries.findOwnerDetail.mockResolvedValue(detailEntity());
+    });
+
+    it('passes the partial edit to the transactional repository', async () => {
+      updates.update.mockResolvedValue(editResult());
+
+      const result = await service.update('user-public-id', 'movement-public-id', {
+        amount: 5000,
+        note: 'Mercado',
+        version: 0,
+      });
+
+      expect(updates.update).toHaveBeenCalledWith(42, 'movement-public-id', {
+        amount: 5000,
+        note: 'Mercado',
+        version: 0,
+      });
+      expect(result.movement).toMatchObject({amount: 5000, note: 'Mercado', version: 1});
+      expect(result.balances).toEqual([
+        {accountPublicId: 'source-account', currentBalance: 95000, version: 1},
+      ]);
+    });
+
+    it('returns MOVEMENT_NOT_FOUND before writing when the movement is not owned', async () => {
+      queries.findOwnerDetail.mockResolvedValue(null);
+
+      await expect(
+        service.update('user-public-id', 'missing', {amount: 5000}),
+      ).rejects.toMatchObject({
+        status: HttpStatus.NOT_FOUND,
+        code: ApiErrorCodeEnum.MOVEMENT_NOT_FOUND.toString(),
+      });
+      expect(updates.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects an attempted date mutation with details.fields.date', async () => {
+      await expect(
+        service.update('user-public-id', 'movement-public-id', {
+          amount: 5000,
+          date: '2026-11-16T10:00:00.000Z',
+        } as never),
+      ).rejects.toMatchObject({
+        status: HttpStatus.BAD_REQUEST,
+        code: ApiErrorCodeEnum.VALIDATION_ERROR.toString(),
+        details: {fields: {date: expect.any(String)}},
+      });
+      expect(updates.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects a different type until US-505 implements the atomic replace', async () => {
+      await expect(
+        service.update('user-public-id', 'movement-public-id', {
+          type: MovementTypeEnum.EXPENSE.toString(),
+        }),
+      ).rejects.toMatchObject({
+        status: HttpStatus.BAD_REQUEST,
+        code: ApiErrorCodeEnum.VALIDATION_ERROR.toString(),
+        details: {fields: {type: expect.any(String)}},
+      });
+      expect(updates.update).not.toHaveBeenCalled();
+    });
+
+    it('maps stale versions to 409 VERSION_CONFLICT with both versions', async () => {
+      updates.update.mockResolvedValue({
+        status: MovementWriteStatusEnum.CONFLICT.toString(),
+        expectedVersion: 0,
+        currentVersion: 2,
+      });
+
+      await expect(
+        service.update('user-public-id', 'movement-public-id', {amount: 5000, version: 0}),
+      ).rejects.toMatchObject({
+        status: HttpStatus.CONFLICT,
+        code: ApiErrorCodeEnum.VERSION_CONFLICT.toString(),
+        details: {expectedVersion: 0, currentVersion: 2},
+      });
+    });
+
+    it.each([
+      [
+        MovementWriteStatusEnum.NOT_FOUND,
+        HttpStatus.NOT_FOUND,
+        ApiErrorCodeEnum.NOT_FOUND,
+      ],
+      [
+        MovementWriteStatusEnum.LOCKED,
+        HttpStatus.CONFLICT,
+        ApiErrorCodeEnum.MOVEMENT_LOCKED,
+      ],
+      [
+        MovementWriteStatusEnum.SELF_TRANSFER,
+        HttpStatus.UNPROCESSABLE_ENTITY,
+        ApiErrorCodeEnum.UNPROCESSABLE_ENTITY,
+      ],
+      [
+        MovementWriteStatusEnum.TRANSFER_REQUIRED,
+        HttpStatus.CONFLICT,
+        ApiErrorCodeEnum.TRANSFER_REQUIRED,
+      ],
+      [
+        MovementWriteStatusEnum.CATEGORY_NOT_COMPATIBLE,
+        HttpStatus.UNPROCESSABLE_ENTITY,
+        ApiErrorCodeEnum.CATEGORY_NOT_COMPATIBLE,
+      ],
+      [
+        MovementWriteStatusEnum.NEGATIVE_BALANCE,
+        HttpStatus.CONFLICT,
+        ApiErrorCodeEnum.NEGATIVE_BALANCE_NOT_ALLOWED,
+      ],
+      [
+        MovementWriteStatusEnum.PERIOD_CLOSED,
+        HttpStatus.CONFLICT,
+        ApiErrorCodeEnum.PERIOD_CLOSED,
+      ],
+    ] as const)('maps %s to %s %s', async (status, httpStatus, code) => {
+      updates.update.mockResolvedValue({status: status.toString()});
+
+      await expect(
+        service.update('user-public-id', 'movement-public-id', {amount: 5000}),
+      ).rejects.toMatchObject({status: httpStatus, code: code.toString()});
+    });
+
+    it('rejects an inactive user before reading or writing', async () => {
+      profile.findActiveByPublicId.mockResolvedValue(null);
+
+      await expect(
+        service.update('user-public-id', 'movement-public-id', {amount: 5000}),
+      ).rejects.toMatchObject({
+        status: HttpStatus.NOT_FOUND,
+        code: ApiErrorCodeEnum.NOT_FOUND.toString(),
+      });
+      expect(queries.findOwnerDetail).not.toHaveBeenCalled();
+      expect(updates.update).not.toHaveBeenCalled();
+    });
   });
 });

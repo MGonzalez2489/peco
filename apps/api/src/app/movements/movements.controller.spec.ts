@@ -8,11 +8,13 @@ import {APP_GUARD} from '@nestjs/core';
 import {Test} from '@nestjs/testing';
 import request from 'supertest';
 import {AuthRateLimitGuard} from '../auth/guards/auth-rate-limit.guard';
+import {versionConflictException} from '../accounts/utils/version-conflict.exception';
 import {API_ERROR_MESSAGES} from '../common/http/api-error-messages.constant';
 import {configureHttp} from '../common/http/configure-http';
 import type {AuthenticatedRequest} from '../common/types/authenticated-request.type';
 import {MovementsController} from './movements.controller';
 import {MovementsService} from './movements.service';
+import {movementLockedException} from './utils/movement-locked.exception';
 import {movementNotFoundException} from './utils/movement-not-found.exception';
 
 const RESULT = {
@@ -87,11 +89,12 @@ const SILENT_LOGGER: LoggerService = {
   fatal: jest.fn(),
 };
 
-describe('MovementsController HTTP contract (US-501)', () => {
+describe('MovementsController HTTP contract (US-501–504)', () => {
   let app: INestApplication;
   let create: jest.Mock;
   let list: jest.Mock;
   let findOne: jest.Mock;
+  let update: jest.Mock;
 
   const authGuard: CanActivate = {
     canActivate: (context: ExecutionContext): boolean => {
@@ -106,11 +109,12 @@ describe('MovementsController HTTP contract (US-501)', () => {
     create = jest.fn().mockResolvedValue(RESULT);
     list = jest.fn().mockResolvedValue(LIST_RESULT);
     findOne = jest.fn().mockResolvedValue(DETAIL);
+    update = jest.fn().mockResolvedValue(RESULT);
 
     const moduleRef = await Test.createTestingModule({
       controllers: [MovementsController],
       providers: [
-        {provide: MovementsService, useValue: {create, list, findOne}},
+        {provide: MovementsService, useValue: {create, list, findOne, update}},
         {provide: APP_GUARD, useValue: authGuard},
       ],
     })
@@ -252,6 +256,63 @@ describe('MovementsController HTTP contract (US-501)', () => {
         message: API_ERROR_MESSAGES.MOVEMENT_NOT_FOUND,
         correlationId: expect.any(String),
       },
+    });
+  });
+
+  it('edits a movement and returns 200 with the single-resource envelope', async () => {
+    const response = await request(app.getHttpServer())
+      .patch('/movements/movement-public-id')
+      .send({amount: 50000, note: '  Supermercado  ', version: 0})
+      .expect(200);
+
+    expect(response.body).toEqual({data: RESULT, error: null});
+    expect(update).toHaveBeenCalledWith(
+      'user-public-id',
+      'movement-public-id',
+      expect.objectContaining({amount: 50000, note: 'Supermercado', version: 0}),
+    );
+  });
+
+  it('rejects an immutable date with 400 VALIDATION_ERROR on details.fields.date', async () => {
+    const response = await request(app.getHttpServer())
+      .patch('/movements/movement-public-id')
+      .send({amount: 50000, date: '2026-11-16T10:00:00.000Z'})
+      .expect(400);
+
+    expect(response.body.error).toMatchObject({
+      code: 'VALIDATION_ERROR',
+      message: API_ERROR_MESSAGES.VALIDATION_ERROR,
+      details: {fields: {date: expect.any(String)}},
+    });
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('maps a stale version to 409 VERSION_CONFLICT', async () => {
+    update.mockRejectedValueOnce(versionConflictException(0, 2));
+
+    const response = await request(app.getHttpServer())
+      .patch('/movements/movement-public-id')
+      .send({amount: 50000, version: 0})
+      .expect(409);
+
+    expect(response.body.error).toMatchObject({
+      code: 'VERSION_CONFLICT',
+      message: API_ERROR_MESSAGES.VERSION_CONFLICT,
+      details: {expectedVersion: 0, currentVersion: 2},
+    });
+  });
+
+  it('maps a locked movement to 409 MOVEMENT_LOCKED', async () => {
+    update.mockRejectedValueOnce(movementLockedException());
+
+    const response = await request(app.getHttpServer())
+      .patch('/movements/movement-public-id')
+      .send({amount: 50000})
+      .expect(409);
+
+    expect(response.body.error).toMatchObject({
+      code: 'MOVEMENT_LOCKED',
+      message: API_ERROR_MESSAGES.MOVEMENT_LOCKED,
     });
   });
 });

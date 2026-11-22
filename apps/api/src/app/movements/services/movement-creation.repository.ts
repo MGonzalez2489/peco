@@ -1,10 +1,6 @@
 import {Injectable} from '@nestjs/common';
 import type {AccountBalanceUpdate, CreateMovementRequest} from '@peco/contracts';
-import {
-  CategoryApplyTypeEnum,
-  MovementTypeEnum,
-  MovementWriteStatusEnum,
-} from '@peco/enums';
+import {MovementTypeEnum, MovementWriteStatusEnum} from '@peco/enums';
 import {isLiabilityAccount} from '@peco/utils';
 import {DataSource, IsNull, type EntityManager} from 'typeorm';
 import {UtcClock} from '../../database/clock/utc-clock';
@@ -15,9 +11,11 @@ import {
   PeriodSnapshotEntity,
   UserEntity,
 } from '../../database/entities';
+import {DEADLOCK_RETRY_LIMIT} from '../constants/deadlock-retry-limit.constant';
 import type {MovementCreationResult} from '../types/movement-creation-result.type';
-
-const MAX_DEADLOCK_RETRIES = 3;
+import {isDeadlockError} from '../utils/is-deadlock-error.util';
+import {lockOwnerAccounts} from '../utils/lock-owner-accounts.util';
+import {movementCategoryAcceptsType} from '../utils/movement-category-accepts-type.util';
 
 /** Serialized ledger insert with account locks and balance updates (9.3/D49/D60/US-501). */
 @Injectable()
@@ -37,7 +35,7 @@ export class MovementCreationRepository {
           this.insert(userId, request, manager),
         );
       } catch (error: unknown) {
-        if (!isDeadlockError(error) || attempt >= MAX_DEADLOCK_RETRIES) {
+        if (!isDeadlockError(error) || attempt >= DEADLOCK_RETRY_LIMIT) {
           throw error;
         }
       }
@@ -83,7 +81,7 @@ export class MovementCreationRepository {
     }
 
     // Locks always follow users → accounts ascending by internal id (D49/D60).
-    const locked = await this.lockAccounts(manager, [
+    const locked = await lockOwnerAccounts(manager, [
       sourceLookup,
       ...(targetLookup ? [targetLookup] : []),
     ]);
@@ -100,7 +98,7 @@ export class MovementCreationRepository {
     if (!category) {
       return {status: MovementWriteStatusEnum.NOT_FOUND.toString()};
     }
-    if (!acceptsType(category.applyType, request.type)) {
+    if (!movementCategoryAcceptsType(category.applyType, request.type)) {
       return {status: MovementWriteStatusEnum.CATEGORY_NOT_COMPATIBLE.toString()};
     }
 
@@ -183,24 +181,6 @@ export class MovementCreationRepository {
     };
   }
 
-  private async lockAccounts(
-    manager: EntityManager,
-    accounts: AccountEntity[],
-  ): Promise<AccountEntity[] | null> {
-    const locked: AccountEntity[] = [];
-    for (const candidate of [...accounts].sort((left, right) => left.id - right.id)) {
-      const row = await manager.findOne(AccountEntity, {
-        where: {id: candidate.id, deletedAt: IsNull()},
-        lock: {mode: 'pessimistic_write'},
-      });
-      if (!row) {
-        return null;
-      }
-      locked.push(row);
-    }
-    return locked;
-  }
-
   private resolveCategory(
     manager: EntityManager,
     userId: number,
@@ -223,19 +203,3 @@ export class MovementCreationRepository {
     });
   }
 }
-
-const acceptsType = (applyType: CategoryEntity['applyType'], type: CreateMovementRequest['type']): boolean =>
-  applyType === CategoryApplyTypeEnum.BOTH.toString() || applyType === type;
-
-const isDeadlockError = (error: unknown): boolean => {
-  if (typeof error !== 'object' || error === null) {
-    return false;
-  }
-
-  const candidate = error as {code?: unknown; errno?: unknown};
-  return (
-    candidate.code === 'ER_LOCK_DEADLOCK' ||
-    candidate.code === '40001' ||
-    candidate.errno === 1213
-  );
-};

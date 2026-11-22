@@ -33,6 +33,8 @@ export * from './scheduled-transaction-type.type';
 export * from './update-account-pin-request.type';
 export * from './update-account-request.type';
 export * from './update-category-request.type';
+export * from './update-movement-request.type';
+export * from './update-movement-response.type';
 export * from './update-user-request.type';
 export * from './user-data-export.type';
 export * from './user-response.type';

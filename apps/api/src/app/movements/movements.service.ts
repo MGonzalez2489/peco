@@ -1,32 +1,43 @@
 import {Injectable} from '@nestjs/common';
-import type {CreateMovementRequest, MovementTotals} from '@peco/contracts';
+import type {
+  CreateMovementRequest,
+  MovementTotals,
+  UpdateMovementRequest,
+} from '@peco/contracts';
 import {MovementWriteStatusEnum} from '@peco/enums';
 import {MovementResponseDto} from '../accounts/dto/movement-response.dto';
 import {negativeBalanceConflictException} from '../accounts/utils/negative-balance-conflict.exception';
 import {periodClosedException} from '../accounts/utils/period-closed.exception';
 import {selfTransferException} from '../accounts/utils/self-transfer.exception';
 import {transferRequiredException} from '../accounts/utils/transfer-required.exception';
+import {versionConflictException} from '../accounts/utils/version-conflict.exception';
 import {UtcClock} from '../database/clock/utc-clock';
 import type {MovementEntity} from '../database/entities';
 import {UserProfileRepository} from '../users/services/user-profile.repository';
 import {userNotFoundException} from '../users/utils/user-not-found.exception';
 import {CreateMovementResponseDto} from './dto/create-movement-response.dto';
 import {ListMovementsQueryDto} from './dto/list-movements-query.dto';
+import {UpdateMovementResponseDto} from './dto/update-movement-response.dto';
 import {MovementCreationRepository} from './services/movement-creation.repository';
 import {MovementQueryRepository} from './services/movement-query.repository';
+import {MovementUpdateRepository} from './services/movement-update.repository';
 import type {MovementListFilter} from './types/movement-list-filter.type';
 import {categoryNotCompatibleException} from './utils/category-not-compatible.exception';
+import {movementDateImmutableException} from './utils/movement-date-immutable.exception';
+import {movementLockedException} from './utils/movement-locked.exception';
 import {movementNotFoundException} from './utils/movement-not-found.exception';
 import {movementResourceNotFoundException} from './utils/movement-resource-not-found.exception';
+import {movementTypeChangeUnsupportedException} from './utils/movement-type-change-unsupported.exception';
 import {periodUtcBounds} from './utils/period-utc-bounds.util';
 
-/** Ledger reads and creation with stable conflict mapping and UTC normalization (8.10/US-501–503). */
+/** Ledger reads and writes with stable conflict mapping and UTC normalization (8.10/US-501–504). */
 @Injectable()
 export class MovementsService {
   constructor(
     private readonly profile: UserProfileRepository,
     private readonly creations: MovementCreationRepository,
     private readonly queries: MovementQueryRepository,
+    private readonly updates: MovementUpdateRepository,
     private readonly clock: UtcClock,
   ) {}
 
@@ -66,6 +77,62 @@ export class MovementsService {
     }
 
     return this.toResponse(movement);
+  }
+
+  /**
+   * Owner-scoped partial edit. The pre-read gives the route its precise 404 and
+   * rejects server-owned or deferred fields before the transactional write.
+   */
+  async update(
+    publicId: string,
+    movementPublicId: string,
+    request: UpdateMovementRequest,
+  ): Promise<UpdateMovementResponseDto> {
+    const user = await this.profile.findActiveByPublicId(publicId);
+    if (!user) {
+      throw userNotFoundException();
+    }
+
+    const current = await this.queries.findOwnerDetail(user.id, movementPublicId);
+    if (!current) {
+      throw movementNotFoundException();
+    }
+    if ((request as {date?: unknown}).date !== undefined) {
+      throw movementDateImmutableException();
+    }
+    // US-505 owns the atomic replace path for a different type (D46).
+    if (request.type !== undefined && request.type !== current.type) {
+      throw movementTypeChangeUnsupportedException();
+    }
+
+    const result = await this.updates.update(user.id, movementPublicId, request);
+
+    if (result.status === MovementWriteStatusEnum.NOT_FOUND.toString()) {
+      throw movementResourceNotFoundException();
+    }
+    if (result.status === MovementWriteStatusEnum.LOCKED.toString()) {
+      throw movementLockedException();
+    }
+    if (result.status === MovementWriteStatusEnum.CONFLICT.toString()) {
+      throw versionConflictException(result.expectedVersion, result.currentVersion);
+    }
+    if (result.status === MovementWriteStatusEnum.SELF_TRANSFER.toString()) {
+      throw selfTransferException();
+    }
+    if (result.status === MovementWriteStatusEnum.TRANSFER_REQUIRED.toString()) {
+      throw transferRequiredException();
+    }
+    if (result.status === MovementWriteStatusEnum.CATEGORY_NOT_COMPATIBLE.toString()) {
+      throw categoryNotCompatibleException();
+    }
+    if (result.status === MovementWriteStatusEnum.NEGATIVE_BALANCE.toString()) {
+      throw negativeBalanceConflictException();
+    }
+    if (result.status === MovementWriteStatusEnum.PERIOD_CLOSED.toString()) {
+      throw periodClosedException();
+    }
+
+    return new UpdateMovementResponseDto(result);
   }
 
   async create(

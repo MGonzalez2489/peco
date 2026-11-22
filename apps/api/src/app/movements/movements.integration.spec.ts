@@ -1,4 +1,8 @@
-import type {CategoryApplyType, CreateMovementRequest} from '@peco/contracts';
+import type {
+  CategoryApplyType,
+  CreateMovementRequest,
+  UpdateMovementRequest,
+} from '@peco/contracts';
 import {
   AccountTypeEnum,
   CategoryApplyTypeEnum,
@@ -12,6 +16,7 @@ import {UtcClock} from '../database/clock/utc-clock';
 import {createTypeOrmOptions} from '../database/database.config';
 import {
   AccountEntity,
+  AuditLogEntity,
   CategoryEntity,
   MovementEntity,
   PeriodSnapshotEntity,
@@ -24,6 +29,7 @@ import type {ListMovementsQueryDto} from './dto/list-movements-query.dto';
 import {MovementsService} from './movements.service';
 import {MovementCreationRepository} from './services/movement-creation.repository';
 import {MovementQueryRepository} from './services/movement-query.repository';
+import {MovementUpdateRepository} from './services/movement-update.repository';
 
 jest.setTimeout(180_000);
 
@@ -173,6 +179,11 @@ describe('ledger creation (MySQL 8, US-501)', () => {
     ...overrides,
   });
 
+  const edit = (overrides: Partial<UpdateMovementRequest> = {}): UpdateMovementRequest => ({
+    version: 0,
+    ...overrides,
+  });
+
   beforeAll(async () => {
     container = await new MySqlContainer('mysql:8.4')
       .withDatabase('peco')
@@ -199,6 +210,7 @@ describe('ledger creation (MySQL 8, US-501)', () => {
       new UserProfileRepository(dataSource),
       new MovementCreationRepository(dataSource, clock),
       new MovementQueryRepository(dataSource),
+      new MovementUpdateRepository(dataSource, clock),
       clock,
     );
   });
@@ -209,6 +221,7 @@ describe('ledger creation (MySQL 8, US-501)', () => {
   });
 
   beforeEach(async () => {
+    await dataSource.query('DELETE FROM auditLogs');
     await dataSource.query('DELETE FROM movements');
     await dataSource.query('DELETE FROM scheduledTransactions');
     await dataSource.query('DELETE FROM periodSnapshots');
@@ -619,5 +632,227 @@ describe('ledger creation (MySQL 8, US-501)', () => {
         code: 'MOVEMENT_NOT_FOUND',
       });
     }
+  });
+
+  it('applies the amount delta, bumps versions and writes one EDIT audit row', async () => {
+    const user = await seedUser('edit-amount@example.com');
+    const account = await seedAccount(user, {currentBalance: 550});
+    const category = await seedCategory(null, CategoryApplyTypeEnum.EXPENSE.toString());
+    const movement = await seedMovement(user, account, category, {
+      type: MovementTypeEnum.EXPENSE.toString(),
+      amount: 450,
+    });
+
+    const result = await service.update(user.publicId, movement.publicId, edit({amount: 500}));
+
+    expect(result.movement).toMatchObject({
+      publicId: movement.publicId,
+      type: MovementTypeEnum.EXPENSE.toString(),
+      amount: 500,
+      date: DATE,
+      version: 1,
+    });
+    expect(result.balances).toEqual([
+      {accountPublicId: account.publicId, currentBalance: 500, version: 1},
+    ]);
+
+    const storedMovement = await dataSource
+      .getRepository(MovementEntity)
+      .findOneByOrFail({id: movement.id});
+    expect(storedMovement).toMatchObject({amount: 500, version: 1, date: DATE});
+
+    const storedAccount = await dataSource
+      .getRepository(AccountEntity)
+      .findOneByOrFail({id: account.id});
+    expect(storedAccount).toMatchObject({currentBalance: 500, version: 1});
+
+    const audit = await dataSource
+      .getRepository(AuditLogEntity)
+      .findOneByOrFail({userId: user.id});
+    expect(audit).toMatchObject({
+      entity: 'movements',
+      entityId: movement.publicId,
+      action: 'EDIT',
+    });
+    expect(audit.before).toMatchObject({amount: 450, version: 0});
+    expect(audit.after).toMatchObject({amount: 500, version: 1});
+  });
+
+  it('nets the impact when the source account changes', async () => {
+    const user = await seedUser('edit-source@example.com');
+    const source = await seedAccount(user, {name: 'A', currentBalance: 550});
+    const destination = await seedAccount(user, {name: 'B', currentBalance: 1000});
+    const category = await seedCategory(null, CategoryApplyTypeEnum.EXPENSE.toString());
+    const movement = await seedMovement(user, source, category, {
+      type: MovementTypeEnum.EXPENSE.toString(),
+      amount: 450,
+    });
+
+    const result = await service.update(
+      user.publicId,
+      movement.publicId,
+      edit({accountPublicId: destination.publicId}),
+    );
+
+    expect(result.movement.account.publicId).toBe(destination.publicId);
+    expect(result.balances).toEqual(
+      expect.arrayContaining([
+        {accountPublicId: source.publicId, currentBalance: 1000, version: 1},
+        {accountPublicId: destination.publicId, currentBalance: 550, version: 1},
+      ]),
+    );
+
+    const audit = await dataSource
+      .getRepository(AuditLogEntity)
+      .findOneByOrFail({userId: user.id});
+    expect(audit.before).toMatchObject({accountPublicId: source.publicId});
+    expect(audit.after).toMatchObject({accountPublicId: destination.publicId});
+  });
+
+  it('nets the impact when a transfer destination changes without touching the source', async () => {
+    const user = await seedUser('edit-target@example.com');
+    const source = await seedAccount(user, {name: 'A', currentBalance: 4000});
+    const oldTarget = await seedAccount(user, {name: 'B', currentBalance: 3000});
+    const newTarget = await seedAccount(user, {name: 'C', currentBalance: 2000});
+    const category = await seedCategory(null, CategoryApplyTypeEnum.BOTH.toString());
+    const movement = await seedMovement(user, source, category, {
+      type: MovementTypeEnum.TRANSFER.toString(),
+      amount: 1000,
+      targetAccountId: oldTarget.id,
+    });
+
+    const result = await service.update(
+      user.publicId,
+      movement.publicId,
+      edit({targetAccountPublicId: newTarget.publicId}),
+    );
+
+    expect(result.movement.targetAccount?.publicId).toBe(newTarget.publicId);
+    expect(result.balances).toEqual([
+      {accountPublicId: oldTarget.publicId, currentBalance: 2000, version: 1},
+      {accountPublicId: newTarget.publicId, currentBalance: 3000, version: 1},
+    ]);
+
+    const sourceAfter = await dataSource
+      .getRepository(AccountEntity)
+      .findOneByOrFail({id: source.id});
+    expect(sourceAfter).toMatchObject({currentBalance: 4000, version: 0});
+  });
+
+  it('rejects a stale version without writing balances, movement or audit', async () => {
+    const user = await seedUser('edit-conflict@example.com');
+    const account = await seedAccount(user, {currentBalance: 1000});
+    const category = await seedCategory(null, CategoryApplyTypeEnum.BOTH.toString());
+    const movement = await seedMovement(user, account, category, {amount: 1000});
+
+    await expect(
+      service.update(user.publicId, movement.publicId, edit({amount: 2000, version: 1})),
+    ).rejects.toMatchObject({
+      status: 409,
+      code: 'VERSION_CONFLICT',
+      details: {expectedVersion: 1, currentVersion: 0},
+    });
+
+    const storedAccount = await dataSource
+      .getRepository(AccountEntity)
+      .findOneByOrFail({id: account.id});
+    const storedMovement = await dataSource
+      .getRepository(MovementEntity)
+      .findOneByOrFail({id: movement.id});
+    expect(storedAccount).toMatchObject({currentBalance: 1000, version: 0});
+    expect(storedMovement).toMatchObject({amount: 1000, version: 0});
+    expect(await dataSource.getRepository(AuditLogEntity).count()).toBe(0);
+  });
+
+  it('rejects an edit of a closed period', async () => {
+    const user = await seedUser('edit-closed@example.com');
+    const account = await seedAccount(user, {currentBalance: 1000});
+    const category = await seedCategory(null, CategoryApplyTypeEnum.BOTH.toString());
+    const movement = await seedMovement(user, account, category, {amount: 1000});
+    await seedClosedPeriod(user);
+
+    await expect(
+      service.update(user.publicId, movement.publicId, edit({amount: 2000})),
+    ).rejects.toMatchObject({status: 409, code: 'PERIOD_CLOSED'});
+    expect(await dataSource.getRepository(AuditLogEntity).count()).toBe(0);
+  });
+
+  it('rejects canceled, reversed and contra movements', async () => {
+    const user = await seedUser('edit-locked@example.com');
+    const account = await seedAccount(user, {currentBalance: 1000});
+    const category = await seedCategory(null, CategoryApplyTypeEnum.BOTH.toString());
+
+    for (const flag of ['isCanceled', 'isReversed', 'isReversal'] as const) {
+      const movement = await seedMovement(user, account, category, {[flag]: true});
+
+      await expect(
+        service.update(user.publicId, movement.publicId, edit({amount: 2000})),
+      ).rejects.toMatchObject({status: 409, code: 'MOVEMENT_LOCKED'});
+    }
+    expect(await dataSource.getRepository(AuditLogEntity).count()).toBe(0);
+  });
+
+  it('rolls back an edit that would leave a non-credit account negative', async () => {
+    const user = await seedUser('edit-negative@example.com');
+    const account = await seedAccount(user, {currentBalance: 100});
+    const category = await seedCategory(null, CategoryApplyTypeEnum.EXPENSE.toString());
+    const movement = await seedMovement(user, account, category, {
+      type: MovementTypeEnum.EXPENSE.toString(),
+      amount: 50,
+    });
+
+    await expect(
+      service.update(user.publicId, movement.publicId, edit({amount: 200})),
+    ).rejects.toMatchObject({status: 409, code: 'NEGATIVE_BALANCE_NOT_ALLOWED'});
+
+    const storedAccount = await dataSource
+      .getRepository(AccountEntity)
+      .findOneByOrFail({id: account.id});
+    expect(storedAccount).toMatchObject({currentBalance: 100, version: 0});
+    expect(await dataSource.getRepository(AuditLogEntity).count()).toBe(0);
+  });
+
+  it('hides soft-deleted movements behind 404 MOVEMENT_NOT_FOUND', async () => {
+    const user = await seedUser('edit-deleted@example.com');
+    const account = await seedAccount(user, {currentBalance: 1000});
+    const category = await seedCategory(null, CategoryApplyTypeEnum.BOTH.toString());
+    const movement = await seedMovement(user, account, category, {amount: 1000});
+    await dataSource.getRepository(MovementEntity).update({id: movement.id}, {deletedAt: DATE});
+
+    await expect(
+      service.update(user.publicId, movement.publicId, edit({amount: 2000})),
+    ).rejects.toMatchObject({status: 404, code: 'MOVEMENT_NOT_FOUND'});
+    expect(await dataSource.getRepository(AuditLogEntity).count()).toBe(0);
+  });
+
+  it('rejects immutable date and deferred type changes before writing', async () => {
+    const user = await seedUser('edit-immutable@example.com');
+    const account = await seedAccount(user, {currentBalance: 1000});
+    const category = await seedCategory(null, CategoryApplyTypeEnum.BOTH.toString());
+    const movement = await seedMovement(user, account, category, {amount: 1000});
+
+    await expect(
+      service.update(user.publicId, movement.publicId, {
+        ...edit({amount: 2000}),
+        date: DATE,
+      } as never),
+    ).rejects.toMatchObject({
+      status: 400,
+      code: 'VALIDATION_ERROR',
+      details: {fields: {date: expect.any(String)}},
+    });
+
+    await expect(
+      service.update(
+        user.publicId,
+        movement.publicId,
+        edit({type: MovementTypeEnum.EXPENSE.toString()}),
+      ),
+    ).rejects.toMatchObject({
+      status: 400,
+      code: 'VALIDATION_ERROR',
+      details: {fields: {type: expect.any(String)}},
+    });
+    expect(await dataSource.getRepository(AuditLogEntity).count()).toBe(0);
   });
 });

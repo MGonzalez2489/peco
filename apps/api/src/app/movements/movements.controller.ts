@@ -5,6 +5,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -33,9 +34,11 @@ import {CreateMovementRequestDto} from './dto/create-movement-request.dto';
 import {CreateMovementResponseDto} from './dto/create-movement-response.dto';
 import {ListMovementsQueryDto} from './dto/list-movements-query.dto';
 import {MovementTotalsDto} from './dto/movement-totals.dto';
+import {UpdateMovementRequestDto} from './dto/update-movement-request.dto';
+import {UpdateMovementResponseDto} from './dto/update-movement-response.dto';
 import {MovementsService} from './movements.service';
 
-/** Authenticated ledger reads and mutations (US-501–503). */
+/** Authenticated ledger reads and mutations (US-501–504). */
 @ApiTags('movements')
 @Controller('movements')
 @UseGuards(AuthRateLimitGuard)
@@ -115,6 +118,43 @@ export class MovementsController {
     @Param('publicId') movementPublicId: string,
   ): Promise<MovementResponseDto> {
     return this.movements.findOne(publicId, movementPublicId);
+  }
+
+  @Patch(':publicId')
+  @RateLimited()
+  // The shared guard evaluates every named throttler; only the user policy applies (13.1).
+  @SkipThrottle({ip: true, identity: true, read: true})
+  @Throttle({
+    user: {limit: RATE_LIMITS.mutation.user.limit, ttl: RATE_LIMITS.mutation.user.ttl},
+  })
+  @ApiOperation({summary: 'Editar un movimiento propio y ajustar los saldos afectados'})
+  @ApiParam({name: 'publicId', description: 'Identificador público del movimiento.'})
+  @ApiOkResponse({
+    description: 'Movimiento y saldos en el envelope estándar {data, error}.',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {type: 'object'},
+        error: {type: 'null', nullable: true, example: null},
+      },
+    },
+  })
+  @ApiBadRequestResponse({description: 'Cuerpo inválido; `date` es inmutable.'})
+  @ApiNotFoundResponse({description: 'El movimiento o un recurso referenciado no existe.'})
+  @ApiConflictResponse({
+    description: 'Versión obsoleta, movimiento bloqueado, saldo negativo o período cerrado.',
+  })
+  @ApiUnprocessableEntityResponse({
+    description: 'Transferencia sin destino, destino propio o categoría incompatible.',
+  })
+  @ApiUnauthorizedResponse({description: 'Falta un token de acceso válido.'})
+  @ApiTooManyRequestsResponse({description: 'Límite de mutaciones excedido.'})
+  update(
+    @CurrentUser() publicId: string,
+    @Param('publicId') movementPublicId: string,
+    @Body() request: UpdateMovementRequestDto,
+  ): Promise<UpdateMovementResponseDto> {
+    return this.movements.update(publicId, movementPublicId, request);
   }
 
   @Post()

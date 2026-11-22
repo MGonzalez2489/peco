@@ -7,11 +7,18 @@ import {MovementsController} from './movements.controller';
 import {MovementsService} from './movements.service';
 import {MovementCreationRepository} from './services/movement-creation.repository';
 import {MovementQueryRepository} from './services/movement-query.repository';
+import {MovementUpdateRepository} from './services/movement-update.repository';
 
-/** Ledger creation and owner-scoped, paginated reads (US-501/US-502). */
+/** Ledger creation, same-type edits and owner-scoped, paginated reads (US-501–504). */
 @Module({
   imports: [DatabaseModule, AuthModule, UsersModule],
   controllers: [MovementsController],
-  providers: [MovementsService, MovementCreationRepository, MovementQueryRepository, UtcClock],
+  providers: [
+    MovementsService,
+    MovementCreationRepository,
+    MovementQueryRepository,
+    MovementUpdateRepository,
+    UtcClock,
+  ],
 })
 export class MovementsModule {}
