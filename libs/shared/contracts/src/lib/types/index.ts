@@ -38,6 +38,7 @@ export * from './scheduled-execution-status.type';
 export * from './scheduled-transaction-list-meta.type';
 export * from './scheduled-transaction-response.type';
 export * from './scheduled-transaction-type.type';
+export * from './toggle-scheduled-transaction-request.type';
 export * from './update-scheduled-transaction-request.type';
 export * from './update-account-pin-request.type';
 export * from './update-account-request.type';

@@ -78,12 +78,13 @@ const SILENT_LOGGER: LoggerService = {
   fatal: jest.fn(),
 };
 
-describe('ScheduledTransactionsController HTTP contract (US-601/US-602)', () => {
+describe('ScheduledTransactionsController HTTP contract (US-601–US-603)', () => {
   let app: INestApplication;
   let create: jest.Mock;
   let list: jest.Mock;
   let findOne: jest.Mock;
   let update: jest.Mock;
+  let toggle: jest.Mock;
 
   const authGuard: CanActivate = {
     canActivate: (context: ExecutionContext): boolean => {
@@ -99,9 +100,15 @@ describe('ScheduledTransactionsController HTTP contract (US-601/US-602)', () => 
     list = jest.fn().mockResolvedValue({items: [SCHEDULE], nextCursor: 'next-cursor'});
     findOne = jest.fn().mockResolvedValue(SCHEDULE);
     update = jest.fn().mockResolvedValue(SCHEDULE);
+    toggle = jest.fn().mockResolvedValue({...SCHEDULE, active: false});
     const moduleRef = await Test.createTestingModule({
       controllers: [ScheduledTransactionsController],
-      providers: [{provide: ScheduledTransactionsService, useValue: {create, list, findOne, update}}],
+      providers: [
+        {
+          provide: ScheduledTransactionsService,
+          useValue: {create, list, findOne, update, toggle},
+        },
+      ],
     })
       .overrideGuard(AuthRateLimitGuard)
       .useValue({canActivate: () => true})
@@ -278,12 +285,51 @@ describe('ScheduledTransactionsController HTTP contract (US-601/US-602)', () => 
     expect(processed.body.error.code).toBe('OCCURRENCE_ALREADY_PROCESSED');
   });
 
-  it('documents the list, detail and update routes in OpenAPI', () => {
+  it('sets the active state explicitly without requiring an idempotency key', async () => {
+    const response = await request(app.getHttpServer())
+      .patch('/scheduled-transactions/schedule-public-id/toggle')
+      .send({active: false, version: 0})
+      .expect(200);
+
+    expect(response.body).toEqual({data: {...SCHEDULE, active: false}, error: null});
+    expect(toggle).toHaveBeenCalledWith('user-public-id', 'schedule-public-id', {
+      active: false,
+      version: 0,
+    });
+  });
+
+  it.each([
+    ['missing active', {}],
+    ['non-boolean active', {active: 'yes'}],
+    ['server-owned field', {active: false, nextExecutionDate: '2026-01-01'}],
+  ])('rejects a %s with 400 VALIDATION_ERROR', async (_label, body) => {
+    const response = await request(app.getHttpServer())
+      .patch('/scheduled-transactions/schedule-public-id/toggle')
+      .send(body)
+      .expect(400);
+
+    expect(response.body.error.code).toBe('VALIDATION_ERROR');
+    expect(toggle).not.toHaveBeenCalled();
+  });
+
+  it('maps a stale toggle version to 409', async () => {
+    toggle.mockRejectedValueOnce(versionConflictException(0, 1));
+
+    const response = await request(app.getHttpServer())
+      .patch('/scheduled-transactions/schedule-public-id/toggle')
+      .send({active: true, version: 0})
+      .expect(409);
+
+    expect(response.body.error.code).toBe('VERSION_CONFLICT');
+  });
+
+  it('documents the list, detail, toggle and update routes in OpenAPI', () => {
     const document = createOpenApiDocument(app);
 
     expect(document.paths['/scheduled-transactions']?.post).toBeDefined();
     expect(document.paths['/scheduled-transactions']?.get).toBeDefined();
     expect(document.paths['/scheduled-transactions/{publicId}']?.get).toBeDefined();
     expect(document.paths['/scheduled-transactions/{publicId}']?.patch).toBeDefined();
+    expect(document.paths['/scheduled-transactions/{publicId}/toggle']?.patch).toBeDefined();
   });
 });

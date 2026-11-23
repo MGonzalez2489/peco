@@ -4,11 +4,12 @@ import {MovementWriteStatusEnum} from '@peco/enums';
 import {DataSource, type QueryDeepPartialEntity} from 'typeorm';
 import {UtcClock} from '../../database/clock/utc-clock';
 import {ScheduledTransactionEntity} from '../../database/entities';
+import type {ScheduledTransactionActiveValues} from '../types/scheduled-transaction-active-values.type';
 import type {ScheduledTransactionUpdateResult} from '../types/scheduled-transaction-update-result.type';
 import type {ScheduledTransactionUpdateValues} from '../types/scheduled-transaction-update-values.type';
 import {ScheduledTransactionQueryRepository} from './scheduled-transaction-query.repository';
 
-/** Atomic schedule edit; execution rows and movements are never rewritten (US-602). */
+/** Atomic schedule writes; execution rows and movements are never rewritten (US-602/US-603). */
 @Injectable()
 export class ScheduledTransactionUpdateRepository {
   constructor(
@@ -17,18 +18,36 @@ export class ScheduledTransactionUpdateRepository {
     private readonly clock: UtcClock,
   ) {}
 
-  async update(
+  update(
     userId: number,
     publicId: string,
     request: UpdateScheduledTransactionRequest,
     values: ScheduledTransactionUpdateValues,
+  ): Promise<ScheduledTransactionUpdateResult> {
+    return this.compareAndSet(userId, publicId, request.version, values);
+  }
+
+  /** Pause/resume writes only the schedule row with the same optimistic semantics (10.8). */
+  setActive(
+    userId: number,
+    publicId: string,
+    expectedVersion: number | undefined,
+    values: ScheduledTransactionActiveValues,
+  ): Promise<ScheduledTransactionUpdateResult> {
+    return this.compareAndSet(userId, publicId, expectedVersion, values);
+  }
+
+  private async compareAndSet(
+    userId: number,
+    publicId: string,
+    expectedVersion: number | undefined,
+    values: ScheduledTransactionUpdateValues | ScheduledTransactionActiveValues,
   ): Promise<ScheduledTransactionUpdateResult> {
     const current = await this.queries.findOwnerDetail(userId, publicId);
     if (!current) {
       return {status: MovementWriteStatusEnum.NOT_FOUND.toString()};
     }
 
-    const expectedVersion = request.version;
     if (expectedVersion !== undefined && current.version !== expectedVersion) {
       return {
         status: MovementWriteStatusEnum.CONFLICT.toString(),

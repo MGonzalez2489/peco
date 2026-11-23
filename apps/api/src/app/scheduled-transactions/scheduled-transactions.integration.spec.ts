@@ -29,7 +29,9 @@ import {ScheduledTransactionUpdateRepository} from './services/scheduled-transac
 
 jest.setTimeout(180_000);
 
-describe('scheduled transactions (MySQL 8, US-601/US-602)', () => {
+const FIXED_NOW = '2026-11-23T12:00:00.000Z';
+
+describe('scheduled transactions (MySQL 8, US-601–US-603)', () => {
   let container: StartedMySqlContainer;
   let dataSource: DataSource;
   let service: ScheduledTransactionsService;
@@ -149,6 +151,7 @@ describe('scheduled transactions (MySQL 8, US-601/US-602)', () => {
 
     const queries = new ScheduledTransactionQueryRepository(dataSource);
     const clock = new UtcClock();
+    jest.spyOn(clock, 'now').mockReturnValue(FIXED_NOW);
     service = new ScheduledTransactionsService(
       new UserProfileRepository(dataSource),
       new ScheduledTransactionCreationRepository(dataSource),
@@ -354,7 +357,7 @@ describe('scheduled transactions (MySQL 8, US-601/US-602)', () => {
     const user = await seedUser('list@example.com');
     const account = await seedAccount(user);
     const category = await seedCategory(null, CategoryApplyTypeEnum.EXPENSE.toString());
-    const currentPeriod = new Date().toISOString().slice(0, 7);
+    const currentPeriod = FIXED_NOW.slice(0, 7);
     const anchorDate = `${currentPeriod}-15`;
 
     for (const name of ['Renta A', 'Renta B']) {
@@ -497,5 +500,103 @@ describe('scheduled transactions (MySQL 8, US-601/US-602)', () => {
       version: created.version + 1,
     });
     expect(await dataSource.getRepository(ScheduledExecutionEntity).count()).toBe(3);
+  });
+
+  it('pauses and resumes without writing execution rows or back-billing paused time', async () => {
+    const user = await seedUser('toggle@example.com');
+    const account = await seedAccount(user);
+    const category = await seedCategory(null, CategoryApplyTypeEnum.EXPENSE.toString());
+    const created = await service.create(
+      user.publicId,
+      request({
+        anchorDate: '2020-01-15',
+        categoryPublicId: category.publicId,
+        sourceAccountPublicId: account.publicId,
+        totalOccurrences: undefined,
+        endDate: undefined,
+      }),
+    );
+    const stored = await dataSource.getRepository(ScheduledTransactionEntity).findOneByOrFail({
+      publicId: created.publicId,
+    });
+    await seedExecution(stored, '2020-01-15');
+
+    const paused = await service.toggle(user.publicId, created.publicId, {
+      active: false,
+      version: created.version,
+    });
+    expect(paused).toMatchObject({
+      active: false,
+      nextContemplatedDate: '2020-01-15',
+      nextExecutionDate: '2020-01-15',
+      version: created.version + 1,
+    });
+
+    const resumed = await service.toggle(user.publicId, created.publicId, {
+      active: true,
+      version: paused.version,
+    });
+    expect(resumed).toMatchObject({
+      active: true,
+      nextContemplatedDate: '2026-12-15',
+      nextExecutionDate: '2026-12-15',
+      version: paused.version + 1,
+    });
+    expect(await dataSource.getRepository(ScheduledExecutionEntity).count()).toBe(1);
+  });
+
+  it('keeps a schedule finished by endDate inactive when resumed', async () => {
+    const user = await seedUser('toggle-end-date@example.com');
+    const account = await seedAccount(user);
+    const category = await seedCategory(null, CategoryApplyTypeEnum.EXPENSE.toString());
+    const created = await service.create(
+      user.publicId,
+      request({
+        anchorDate: '2026-10-01',
+        categoryPublicId: category.publicId,
+        sourceAccountPublicId: account.publicId,
+        endDate: '2026-11-01',
+      }),
+    );
+
+    const resumed = await service.toggle(user.publicId, created.publicId, {
+      active: true,
+      version: created.version,
+    });
+
+    expect(resumed).toMatchObject({
+      active: false,
+      nextContemplatedDate: '2026-10-01',
+      nextExecutionDate: '2026-10-01',
+      version: created.version + 1,
+    });
+    expect(await dataSource.getRepository(ScheduledExecutionEntity).count()).toBe(0);
+  });
+
+  it('rejects a stale toggle version without changing the stored schedule', async () => {
+    const user = await seedUser('toggle-version@example.com');
+    const account = await seedAccount(user);
+    const category = await seedCategory(null, CategoryApplyTypeEnum.EXPENSE.toString());
+    const created = await service.create(
+      user.publicId,
+      request({categoryPublicId: category.publicId, sourceAccountPublicId: account.publicId}),
+    );
+
+    await service.toggle(user.publicId, created.publicId, {
+      active: false,
+      version: created.version,
+    });
+    await expect(
+      service.toggle(user.publicId, created.publicId, {
+        active: true,
+        version: created.version,
+      }),
+    ).rejects.toMatchObject({status: 409, code: 'VERSION_CONFLICT'});
+
+    const stored = await dataSource.getRepository(ScheduledTransactionEntity).findOneByOrFail({
+      publicId: created.publicId,
+    });
+    expect(stored).toMatchObject({active: false, version: created.version + 1});
+    expect(await dataSource.getRepository(ScheduledExecutionEntity).count()).toBe(0);
   });
 });

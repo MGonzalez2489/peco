@@ -3,6 +3,7 @@ import type {
   CreateScheduledTransactionRequest,
   ListScheduledTransactionsQuery,
   ScheduledTransactionResponse,
+  ToggleScheduledTransactionRequest,
   UpdateScheduledTransactionRequest,
 } from '@peco/contracts';
 import {MovementWriteStatusEnum, ScheduledTransactionTypeEnum} from '@peco/enums';
@@ -11,6 +12,7 @@ import {transferRequiredException} from '../accounts/utils/transfer-required.exc
 import {versionConflictException} from '../accounts/utils/version-conflict.exception';
 import {VALIDATION_FIELD_MESSAGES} from '../common/validation/validation-field-messages.constant';
 import {UtcClock} from '../database/clock/utc-clock';
+import type {ScheduledTransactionEntity} from '../database/entities';
 import {categoryNotCompatibleException} from '../movements/utils/category-not-compatible.exception';
 import {periodUtcBounds} from '../movements/utils/period-utc-bounds.util';
 import {UserProfileRepository} from '../users/services/user-profile.repository';
@@ -20,6 +22,7 @@ import {ScheduledTransactionResponseDto} from './dto/scheduled-transaction-respo
 import {ScheduledTransactionCreationRepository} from './services/scheduled-transaction-creation.repository';
 import {ScheduledTransactionQueryRepository} from './services/scheduled-transaction-query.repository';
 import {ScheduledTransactionUpdateRepository} from './services/scheduled-transaction-update.repository';
+import type {ScheduledTransactionActiveValues} from './types/scheduled-transaction-active-values.type';
 import type {ScheduledTransactionListFilter} from './types/scheduled-transaction-list-filter.type';
 import type {ScheduledTransactionUpdateValues} from './types/scheduled-transaction-update-values.type';
 import {movementCategoryAcceptsType} from '../movements/utils/movement-category-accepts-type.util';
@@ -28,7 +31,7 @@ import {scheduleValidationException} from './utils/schedule-validation.exception
 import {scheduledTransactionResourceNotFoundException} from './utils/scheduled-transaction-resource-not-found.exception';
 import {recurrenceDatesAt} from './utils/recurrence-dates-at.util';
 
-/** Authenticated schedule creation, period-scoped reads and optimistic edits (8.11/10.8). */
+/** Authenticated schedule creation, period-scoped reads, optimistic edits and toggles (8.11/10.8). */
 @Injectable()
 export class ScheduledTransactionsService {
   constructor(
@@ -252,6 +255,96 @@ export class ScheduledTransactionsService {
     }
 
     return ScheduledTransactionResponseDto.fromEntity(result.schedule);
+  }
+
+  /** Sets `active` explicitly; resume skips paused time instead of back-billing it (10.8/US-603). */
+  async toggle(
+    publicId: string,
+    schedulePublicId: string,
+    request: ToggleScheduledTransactionRequest,
+  ): Promise<ScheduledTransactionResponseDto> {
+    const user = await this.profile.findActiveByPublicId(publicId);
+    if (!user) {
+      throw userNotFoundException();
+    }
+
+    const schedule = await this.queries.findOwnerDetail(user.id, schedulePublicId);
+    if (!schedule) {
+      throw scheduledTransactionResourceNotFoundException();
+    }
+    if (request.version !== undefined && schedule.version !== request.version) {
+      throw versionConflictException(request.version, schedule.version);
+    }
+
+    let active = request.active;
+    let nextContemplatedDate = schedule.nextContemplatedDate;
+    let nextExecutionDate = schedule.nextExecutionDate;
+
+    if (request.active && !this.hasReachedStopCondition(schedule)) {
+      const resumeDates = await this.firstResumableDates(schedule);
+      if (schedule.endDate !== null && resumeDates.contemplatedDate > schedule.endDate) {
+        active = false;
+      } else {
+        nextContemplatedDate = resumeDates.contemplatedDate;
+        nextExecutionDate = resumeDates.executionDate;
+      }
+    } else if (request.active) {
+      active = false;
+    }
+
+    const values: ScheduledTransactionActiveValues = {
+      active,
+      nextContemplatedDate,
+      nextExecutionDate,
+    };
+    const result = await this.updates.setActive(
+      user.id,
+      schedulePublicId,
+      request.version,
+      values,
+    );
+
+    if (result.status === MovementWriteStatusEnum.NOT_FOUND.toString()) {
+      throw scheduledTransactionResourceNotFoundException();
+    }
+    if (result.status === MovementWriteStatusEnum.CONFLICT.toString()) {
+      throw versionConflictException(request.version ?? result.currentVersion, result.currentVersion);
+    }
+
+    return ScheduledTransactionResponseDto.fromEntity(result.schedule);
+  }
+
+  private hasReachedStopCondition(schedule: ScheduledTransactionEntity): boolean {
+    return (
+      schedule.totalOccurrences !== null &&
+      schedule.totalOccurrences <= schedule.completedOccurrences
+    );
+  }
+
+  /** First grid point after the processed history whose applied date is not in the past. */
+  private async firstResumableDates(
+    schedule: ScheduledTransactionEntity,
+  ): Promise<{contemplatedDate: string; executionDate: string}> {
+    const lastProcessed = await this.queries.lastProcessedContemplatedDate(schedule.id);
+    const today = this.clock.now().slice(0, 10);
+    const processedThrough = lastProcessed ?? '';
+
+    for (let step = 0; step < MAX_RECURRENCE_STEPS; step += 1) {
+      const dates = recurrenceDatesAt(
+        schedule.anchorDate,
+        schedule.frequency,
+        schedule.interval,
+        step,
+      );
+      if (dates.contemplatedDate > processedThrough && dates.executionDate >= today) {
+        return dates;
+      }
+    }
+
+    throw scheduleValidationException(
+      'anchorDate',
+      VALIDATION_FIELD_MESSAGES.scheduleGridUnavailable,
+    );
   }
 
   private toFilter(

@@ -9,7 +9,7 @@ import {ScheduledTransactionCreationRepository} from './services/scheduled-trans
 import {ScheduledTransactionQueryRepository} from './services/scheduled-transaction-query.repository';
 import {ScheduledTransactionUpdateRepository} from './services/scheduled-transaction-update.repository';
 
-/** Schedule creation, period-scoped reads and optimistic edits (US-601/US-602). */
+/** Schedule creation, period-scoped reads, optimistic edits and toggles (US-601–US-603). */
 @Module({
   imports: [DatabaseModule, AuthModule, UsersModule],
   controllers: [ScheduledTransactionsController],

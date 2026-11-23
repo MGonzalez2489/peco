@@ -32,10 +32,11 @@ import {RateLimited} from '../common/security/decorators/rate-limited.decorator'
 import {CreateScheduledTransactionRequestDto} from './dto/create-scheduled-transaction-request.dto';
 import {ListScheduledTransactionsQueryDto} from './dto/list-scheduled-transactions-query.dto';
 import {ScheduledTransactionResponseDto} from './dto/scheduled-transaction-response.dto';
+import {ToggleScheduledTransactionRequestDto} from './dto/toggle-scheduled-transaction-request.dto';
 import {UpdateScheduledTransactionRequestDto} from './dto/update-scheduled-transaction-request.dto';
 import {ScheduledTransactionsService} from './scheduled-transactions.service';
 
-/** Authenticated schedule creation, period-scoped reads and optimistic edits (US-601/US-602). */
+/** Authenticated schedule creation, period-scoped reads, edits and toggles (US-601–US-603). */
 @ApiTags('scheduled-transactions')
 @Controller('scheduled-transactions')
 @UseGuards(AuthRateLimitGuard)
@@ -145,6 +146,38 @@ export class ScheduledTransactionsController {
     @Param('publicId') schedulePublicId: string,
   ): Promise<ScheduledTransactionResponseDto> {
     return this.schedules.findOne(publicId, schedulePublicId);
+  }
+
+  @Patch(':publicId/toggle')
+  @RateLimited()
+  // The shared guard evaluates every named throttler; only the user policy applies (13.1).
+  @SkipThrottle({ip: true, identity: true, read: true})
+  @Throttle({
+    user: {limit: RATE_LIMITS.mutation.user.limit, ttl: RATE_LIMITS.mutation.user.ttl},
+  })
+  @ApiOperation({summary: 'Pausar o reanudar una programación propia'})
+  @ApiParam({name: 'publicId', description: 'Identificador público del programa.'})
+  @ApiOkResponse({
+    description: 'Programa actualizado en el envelope estándar {data, error}.',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {type: 'object'},
+        error: {type: 'null', nullable: true, example: null},
+      },
+    },
+  })
+  @ApiBadRequestResponse({description: 'Cuerpo inválido o malla de recurrencia agotada.'})
+  @ApiNotFoundResponse({description: 'El programa no existe o pertenece a otro usuario.'})
+  @ApiConflictResponse({description: 'Versión obsoleta.'})
+  @ApiUnauthorizedResponse({description: 'Falta un token de acceso válido.'})
+  @ApiTooManyRequestsResponse({description: 'Límite de mutaciones excedido.'})
+  toggle(
+    @CurrentUser() publicId: string,
+    @Param('publicId') schedulePublicId: string,
+    @Body() request: ToggleScheduledTransactionRequestDto,
+  ): Promise<ScheduledTransactionResponseDto> {
+    return this.schedules.toggle(publicId, schedulePublicId, request);
   }
 
   @Patch(':publicId')
