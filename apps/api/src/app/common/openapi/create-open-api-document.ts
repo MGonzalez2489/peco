@@ -2,6 +2,7 @@ import type {INestApplication} from '@nestjs/common';
 import {DocumentBuilder, SwaggerModule} from '@nestjs/swagger';
 import {CreateAccountRequestDto} from '../../accounts/dto/create-account-request.dto';
 import {ListMovementsQueryDto} from '../../movements/dto/list-movements-query.dto';
+import {CancelScheduledOccurrenceRequestDto} from '../../scheduled-transactions/dto/cancel-scheduled-occurrence-request.dto';
 import {ExecuteScheduledTransactionRequestDto} from '../../scheduled-transactions/dto/execute-scheduled-transaction-request.dto';
 import {ListScheduledTransactionsQueryDto} from '../../scheduled-transactions/dto/list-scheduled-transactions-query.dto';
 import {ToggleScheduledTransactionRequestDto} from '../../scheduled-transactions/dto/toggle-scheduled-transaction-request.dto';
@@ -23,6 +24,7 @@ export const createOpenApiDocument = (app: INestApplication) => {
     extraModels: [
       ListQueryDto,
       CreateAccountRequestDto,
+      CancelScheduledOccurrenceRequestDto,
       ExecuteScheduledTransactionRequestDto,
       ListMovementsQueryDto,
       ListScheduledTransactionsQueryDto,

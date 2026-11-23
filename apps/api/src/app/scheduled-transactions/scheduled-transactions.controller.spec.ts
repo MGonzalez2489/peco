@@ -7,6 +7,7 @@ import {
 import {Test} from '@nestjs/testing';
 import request from 'supertest';
 import {negativeBalanceConflictException} from '../accounts/utils/negative-balance-conflict.exception';
+import {periodClosedException} from '../accounts/utils/period-closed.exception';
 import {selfTransferException} from '../accounts/utils/self-transfer.exception';
 import {transferRequiredException} from '../accounts/utils/transfer-required.exception';
 import {versionConflictException} from '../accounts/utils/version-conflict.exception';
@@ -87,6 +88,22 @@ const EXECUTE_RESPONSE = {
   balances: [{accountPublicId: 'source-account-public-id', currentBalance: 0, version: 5}],
 };
 
+const CANCEL_RESPONSE = {
+  occurrence: {
+    contemplatedDate: '2026-12-31',
+    occurrenceDate: '2026-12-30',
+    status: 'SKIPPED',
+    reason: 'USER_CANCELLED',
+  },
+  movement: {
+    publicId: 'canceled-movement-public-id',
+    amount: 800000,
+    date: '2026-12-30T00:00:00.000Z',
+    isCanceled: true,
+  },
+  schedule: {...SCHEDULE, version: 1},
+};
+
 const SILENT_LOGGER: LoggerService = {
   log: jest.fn(),
   error: jest.fn(),
@@ -96,7 +113,7 @@ const SILENT_LOGGER: LoggerService = {
   fatal: jest.fn(),
 };
 
-describe('ScheduledTransactionsController HTTP contract (US-601–US-604)', () => {
+describe('ScheduledTransactionsController HTTP contract (US-601–US-605)', () => {
   let app: INestApplication;
   let create: jest.Mock;
   let list: jest.Mock;
@@ -104,6 +121,7 @@ describe('ScheduledTransactionsController HTTP contract (US-601–US-604)', () =
   let update: jest.Mock;
   let toggle: jest.Mock;
   let execute: jest.Mock;
+  let cancel: jest.Mock;
 
   const authGuard: CanActivate = {
     canActivate: (context: ExecutionContext): boolean => {
@@ -121,12 +139,13 @@ describe('ScheduledTransactionsController HTTP contract (US-601–US-604)', () =
     update = jest.fn().mockResolvedValue(SCHEDULE);
     toggle = jest.fn().mockResolvedValue({...SCHEDULE, active: false});
     execute = jest.fn().mockResolvedValue(EXECUTE_RESPONSE);
+    cancel = jest.fn().mockResolvedValue(CANCEL_RESPONSE);
     const moduleRef = await Test.createTestingModule({
       controllers: [ScheduledTransactionsController],
       providers: [
         {
           provide: ScheduledTransactionsService,
-          useValue: {create, list, findOne, update, toggle, execute},
+          useValue: {create, list, findOne, update, toggle, execute, cancel},
         },
       ],
     })
@@ -389,7 +408,53 @@ describe('ScheduledTransactionsController HTTP contract (US-601–US-604)', () =
     expect(failed.body.error.code).toBe('NEGATIVE_BALANCE_NOT_ALLOWED');
   });
 
-  it('documents the list, detail, toggle, update and execute routes in OpenAPI', () => {
+  it('cancels one occurrence with an idempotency key and an optional note', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/scheduled-transactions/schedule-public-id/cancel-occurrence')
+      .set('Idempotency-Key', 'schedules-cancel-1')
+      .send({note: 'Cancelada por el usuario'})
+      .expect(201);
+
+    expect(response.body).toEqual({data: CANCEL_RESPONSE, error: null});
+    expect(cancel).toHaveBeenCalledWith('user-public-id', 'schedule-public-id', {
+      note: 'Cancelada por el usuario',
+    });
+  });
+
+  it.each([
+    ['long note', {note: 'x'.repeat(501)}],
+    ['non-string note', {note: 7}],
+    ['server-owned field', {status: 'SKIPPED'}],
+  ])('rejects a %s with 400 VALIDATION_ERROR', async (_label, body) => {
+    const response = await request(app.getHttpServer())
+      .post('/scheduled-transactions/schedule-public-id/cancel-occurrence')
+      .set('Idempotency-Key', `schedules-cancel-invalid-${_label.replace(/\s/g, '-')}`)
+      .send(body)
+      .expect(400);
+
+    expect(response.body.error.code).toBe('VALIDATION_ERROR');
+    expect(cancel).not.toHaveBeenCalled();
+  });
+
+  it('maps duplicate and closed-period cancellations to 409', async () => {
+    cancel.mockRejectedValueOnce(occurrenceAlreadyProcessedException());
+    const duplicate = await request(app.getHttpServer())
+      .post('/scheduled-transactions/schedule-public-id/cancel-occurrence')
+      .set('Idempotency-Key', 'schedules-cancel-duplicate')
+      .send({})
+      .expect(409);
+    expect(duplicate.body.error.code).toBe('OCCURRENCE_ALREADY_PROCESSED');
+
+    cancel.mockRejectedValueOnce(periodClosedException());
+    const closed = await request(app.getHttpServer())
+      .post('/scheduled-transactions/schedule-public-id/cancel-occurrence')
+      .set('Idempotency-Key', 'schedules-cancel-closed')
+      .send({})
+      .expect(409);
+    expect(closed.body.error.code).toBe('PERIOD_CLOSED');
+  });
+
+  it('documents the list, detail, toggle, update, execute and cancel routes in OpenAPI', () => {
     const document = createOpenApiDocument(app);
 
     expect(document.paths['/scheduled-transactions']?.post).toBeDefined();
@@ -398,5 +463,8 @@ describe('ScheduledTransactionsController HTTP contract (US-601–US-604)', () =
     expect(document.paths['/scheduled-transactions/{publicId}']?.patch).toBeDefined();
     expect(document.paths['/scheduled-transactions/{publicId}/toggle']?.patch).toBeDefined();
     expect(document.paths['/scheduled-transactions/{publicId}/execute']?.post).toBeDefined();
+    expect(
+      document.paths['/scheduled-transactions/{publicId}/cancel-occurrence']?.post,
+    ).toBeDefined();
   });
 });

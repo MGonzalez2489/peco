@@ -112,10 +112,15 @@ export class MovementCreationRepository {
       return {status: MovementWriteStatusEnum.PERIOD_CLOSED.toString()};
     }
 
-    const sourceDelta =
-      request.type === MovementTypeEnum.INCOME.toString() ? request.amount : -request.amount;
+    // Canceled rows inherit the schedule's type and amount for auditability but never move money (D107/US-605).
+    const isCanceled = request.isCanceled === true;
+    const sourceDelta = isCanceled
+      ? 0
+      : request.type === MovementTypeEnum.INCOME.toString()
+        ? request.amount
+        : -request.amount;
     const targetDelta =
-      request.type === MovementTypeEnum.TRANSFER.toString() ? request.amount : 0;
+      !isCanceled && request.type === MovementTypeEnum.TRANSFER.toString() ? request.amount : 0;
     const nextSourceBalance = source.currentBalance + sourceDelta;
     const nextTargetBalance = target ? target.currentBalance + targetDelta : null;
 
@@ -145,12 +150,23 @@ export class MovementCreationRepository {
         replacesMovementId: null,
         isReversal: false,
         isReversed: false,
-        isCanceled: false,
+        isCanceled,
         scheduledTransactionId: request.scheduledTransactionId ?? null,
         version: 0,
         deletedAt: null,
       }),
     );
+
+    if (isCanceled) {
+      return {
+        status: MovementWriteStatusEnum.CREATED.toString(),
+        movement,
+        account: source,
+        targetAccount: target,
+        category,
+        balances: [],
+      };
+    }
 
     const balances: AccountBalanceUpdate[] = [];
     source.currentBalance = nextSourceBalance;

@@ -1,8 +1,13 @@
 import {Injectable} from '@nestjs/common';
-import type {ApiErrorCode, ExecuteScheduledTransactionRequest} from '@peco/contracts';
+import type {
+  ApiErrorCode,
+  CancelScheduledOccurrenceRequest,
+  ExecuteScheduledTransactionRequest,
+} from '@peco/contracts';
 import {
   ApiErrorCodeEnum,
   MovementWriteStatusEnum,
+  ScheduledExecutionReasonEnum,
   ScheduledExecutionStatusEnum,
 } from '@peco/enums';
 import {DataSource, IsNull, type EntityManager} from 'typeorm';
@@ -20,6 +25,7 @@ import type {LedgerInsertRequest} from '../../movements/types/ledger-insert-requ
 import {isDeadlockError} from '../../movements/utils/is-deadlock-error.util';
 import {MAX_RECURRENCE_STEPS} from '../constants/max-recurrence-steps.constant';
 import {MAX_SCHEDULED_EXECUTION_ATTEMPTS} from '../constants/max-scheduled-execution-attempts.constant';
+import type {CancelScheduledOccurrenceResult} from '../types/cancel-scheduled-occurrence-result.type';
 import type {ScheduledExecutionResult} from '../types/scheduled-execution-result.type';
 import {recurrenceDatesAt} from '../utils/recurrence-dates-at.util';
 
@@ -49,6 +55,115 @@ export class ScheduledExecutionRepository {
         }
       }
     }
+  }
+
+  /** Cancels the due occurrence with a balance-neutral row and advances the grid (10.7/US-605). */
+  async cancel(
+    userId: number,
+    publicId: string,
+    request: CancelScheduledOccurrenceRequest,
+    asOf: string,
+  ): Promise<CancelScheduledOccurrenceResult> {
+    for (let attempt = 1; ; attempt += 1) {
+      try {
+        return await this.dataSource.transaction('READ COMMITTED', (manager) =>
+          this.cancelOnce(userId, publicId, request, asOf, manager),
+        );
+      } catch (error: unknown) {
+        if (!isDeadlockError(error) || attempt >= DEADLOCK_RETRY_LIMIT) {
+          throw error;
+        }
+      }
+    }
+  }
+
+  private async cancelOnce(
+    userId: number,
+    publicId: string,
+    request: CancelScheduledOccurrenceRequest,
+    asOf: string,
+    manager: EntityManager,
+  ): Promise<CancelScheduledOccurrenceResult> {
+    const user = await manager.findOne(UserEntity, {
+      where: {id: userId, deletedAt: IsNull()},
+      lock: {mode: 'pessimistic_write'},
+    });
+    if (!user) {
+      return {status: MovementWriteStatusEnum.NOT_FOUND.toString()};
+    }
+
+    const schedule = await manager.findOne(ScheduledTransactionEntity, {
+      where: {userId, publicId, deletedAt: IsNull()},
+      relations: {category: true, sourceAccount: true, destinationAccount: true},
+      lock: {mode: 'pessimistic_write'},
+    });
+    if (!schedule) {
+      return {status: MovementWriteStatusEnum.NOT_FOUND.toString()};
+    }
+
+    // Any stored execution for this slot means the grid was re-anchored or replayed (10.7/D21).
+    const existing = await manager.findOne(ScheduledExecutionEntity, {
+      where: {
+        scheduledTransactionId: schedule.id,
+        contemplatedDate: schedule.nextContemplatedDate,
+      },
+    });
+    if (existing) {
+      return {status: ApiErrorCodeEnum.OCCURRENCE_ALREADY_PROCESSED.toString()};
+    }
+    if (!schedule.active) {
+      return {status: ApiErrorCodeEnum.SCHEDULE_INACTIVE.toString()};
+    }
+    if (schedule.nextExecutionDate > asOf) {
+      return {status: ApiErrorCodeEnum.SCHEDULE_NOT_DUE.toString()};
+    }
+
+    const occurrenceDate = schedule.nextExecutionDate;
+    const closed = await manager.findOne(PeriodSnapshotEntity, {
+      where: {userId, period: occurrenceDate.slice(0, 7)},
+    });
+    if (closed) {
+      return {status: ApiErrorCodeEnum.PERIOD_CLOSED.toString()};
+    }
+
+    const ledgerRequest: LedgerInsertRequest = {
+      type: schedule.type,
+      amount: schedule.estimatedAmount,
+      date: `${occurrenceDate}T00:00:00.000Z`,
+      note: request.note ?? schedule.name,
+      accountPublicId: schedule.sourceAccount.publicId,
+      categoryPublicId: schedule.category.publicId,
+      targetAccountPublicId: schedule.destinationAccount?.publicId ?? undefined,
+      scheduledTransactionId: schedule.id,
+      isCanceled: true,
+    };
+    const ledger = await this.creations.insertWithManager(userId, ledgerRequest, manager);
+    if (ledger.status === MovementWriteStatusEnum.PERIOD_CLOSED.toString()) {
+      return {status: ApiErrorCodeEnum.PERIOD_CLOSED.toString()};
+    }
+    if (ledger.status !== MovementWriteStatusEnum.CREATED.toString()) {
+      return {status: ApiErrorCodeEnum.UNPROCESSABLE_ENTITY.toString()};
+    }
+
+    const occurrence = await this.saveExecution(manager, schedule, existing, {
+      status: ScheduledExecutionStatusEnum.SKIPPED.toString(),
+      occurrenceDate,
+      movementId: ledger.movement.id,
+      reason: ScheduledExecutionReasonEnum.USER_CANCELLED.toString(),
+      attempts: 0,
+    });
+    const movement = await this.findMovement(manager, ledger.movement.id);
+    if (!movement) {
+      // Roll back the whole transaction instead of returning a failure after writing (US-605).
+      throw new Error('Canceled movement not found after insert');
+    }
+
+    return {
+      status: ScheduledExecutionStatusEnum.SKIPPED.toString(),
+      occurrence,
+      movement,
+      schedule: await this.advance(manager, schedule),
+    };
   }
 
   private async executeOnce(

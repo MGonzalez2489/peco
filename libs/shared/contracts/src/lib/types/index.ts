@@ -9,6 +9,8 @@ export * from './api-success.type';
 export * from './app-theme.type';
 export * from './auth-response.type';
 export * from './category-apply-type.type';
+export * from './cancel-scheduled-occurrence-request.type';
+export * from './cancel-scheduled-occurrence-response.type';
 export * from './category-response.type';
 export * from './change-password-request.type';
 export * from './create-account-request.type';

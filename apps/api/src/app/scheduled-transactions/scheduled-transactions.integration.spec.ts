@@ -8,6 +8,7 @@ import {
   ApiErrorCodeEnum,
   CategoryApplyTypeEnum,
   RecurrenceFrequencyEnum,
+  ScheduledExecutionReasonEnum,
   ScheduledExecutionStatusEnum,
   ScheduledTransactionTypeEnum,
 } from '@peco/enums';
@@ -36,7 +37,7 @@ jest.setTimeout(180_000);
 
 const FIXED_NOW = '2026-11-23T12:00:00.000Z';
 
-describe('scheduled transactions (MySQL 8, US-601–US-604)', () => {
+describe('scheduled transactions (MySQL 8, US-601–US-605)', () => {
   let container: StartedMySqlContainer;
   let dataSource: DataSource;
   let service: ScheduledTransactionsService;
@@ -799,5 +800,136 @@ describe('scheduled transactions (MySQL 8, US-601–US-604)', () => {
       version: created.version,
     });
     expect(await dataSource.getRepository(MovementEntity).count()).toBe(0);
+  });
+
+  it('cancels a due occurrence without moving balances and rejects the re-anchored slot', async () => {
+    const user = await seedUser('cancel-due@example.com');
+    const account = await seedAccount(user, {currentBalance: 100000});
+    const category = await seedCategory(null, CategoryApplyTypeEnum.EXPENSE.toString());
+    const created = await service.create(
+      user.publicId,
+      request({
+        anchorDate: '2026-11-23',
+        categoryPublicId: category.publicId,
+        sourceAccountPublicId: account.publicId,
+        estimatedAmount: 10000,
+        totalOccurrences: null,
+        endDate: null,
+      }),
+    );
+
+    const result = await service.cancel(user.publicId, created.publicId, {
+      note: 'Cancelada por el usuario',
+    });
+
+    expect(result.occurrence).toMatchObject({
+      contemplatedDate: '2026-11-23',
+      occurrenceDate: '2026-11-23',
+      status: ScheduledExecutionStatusEnum.SKIPPED.toString(),
+      reason: ScheduledExecutionReasonEnum.USER_CANCELLED.toString(),
+    });
+    expect(result.movement).toMatchObject({
+      amount: 10000,
+      date: '2026-11-23T00:00:00.000Z',
+      note: 'Cancelada por el usuario',
+      isCanceled: true,
+      scheduledTransactionPublicId: created.publicId,
+    });
+    expect(result.schedule).toMatchObject({
+      completedOccurrences: 1,
+      nextContemplatedDate: '2026-12-23',
+      nextExecutionDate: '2026-12-23',
+      active: true,
+      version: created.version + 1,
+    });
+
+    const executions = dataSource.getRepository(ScheduledExecutionEntity);
+    const execution = await executions.findOneByOrFail({
+      scheduledTransactionId: (await dataSource
+        .getRepository(ScheduledTransactionEntity)
+        .findOneByOrFail({publicId: created.publicId})).id,
+    });
+    expect(execution.movementId).not.toBeNull();
+    expect(await dataSource.getRepository(MovementEntity).count()).toBe(1);
+    expect(
+      await dataSource.getRepository(AccountEntity).findOneByOrFail({id: account.id}),
+    ).toMatchObject({currentBalance: 100000, version: 0});
+
+    // Re-anchoring back to the processed slot must not create a second canceled row.
+    await dataSource.getRepository(ScheduledTransactionEntity).update(
+      {publicId: created.publicId},
+      {nextContemplatedDate: '2026-11-23', nextExecutionDate: '2026-11-23'},
+    );
+    await expect(
+      service.cancel(user.publicId, created.publicId, {}),
+    ).rejects.toMatchObject({
+      status: 409,
+      code: ApiErrorCodeEnum.OCCURRENCE_ALREADY_PROCESSED.toString(),
+    });
+    expect(await executions.count()).toBe(1);
+    expect(await dataSource.getRepository(MovementEntity).count()).toBe(1);
+  });
+
+  it('rejects a cancellation inside a closed period before writing anything', async () => {
+    const user = await seedUser('cancel-closed@example.com');
+    const account = await seedAccount(user, {currentBalance: 100000});
+    const category = await seedCategory(null, CategoryApplyTypeEnum.EXPENSE.toString());
+    const created = await service.create(
+      user.publicId,
+      request({
+        anchorDate: '2026-11-23',
+        categoryPublicId: category.publicId,
+        sourceAccountPublicId: account.publicId,
+        totalOccurrences: null,
+        endDate: null,
+      }),
+    );
+    await seedClosedPeriod(user, '2026-11');
+
+    await expect(service.cancel(user.publicId, created.publicId, {})).rejects.toMatchObject({
+      status: 409,
+      code: ApiErrorCodeEnum.PERIOD_CLOSED.toString(),
+    });
+
+    expect(await dataSource.getRepository(ScheduledExecutionEntity).count()).toBe(0);
+    expect(await dataSource.getRepository(MovementEntity).count()).toBe(0);
+    expect(
+      await dataSource.getRepository(ScheduledTransactionEntity).findOneByOrFail({
+        publicId: created.publicId,
+      }),
+    ).toMatchObject({
+      completedOccurrences: 0,
+      nextContemplatedDate: '2026-11-23',
+      nextExecutionDate: '2026-11-23',
+      version: created.version,
+    });
+  });
+
+  it('serializes concurrent cancellations so only one canceled row is created', async () => {
+    const user = await seedUser('cancel-concurrent@example.com');
+    const account = await seedAccount(user, {currentBalance: 100000});
+    const category = await seedCategory(null, CategoryApplyTypeEnum.EXPENSE.toString());
+    const created = await service.create(
+      user.publicId,
+      request({
+        anchorDate: '2026-11-23',
+        categoryPublicId: category.publicId,
+        sourceAccountPublicId: account.publicId,
+        totalOccurrences: null,
+        endDate: null,
+      }),
+    );
+
+    const outcomes = await Promise.allSettled([
+      service.cancel(user.publicId, created.publicId, {}),
+      service.cancel(user.publicId, created.publicId, {}),
+    ]);
+
+    expect(outcomes.filter((outcome) => outcome.status === 'fulfilled')).toHaveLength(1);
+    expect(outcomes.find((outcome) => outcome.status === 'rejected')).toMatchObject({
+      reason: {code: ApiErrorCodeEnum.SCHEDULE_NOT_DUE.toString()},
+    });
+    expect(await dataSource.getRepository(MovementEntity).count()).toBe(1);
+    expect(await dataSource.getRepository(ScheduledExecutionEntity).count()).toBe(1);
   });
 });

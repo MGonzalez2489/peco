@@ -1,6 +1,7 @@
 import {HttpStatus, Injectable} from '@nestjs/common';
 import type {
   ApiErrorCode,
+  CancelScheduledOccurrenceRequest,
   CreateScheduledTransactionRequest,
   ExecuteScheduledTransactionRequest,
   ListScheduledTransactionsQuery,
@@ -29,6 +30,7 @@ import {periodUtcBounds} from '../movements/utils/period-utc-bounds.util';
 import {UserProfileRepository} from '../users/services/user-profile.repository';
 import {userNotFoundException} from '../users/utils/user-not-found.exception';
 import {MAX_RECURRENCE_STEPS} from './constants/max-recurrence-steps.constant';
+import {CancelScheduledOccurrenceResponseDto} from './dto/cancel-scheduled-occurrence-response.dto';
 import {ExecuteScheduledTransactionResponseDto} from './dto/execute-scheduled-transaction-response.dto';
 import {ScheduledTransactionResponseDto} from './dto/scheduled-transaction-response.dto';
 import {ScheduledExecutionRepository} from './services/scheduled-execution.repository';
@@ -367,6 +369,55 @@ export class ScheduledTransactionsService {
       'movement' in result ? result.movement : null,
       result.schedule,
       result.balances,
+    );
+  }
+
+  /** Cancels one due occurrence without changing balances and maps stable conflicts (10.7/US-605). */
+  async cancel(
+    publicId: string,
+    schedulePublicId: string,
+    request: CancelScheduledOccurrenceRequest,
+  ): Promise<CancelScheduledOccurrenceResponseDto> {
+    const user = await this.profile.findActiveByPublicId(publicId);
+    if (!user) {
+      throw userNotFoundException();
+    }
+
+    const schedule = await this.queries.findOwnerDetail(user.id, schedulePublicId);
+    if (!schedule) {
+      throw scheduledTransactionResourceNotFoundException();
+    }
+
+    const asOf = this.clock.now().slice(0, 10);
+    const result = await this.executions.cancel(user.id, schedulePublicId, request, asOf);
+
+    if (result.status === MovementWriteStatusEnum.NOT_FOUND.toString()) {
+      throw scheduledTransactionResourceNotFoundException();
+    }
+    if (result.status === ApiErrorCodeEnum.SCHEDULE_INACTIVE.toString()) {
+      throw scheduleInactiveException();
+    }
+    if (result.status === ApiErrorCodeEnum.SCHEDULE_NOT_DUE.toString()) {
+      throw scheduleNotDueException();
+    }
+    if (result.status === ApiErrorCodeEnum.OCCURRENCE_ALREADY_PROCESSED.toString()) {
+      throw occurrenceAlreadyProcessedException();
+    }
+    if (result.status === ApiErrorCodeEnum.PERIOD_CLOSED.toString()) {
+      throw periodClosedException();
+    }
+    if (result.status === ApiErrorCodeEnum.UNPROCESSABLE_ENTITY.toString()) {
+      throw new ApiException(
+        HttpStatus.UNPROCESSABLE_ENTITY,
+        ApiErrorCodeEnum.UNPROCESSABLE_ENTITY.toString(),
+        API_ERROR_MESSAGES.UNPROCESSABLE_ENTITY,
+      );
+    }
+
+    return new CancelScheduledOccurrenceResponseDto(
+      result.occurrence,
+      result.movement,
+      result.schedule,
     );
   }
 

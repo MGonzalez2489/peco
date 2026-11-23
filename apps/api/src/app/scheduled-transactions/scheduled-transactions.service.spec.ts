@@ -2,6 +2,7 @@ import {
   ApiErrorCodeEnum,
   CategoryApplyTypeEnum,
   MovementWriteStatusEnum,
+  ScheduledExecutionReasonEnum,
   ScheduledExecutionStatusEnum,
 } from '@peco/enums';
 import type {
@@ -45,7 +46,34 @@ const makeSchedule = (overrides: Partial<ScheduledTransactionEntity> = {}) =>
     ...overrides,
   }) as unknown as ScheduledTransactionEntity;
 
-describe('ScheduledTransactionsService (US-602–US-604)', () => {
+const makeMovement = (overrides: Partial<MovementEntity> = {}) =>
+  ({
+    publicId: 'canceled-movement-public-id',
+    type: 'EXPENSE',
+    amount: 800000,
+    date: '2020-01-15T00:00:00.000Z',
+    note: 'Cancelada por el usuario',
+    account: {publicId: 'source-account-public-id', name: 'Débito', type: 'DEBIT'},
+    targetAccount: null,
+    category: {
+      publicId: 'category-public-id',
+      name: 'renta',
+      displayName: 'Servicios',
+      applyType: 'EXPENSE',
+    },
+    isReversal: false,
+    isReversed: false,
+    reversalOf: null,
+    replacesMovement: null,
+    isCanceled: true,
+    scheduledTransaction: {publicId: 'schedule-public-id'},
+    version: 0,
+    createdAt: NOW,
+    updatedAt: NOW,
+    ...overrides,
+  }) as unknown as MovementEntity;
+
+describe('ScheduledTransactionsService (US-602–US-605)', () => {
   const setup = (overrides: Partial<ScheduledTransactionEntity> = {}) => {
     const schedule = makeSchedule(overrides);
     const profile = {
@@ -74,6 +102,17 @@ describe('ScheduledTransactionsService (US-602–US-604)', () => {
         replayed: false,
         occurrence: {contemplatedDate: '2020-01-15', occurrenceDate: '2020-01-15', reason: null},
         balances: [],
+        schedule,
+      }),
+      cancel: jest.fn().mockResolvedValue({
+        status: ScheduledExecutionStatusEnum.SKIPPED.toString(),
+        occurrence: {
+          contemplatedDate: '2020-01-15',
+          occurrenceDate: '2020-01-15',
+          status: ScheduledExecutionStatusEnum.SKIPPED.toString(),
+          reason: 'USER_CANCELLED',
+        },
+        movement: makeMovement(),
         schedule,
       }),
     } as unknown as ScheduledExecutionRepository;
@@ -304,5 +343,42 @@ describe('ScheduledTransactionsService (US-602–US-604)', () => {
       '2026-11-23',
     );
     expect(response.movement?.amount).toBe(75000);
+  });
+
+  it('passes the UTC date and note to the cancellation repository', async () => {
+    const {executions, service} = setup();
+
+    const response = await service.cancel('user-public-id', 'schedule-public-id', {
+      note: 'Cancelada por el usuario',
+    });
+
+    expect(executions.cancel).toHaveBeenCalledWith(
+      1,
+      'schedule-public-id',
+      {note: 'Cancelada por el usuario'},
+      '2026-11-23',
+    );
+    expect(response.movement.isCanceled).toBe(true);
+    expect(response.occurrence.reason).toBe(
+      ScheduledExecutionReasonEnum.USER_CANCELLED.toString(),
+    );
+  });
+
+  it.each([
+    ['inactive', ApiErrorCodeEnum.SCHEDULE_INACTIVE.toString(), 'SCHEDULE_INACTIVE'],
+    ['not due', ApiErrorCodeEnum.SCHEDULE_NOT_DUE.toString(), 'SCHEDULE_NOT_DUE'],
+    [
+      'already processed',
+      ApiErrorCodeEnum.OCCURRENCE_ALREADY_PROCESSED.toString(),
+      'OCCURRENCE_ALREADY_PROCESSED',
+    ],
+    ['closed period', ApiErrorCodeEnum.PERIOD_CLOSED.toString(), 'PERIOD_CLOSED'],
+  ])('maps a %s cancellation to its stable conflict', async (_label, status, code) => {
+    const {executions, service, schedule} = setup();
+    jest.spyOn(executions, 'cancel').mockResolvedValueOnce({status, schedule} as never);
+
+    await expect(
+      service.cancel('user-public-id', 'schedule-public-id', {}),
+    ).rejects.toMatchObject({status: 409, code});
   });
 });

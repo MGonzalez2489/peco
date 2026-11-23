@@ -29,6 +29,8 @@ import {ApiIdempotencyKeyHeader} from '../common/idempotency/decorators/api-idem
 import {RequireIdempotencyKey} from '../common/idempotency/decorators/require-idempotency-key.decorator';
 import {CurrentUser} from '../common/security/decorators/current-user.decorator';
 import {RateLimited} from '../common/security/decorators/rate-limited.decorator';
+import {CancelScheduledOccurrenceRequestDto} from './dto/cancel-scheduled-occurrence-request.dto';
+import {CancelScheduledOccurrenceResponseDto} from './dto/cancel-scheduled-occurrence-response.dto';
 import {CreateScheduledTransactionRequestDto} from './dto/create-scheduled-transaction-request.dto';
 import {ExecuteScheduledTransactionRequestDto} from './dto/execute-scheduled-transaction-request.dto';
 import {ExecuteScheduledTransactionResponseDto} from './dto/execute-scheduled-transaction-response.dto';
@@ -38,7 +40,7 @@ import {ToggleScheduledTransactionRequestDto} from './dto/toggle-scheduled-trans
 import {UpdateScheduledTransactionRequestDto} from './dto/update-scheduled-transaction-request.dto';
 import {ScheduledTransactionsService} from './scheduled-transactions.service';
 
-/** Authenticated schedule creation, reads, edits, toggles and execution (US-601–US-604). */
+/** Authenticated schedule creation, reads, edits, toggles, execution and cancellation (US-601–US-605). */
 @ApiTags('scheduled-transactions')
 @Controller('scheduled-transactions')
 @UseGuards(AuthRateLimitGuard)
@@ -112,6 +114,37 @@ export class ScheduledTransactionsController {
     @Body() request: ExecuteScheduledTransactionRequestDto,
   ): Promise<ExecuteScheduledTransactionResponseDto> {
     return this.schedules.execute(publicId, schedulePublicId, request);
+  }
+
+  @Post(':publicId/cancel-occurrence')
+  @RequireIdempotencyKey()
+  @ApiIdempotencyKeyHeader()
+  @RateLimited()
+  // The shared guard evaluates every named throttler; only the user policy applies (13.1).
+  @SkipThrottle({ip: true, identity: true, read: true})
+  @Throttle({
+    user: {limit: RATE_LIMITS.mutation.user.limit, ttl: RATE_LIMITS.mutation.user.ttl},
+  })
+  @ApiOperation({summary: 'Cancelar una sola ocurrencia vencida sin afectar saldos'})
+  @ApiParam({name: 'publicId', description: 'Identificador público del programa.'})
+  @ApiCreatedResponse({
+    type: CancelScheduledOccurrenceResponseDto,
+    description: 'Ocurrencia cancelada en el envelope estándar {data, error}.',
+  })
+  @ApiBadRequestResponse({description: 'Cuerpo inválido: la nota supera 500 caracteres.'})
+  @ApiNotFoundResponse({description: 'El programa no existe o pertenece a otro usuario.'})
+  @ApiConflictResponse({
+    description:
+      'Programa pausado, ocurrencia no vencida, ya procesada o período cerrado sin escrituras.',
+  })
+  @ApiUnauthorizedResponse({description: 'Falta un token de acceso válido.'})
+  @ApiTooManyRequestsResponse({description: 'Límite de mutaciones excedido.'})
+  cancel(
+    @CurrentUser() publicId: string,
+    @Param('publicId') schedulePublicId: string,
+    @Body() request: CancelScheduledOccurrenceRequestDto,
+  ): Promise<CancelScheduledOccurrenceResponseDto> {
+    return this.schedules.cancel(publicId, schedulePublicId, request);
   }
 
   @Get()

@@ -11,6 +11,7 @@ import {
   MovementWriteStatusEnum,
   RecurrenceFrequencyEnum,
   RefreshRotationStatusEnum,
+  ScheduledExecutionReasonEnum,
   ScheduledExecutionStatusEnum,
   ScheduledTransactionTypeEnum,
   stringEnumValue,
@@ -24,6 +25,7 @@ describe('shared enums', () => {
     expect(CategoryApplyTypeEnum.BOTH.toString()).toBe('BOTH');
     expect(RecurrenceFrequencyEnum.FORTNIGHTLY.toString()).toBe('FORTNIGHTLY');
     expect(ScheduledExecutionStatusEnum.SKIPPED.toString()).toBe('SKIPPED');
+    expect(ScheduledExecutionReasonEnum.USER_CANCELLED.toString()).toBe('USER_CANCELLED');
     expect(AppThemeEnum.SYSTEM.toString()).toBe('system');
     expect(RefreshRotationStatusEnum.REUSED.toString()).toBe('reused');
     expect(AccountWriteStatusEnum.UPDATED.toString()).toBe('updated');
