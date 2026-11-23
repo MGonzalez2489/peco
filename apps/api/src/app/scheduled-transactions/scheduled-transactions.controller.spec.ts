@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import {Test} from '@nestjs/testing';
 import request from 'supertest';
+import {negativeBalanceConflictException} from '../accounts/utils/negative-balance-conflict.exception';
 import {selfTransferException} from '../accounts/utils/self-transfer.exception';
 import {transferRequiredException} from '../accounts/utils/transfer-required.exception';
 import {versionConflictException} from '../accounts/utils/version-conflict.exception';
@@ -20,6 +21,7 @@ import {userNotFoundException} from '../users/utils/user-not-found.exception';
 import {ScheduledTransactionsController} from './scheduled-transactions.controller';
 import {ScheduledTransactionsService} from './scheduled-transactions.service';
 import {occurrenceAlreadyProcessedException} from './utils/occurrence-already-processed.exception';
+import {scheduleInactiveException} from './utils/schedule-inactive.exception';
 import {scheduledTransactionResourceNotFoundException} from './utils/scheduled-transaction-resource-not-found.exception';
 
 const SCHEDULE = {
@@ -69,6 +71,22 @@ const BODY = {
   endDate: null,
 };
 
+const EXECUTE_RESPONSE = {
+  occurrence: {
+    contemplatedDate: '2026-12-31',
+    occurrenceDate: '2026-12-30',
+    status: 'APPLIED',
+    reason: null,
+  },
+  movement: {
+    publicId: 'movement-public-id',
+    amount: 800000,
+    date: '2026-12-30T00:00:00.000Z',
+  },
+  schedule: SCHEDULE,
+  balances: [{accountPublicId: 'source-account-public-id', currentBalance: 0, version: 5}],
+};
+
 const SILENT_LOGGER: LoggerService = {
   log: jest.fn(),
   error: jest.fn(),
@@ -78,13 +96,14 @@ const SILENT_LOGGER: LoggerService = {
   fatal: jest.fn(),
 };
 
-describe('ScheduledTransactionsController HTTP contract (US-601–US-603)', () => {
+describe('ScheduledTransactionsController HTTP contract (US-601–US-604)', () => {
   let app: INestApplication;
   let create: jest.Mock;
   let list: jest.Mock;
   let findOne: jest.Mock;
   let update: jest.Mock;
   let toggle: jest.Mock;
+  let execute: jest.Mock;
 
   const authGuard: CanActivate = {
     canActivate: (context: ExecutionContext): boolean => {
@@ -101,12 +120,13 @@ describe('ScheduledTransactionsController HTTP contract (US-601–US-603)', () =
     findOne = jest.fn().mockResolvedValue(SCHEDULE);
     update = jest.fn().mockResolvedValue(SCHEDULE);
     toggle = jest.fn().mockResolvedValue({...SCHEDULE, active: false});
+    execute = jest.fn().mockResolvedValue(EXECUTE_RESPONSE);
     const moduleRef = await Test.createTestingModule({
       controllers: [ScheduledTransactionsController],
       providers: [
         {
           provide: ScheduledTransactionsService,
-          useValue: {create, list, findOne, update, toggle},
+          useValue: {create, list, findOne, update, toggle, execute},
         },
       ],
     })
@@ -323,7 +343,53 @@ describe('ScheduledTransactionsController HTTP contract (US-601–US-603)', () =
     expect(response.body.error.code).toBe('VERSION_CONFLICT');
   });
 
-  it('documents the list, detail, toggle and update routes in OpenAPI', () => {
+  it('executes one occurrence with an idempotency key and an amount override', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/scheduled-transactions/schedule-public-id/execute')
+      .set('Idempotency-Key', 'schedules-execute-1')
+      .send({actualAmount: 75000})
+      .expect(201);
+
+    expect(response.body).toEqual({data: EXECUTE_RESPONSE, error: null});
+    expect(execute).toHaveBeenCalledWith('user-public-id', 'schedule-public-id', {
+      actualAmount: 75000,
+    });
+  });
+
+  it.each([
+    ['zero amount', {actualAmount: 0}],
+    ['fractional amount', {actualAmount: 12.34}],
+    ['server-owned field', {status: 'APPLIED'}],
+  ])('rejects a %s with 400 VALIDATION_ERROR', async (_label, body) => {
+    const response = await request(app.getHttpServer())
+      .post('/scheduled-transactions/schedule-public-id/execute')
+      .set('Idempotency-Key', `schedules-execute-invalid-${_label.replace(/\s/g, '-')}`)
+      .send(body)
+      .expect(400);
+
+    expect(response.body.error.code).toBe('VALIDATION_ERROR');
+    expect(execute).not.toHaveBeenCalled();
+  });
+
+  it('maps inactive schedules and failed balance checks to 409', async () => {
+    execute.mockRejectedValueOnce(scheduleInactiveException());
+    const inactive = await request(app.getHttpServer())
+      .post('/scheduled-transactions/schedule-public-id/execute')
+      .set('Idempotency-Key', 'schedules-execute-inactive')
+      .send({})
+      .expect(409);
+    expect(inactive.body.error.code).toBe('SCHEDULE_INACTIVE');
+
+    execute.mockRejectedValueOnce(negativeBalanceConflictException());
+    const failed = await request(app.getHttpServer())
+      .post('/scheduled-transactions/schedule-public-id/execute')
+      .set('Idempotency-Key', 'schedules-execute-failed')
+      .send({})
+      .expect(409);
+    expect(failed.body.error.code).toBe('NEGATIVE_BALANCE_NOT_ALLOWED');
+  });
+
+  it('documents the list, detail, toggle, update and execute routes in OpenAPI', () => {
     const document = createOpenApiDocument(app);
 
     expect(document.paths['/scheduled-transactions']?.post).toBeDefined();
@@ -331,5 +397,6 @@ describe('ScheduledTransactionsController HTTP contract (US-601–US-603)', () =
     expect(document.paths['/scheduled-transactions/{publicId}']?.get).toBeDefined();
     expect(document.paths['/scheduled-transactions/{publicId}']?.patch).toBeDefined();
     expect(document.paths['/scheduled-transactions/{publicId}/toggle']?.patch).toBeDefined();
+    expect(document.paths['/scheduled-transactions/{publicId}/execute']?.post).toBeDefined();
   });
 });

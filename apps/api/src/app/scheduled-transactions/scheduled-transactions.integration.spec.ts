@@ -5,6 +5,7 @@ import type {
 } from '@peco/contracts';
 import {
   AccountTypeEnum,
+  ApiErrorCodeEnum,
   CategoryApplyTypeEnum,
   RecurrenceFrequencyEnum,
   ScheduledExecutionStatusEnum,
@@ -17,12 +18,16 @@ import {createTypeOrmOptions} from '../database/database.config';
 import {
   AccountEntity,
   CategoryEntity,
+  MovementEntity,
+  PeriodSnapshotEntity,
   ScheduledExecutionEntity,
   ScheduledTransactionEntity,
   UserEntity,
 } from '../database/entities';
 import {UtcClock} from '../database/clock/utc-clock';
+import {MovementCreationRepository} from '../movements/services/movement-creation.repository';
 import {ScheduledTransactionsService} from './scheduled-transactions.service';
+import {ScheduledExecutionRepository} from './services/scheduled-execution.repository';
 import {ScheduledTransactionCreationRepository} from './services/scheduled-transaction-creation.repository';
 import {ScheduledTransactionQueryRepository} from './services/scheduled-transaction-query.repository';
 import {ScheduledTransactionUpdateRepository} from './services/scheduled-transaction-update.repository';
@@ -31,7 +36,7 @@ jest.setTimeout(180_000);
 
 const FIXED_NOW = '2026-11-23T12:00:00.000Z';
 
-describe('scheduled transactions (MySQL 8, US-601–US-603)', () => {
+describe('scheduled transactions (MySQL 8, US-601–US-604)', () => {
   let container: StartedMySqlContainer;
   let dataSource: DataSource;
   let service: ScheduledTransactionsService;
@@ -128,6 +133,24 @@ describe('scheduled transactions (MySQL 8, US-601–US-603)', () => {
       }),
     );
 
+  const seedClosedPeriod = async (user: UserEntity, period: string): Promise<void> => {
+    await dataSource.getRepository(PeriodSnapshotEntity).save(
+      dataSource.getRepository(PeriodSnapshotEntity).create({
+        userId: user.id,
+        period,
+        startDate: `${period}-01`,
+        endDate: `${period}-30`,
+        globalInitialBalance: 0,
+        globalFinalBalance: 0,
+        totalInflows: 0,
+        totalOutflows: 0,
+        totalTransfers: 0,
+        totalTransactionsCount: 0,
+        createdAt: FIXED_NOW,
+      }),
+    );
+  };
+
   beforeAll(async () => {
     container = await new MySqlContainer('mysql:8.4')
       .withDatabase('peco')
@@ -152,11 +175,13 @@ describe('scheduled transactions (MySQL 8, US-601–US-603)', () => {
     const queries = new ScheduledTransactionQueryRepository(dataSource);
     const clock = new UtcClock();
     jest.spyOn(clock, 'now').mockReturnValue(FIXED_NOW);
+    const creations = new MovementCreationRepository(dataSource, clock);
     service = new ScheduledTransactionsService(
       new UserProfileRepository(dataSource),
       new ScheduledTransactionCreationRepository(dataSource),
       queries,
       new ScheduledTransactionUpdateRepository(dataSource, queries, clock),
+      new ScheduledExecutionRepository(dataSource, creations, clock),
       clock,
     );
   });
@@ -168,7 +193,9 @@ describe('scheduled transactions (MySQL 8, US-601–US-603)', () => {
 
   beforeEach(async () => {
     await dataSource.query('DELETE FROM scheduledExecutions');
+    await dataSource.query('DELETE FROM movements');
     await dataSource.query('DELETE FROM scheduledTransactions');
+    await dataSource.query('DELETE FROM periodSnapshots');
     await dataSource.query('DELETE FROM accounts');
     await dataSource.query('DELETE FROM categories');
     await dataSource.query('DELETE FROM users');
@@ -598,5 +625,179 @@ describe('scheduled transactions (MySQL 8, US-601–US-603)', () => {
     });
     expect(stored).toMatchObject({active: false, version: created.version + 1});
     expect(await dataSource.getRepository(ScheduledExecutionEntity).count()).toBe(0);
+  });
+
+  it('applies one occurrence, advances the grid and replays it without a second movement', async () => {
+    const user = await seedUser('execute-replay@example.com');
+    const account = await seedAccount(user, {currentBalance: 100000});
+    const category = await seedCategory(null, CategoryApplyTypeEnum.EXPENSE.toString());
+    const created = await service.create(
+      user.publicId,
+      request({
+        anchorDate: '2026-11-23',
+        categoryPublicId: category.publicId,
+        sourceAccountPublicId: account.publicId,
+        estimatedAmount: 10000,
+        totalOccurrences: 1,
+        endDate: null,
+      }),
+    );
+
+    const first = await service.execute(user.publicId, created.publicId, {actualAmount: 75000});
+
+    expect(first.occurrence).toMatchObject({
+      contemplatedDate: '2026-11-23',
+      occurrenceDate: '2026-11-23',
+      status: ScheduledExecutionStatusEnum.APPLIED.toString(),
+      reason: null,
+    });
+    expect(first.movement).toMatchObject({
+      amount: 75000,
+      date: '2026-11-23T00:00:00.000Z',
+      scheduledTransactionPublicId: created.publicId,
+    });
+    expect(first.balances).toEqual([
+      {accountPublicId: account.publicId, currentBalance: 25000, version: 1},
+    ]);
+    expect(first.schedule).toMatchObject({
+      completedOccurrences: 1,
+      nextContemplatedDate: '2026-12-23',
+      nextExecutionDate: '2026-12-23',
+      active: false,
+      version: created.version + 1,
+    });
+
+    const firstMovementPublicId = first.movement?.publicId;
+    if (!firstMovementPublicId) {
+      throw new Error('Expected an applied movement');
+    }
+
+    const movements = dataSource.getRepository(MovementEntity);
+    expect(await movements.count()).toBe(1);
+    const storedMovement = await movements.findOneByOrFail({publicId: firstMovementPublicId});
+    expect(storedMovement.scheduledTransactionId).toBe(
+      (await dataSource.getRepository(ScheduledTransactionEntity).findOneByOrFail({
+        publicId: created.publicId,
+      })).id,
+    );
+
+    // Simulates a stale second request that still targets the processed grid point;
+    // normal replays are short-circuited by the Idempotency-Key interceptor.
+    await dataSource.getRepository(ScheduledTransactionEntity).update(
+      {publicId: created.publicId},
+      {active: true, nextContemplatedDate: '2026-11-23', nextExecutionDate: '2026-11-23'},
+    );
+    const replay = await service.execute(user.publicId, created.publicId, {});
+
+    expect(replay.movement?.publicId).toBe(firstMovementPublicId);
+    expect(replay.schedule.version).toBe(first.schedule.version);
+    expect(await movements.count()).toBe(1);
+    expect(await dataSource.getRepository(ScheduledExecutionEntity).count()).toBe(1);
+  });
+
+  it('serializes concurrent executions so only one movement is created', async () => {
+    const user = await seedUser('execute-concurrent@example.com');
+    const account = await seedAccount(user, {currentBalance: 100000});
+    const category = await seedCategory(null, CategoryApplyTypeEnum.EXPENSE.toString());
+    const created = await service.create(
+      user.publicId,
+      request({
+        anchorDate: '2026-11-23',
+        categoryPublicId: category.publicId,
+        sourceAccountPublicId: account.publicId,
+        totalOccurrences: null,
+        endDate: null,
+      }),
+    );
+
+    const outcomes = await Promise.allSettled([
+      service.execute(user.publicId, created.publicId, {actualAmount: 10000}),
+      service.execute(user.publicId, created.publicId, {actualAmount: 20000}),
+    ]);
+
+    expect(outcomes.filter((outcome) => outcome.status === 'fulfilled')).toHaveLength(1);
+    const rejected = outcomes.find((outcome) => outcome.status === 'rejected');
+    expect(rejected).toMatchObject({
+      reason: {code: ApiErrorCodeEnum.SCHEDULE_NOT_DUE.toString()},
+    });
+    expect(await dataSource.getRepository(MovementEntity).count()).toBe(1);
+    expect(await dataSource.getRepository(ScheduledExecutionEntity).count()).toBe(1);
+  });
+
+  it('skips a due occurrence inside a closed period without writing a movement', async () => {
+    const user = await seedUser('execute-closed@example.com');
+    const account = await seedAccount(user, {currentBalance: 100000});
+    const category = await seedCategory(null, CategoryApplyTypeEnum.EXPENSE.toString());
+    const created = await service.create(
+      user.publicId,
+      request({
+        anchorDate: '2026-11-23',
+        categoryPublicId: category.publicId,
+        sourceAccountPublicId: account.publicId,
+        totalOccurrences: null,
+        endDate: null,
+      }),
+    );
+    await seedClosedPeriod(user, '2026-11');
+
+    const result = await service.execute(user.publicId, created.publicId, {});
+
+    expect(result.occurrence).toMatchObject({
+      contemplatedDate: '2026-11-23',
+      occurrenceDate: '2026-11-23',
+      status: ScheduledExecutionStatusEnum.SKIPPED.toString(),
+      reason: ApiErrorCodeEnum.PERIOD_CLOSED.toString(),
+    });
+    expect(result.movement).toBeNull();
+    expect(result.balances).toEqual([]);
+    expect(result.schedule).toMatchObject({
+      completedOccurrences: 1,
+      nextContemplatedDate: '2026-12-23',
+      version: created.version + 1,
+    });
+    expect(await dataSource.getRepository(MovementEntity).count()).toBe(0);
+  });
+
+  it('records a failed balance check without advancing the grid', async () => {
+    const user = await seedUser('execute-failed@example.com');
+    const account = await seedAccount(user, {currentBalance: 0});
+    const category = await seedCategory(null, CategoryApplyTypeEnum.EXPENSE.toString());
+    const created = await service.create(
+      user.publicId,
+      request({
+        anchorDate: '2026-11-23',
+        categoryPublicId: category.publicId,
+        sourceAccountPublicId: account.publicId,
+        totalOccurrences: null,
+        endDate: null,
+      }),
+    );
+
+    await expect(service.execute(user.publicId, created.publicId, {})).rejects.toMatchObject({
+      status: 409,
+      code: ApiErrorCodeEnum.NEGATIVE_BALANCE_NOT_ALLOWED.toString(),
+    });
+
+    const execution = await dataSource.getRepository(ScheduledExecutionEntity).findOneByOrFail({
+      scheduledTransactionId: (await dataSource.getRepository(ScheduledTransactionEntity).findOneByOrFail({
+        publicId: created.publicId,
+      })).id,
+    });
+    expect(execution).toMatchObject({
+      status: ScheduledExecutionStatusEnum.FAILED.toString(),
+      reason: ApiErrorCodeEnum.NEGATIVE_BALANCE_NOT_ALLOWED.toString(),
+      attempts: 1,
+      movementId: null,
+    });
+    const storedSchedule = await dataSource
+      .getRepository(ScheduledTransactionEntity)
+      .findOneByOrFail({publicId: created.publicId});
+    expect(storedSchedule).toMatchObject({
+      completedOccurrences: 0,
+      nextContemplatedDate: '2026-11-23',
+      nextExecutionDate: '2026-11-23',
+      version: created.version,
+    });
+    expect(await dataSource.getRepository(MovementEntity).count()).toBe(0);
   });
 });

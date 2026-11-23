@@ -1,8 +1,18 @@
-import {CategoryApplyTypeEnum, MovementWriteStatusEnum} from '@peco/enums';
-import type {ScheduledTransactionEntity} from '../database/entities';
+import {
+  ApiErrorCodeEnum,
+  CategoryApplyTypeEnum,
+  MovementWriteStatusEnum,
+  ScheduledExecutionStatusEnum,
+} from '@peco/enums';
+import type {
+  MovementEntity,
+  ScheduledExecutionEntity,
+  ScheduledTransactionEntity,
+} from '../database/entities';
 import {UtcClock} from '../database/clock/utc-clock';
 import {UserProfileRepository} from '../users/services/user-profile.repository';
 import {ScheduledTransactionsService} from './scheduled-transactions.service';
+import {ScheduledExecutionRepository} from './services/scheduled-execution.repository';
 import {ScheduledTransactionCreationRepository} from './services/scheduled-transaction-creation.repository';
 import {ScheduledTransactionQueryRepository} from './services/scheduled-transaction-query.repository';
 import {ScheduledTransactionUpdateRepository} from './services/scheduled-transaction-update.repository';
@@ -35,7 +45,7 @@ const makeSchedule = (overrides: Partial<ScheduledTransactionEntity> = {}) =>
     ...overrides,
   }) as unknown as ScheduledTransactionEntity;
 
-describe('ScheduledTransactionsService (US-602/US-603)', () => {
+describe('ScheduledTransactionsService (US-602–US-604)', () => {
   const setup = (overrides: Partial<ScheduledTransactionEntity> = {}) => {
     const schedule = makeSchedule(overrides);
     const profile = {
@@ -58,11 +68,27 @@ describe('ScheduledTransactionsService (US-602/US-603)', () => {
       update: jest.fn().mockResolvedValue({status: 'UPDATED', schedule}),
       setActive: jest.fn().mockResolvedValue({status: 'UPDATED', schedule}),
     } as unknown as ScheduledTransactionUpdateRepository;
+    const executions = {
+      execute: jest.fn().mockResolvedValue({
+        status: ScheduledExecutionStatusEnum.SKIPPED.toString(),
+        replayed: false,
+        occurrence: {contemplatedDate: '2020-01-15', occurrenceDate: '2020-01-15', reason: null},
+        balances: [],
+        schedule,
+      }),
+    } as unknown as ScheduledExecutionRepository;
     const clock = new UtcClock();
     jest.spyOn(clock, 'now').mockReturnValue(NOW);
-    const service = new ScheduledTransactionsService(profile, creations, queries, updates, clock);
+    const service = new ScheduledTransactionsService(
+      profile,
+      creations,
+      queries,
+      updates,
+      executions,
+      clock,
+    );
 
-    return {queries, updates, service};
+    return {queries, updates, executions, service, schedule};
   };
 
   it('rejects a re-anchor whose computed slot already has an execution row', async () => {
@@ -183,5 +209,100 @@ describe('ScheduledTransactionsService (US-602/US-603)', () => {
       code: 'VERSION_CONFLICT',
       details: {expectedVersion: 0, currentVersion: 2},
     });
+  });
+
+  it('maps an inactive schedule from the executor to the stable conflict', async () => {
+    const {executions, service, schedule} = setup({active: false});
+    jest.spyOn(executions, 'execute').mockResolvedValueOnce({
+      status: ApiErrorCodeEnum.SCHEDULE_INACTIVE.toString(),
+      schedule,
+    });
+
+    await expect(
+      service.execute('user-public-id', 'schedule-public-id', {}),
+    ).rejects.toMatchObject({status: 409, code: 'SCHEDULE_INACTIVE'});
+  });
+
+  it('maps a future applied date from the executor to the stable conflict', async () => {
+    const {executions, service, schedule} = setup({nextExecutionDate: '2026-11-24'});
+    jest.spyOn(executions, 'execute').mockResolvedValueOnce({
+      status: ApiErrorCodeEnum.SCHEDULE_NOT_DUE.toString(),
+      schedule,
+    });
+
+    await expect(
+      service.execute('user-public-id', 'schedule-public-id', {}),
+    ).rejects.toMatchObject({status: 409, code: 'SCHEDULE_NOT_DUE'});
+  });
+
+  it('maps a failed execution to the stable negative-balance conflict', async () => {
+    const {executions, service, schedule} = setup();
+    jest.spyOn(executions, 'execute').mockResolvedValueOnce({
+      status: ScheduledExecutionStatusEnum.FAILED.toString(),
+      occurrence: {
+        contemplatedDate: '2020-01-15',
+        occurrenceDate: '2020-01-15',
+        reason: ApiErrorCodeEnum.NEGATIVE_BALANCE_NOT_ALLOWED.toString(),
+      } as unknown as ScheduledExecutionEntity,
+      reason: ApiErrorCodeEnum.NEGATIVE_BALANCE_NOT_ALLOWED.toString(),
+      schedule,
+    });
+
+    await expect(
+      service.execute('user-public-id', 'schedule-public-id', {}),
+    ).rejects.toMatchObject({status: 409, code: 'NEGATIVE_BALANCE_NOT_ALLOWED'});
+  });
+
+  it('passes the UTC date and the one-off amount to the executor', async () => {
+    const {executions, service, schedule} = setup();
+    const movement = {
+      publicId: 'movement-public-id',
+      type: 'EXPENSE',
+      amount: 75000,
+      date: '2020-01-15T00:00:00.000Z',
+      note: 'Renta',
+      account: {publicId: 'source-account-public-id', name: 'Débito', type: 'DEBIT'},
+      targetAccount: null,
+      category: {
+        publicId: 'category-public-id',
+        name: 'renta',
+        displayName: 'Servicios',
+        applyType: 'EXPENSE',
+      },
+      isReversal: false,
+      isReversed: false,
+      reversalOfPublicId: null,
+      replacesPublicId: null,
+      isCanceled: false,
+      scheduledTransactionPublicId: 'schedule-public-id',
+      version: 0,
+      createdAt: NOW,
+      updatedAt: NOW,
+    } as unknown as MovementEntity;
+    jest.spyOn(executions, 'execute').mockResolvedValueOnce({
+      status: ScheduledExecutionStatusEnum.APPLIED.toString(),
+      replayed: false,
+      occurrence: {
+        contemplatedDate: '2020-01-15',
+        occurrenceDate: '2020-01-15',
+        status: ScheduledExecutionStatusEnum.APPLIED.toString(),
+        reason: null,
+      } as unknown as ScheduledExecutionEntity,
+      movement,
+      balances: [],
+      schedule,
+    });
+
+    const response = await service.execute('user-public-id', 'schedule-public-id', {
+      actualAmount: 75000,
+    });
+
+    expect(executions.execute).toHaveBeenCalledWith(
+      1,
+      'schedule-public-id',
+      {actualAmount: 75000},
+      '2026-11-23',
+    );
+    expect(response.movement?.amount).toBe(75000);
   });
 });

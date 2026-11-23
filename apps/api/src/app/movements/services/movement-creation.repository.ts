@@ -12,6 +12,7 @@ import {
   UserEntity,
 } from '../../database/entities';
 import {DEADLOCK_RETRY_LIMIT} from '../constants/deadlock-retry-limit.constant';
+import type {LedgerInsertRequest} from '../types/ledger-insert-request.type';
 import type {MovementCreationResult} from '../types/movement-creation-result.type';
 import {isDeadlockError} from '../utils/is-deadlock-error.util';
 import {lockOwnerAccounts} from '../utils/lock-owner-accounts.util';
@@ -32,7 +33,7 @@ export class MovementCreationRepository {
     for (let attempt = 1; ; attempt += 1) {
       try {
         return await this.dataSource.transaction('READ COMMITTED', (manager) =>
-          this.insert(userId, request, manager),
+          this.insertWithManager(userId, request, manager),
         );
       } catch (error: unknown) {
         if (!isDeadlockError(error) || attempt >= DEADLOCK_RETRY_LIMIT) {
@@ -42,9 +43,10 @@ export class MovementCreationRepository {
     }
   }
 
-  private async insert(
+  /** Inserts inside an existing transaction so scheduled execution stays atomic (10.5/US-604). */
+  async insertWithManager(
     userId: number,
-    request: CreateMovementRequest,
+    request: LedgerInsertRequest,
     manager: EntityManager,
   ): Promise<MovementCreationResult> {
     // The user row serializes ledger writes against period closing (D60).
@@ -144,7 +146,7 @@ export class MovementCreationRepository {
         isReversal: false,
         isReversed: false,
         isCanceled: false,
-        scheduledTransactionId: null,
+        scheduledTransactionId: request.scheduledTransactionId ?? null,
         version: 0,
         deletedAt: null,
       }),

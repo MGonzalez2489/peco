@@ -1,15 +1,26 @@
-import {Injectable} from '@nestjs/common';
+import {HttpStatus, Injectable} from '@nestjs/common';
 import type {
+  ApiErrorCode,
   CreateScheduledTransactionRequest,
+  ExecuteScheduledTransactionRequest,
   ListScheduledTransactionsQuery,
   ScheduledTransactionResponse,
   ToggleScheduledTransactionRequest,
   UpdateScheduledTransactionRequest,
 } from '@peco/contracts';
-import {MovementWriteStatusEnum, ScheduledTransactionTypeEnum} from '@peco/enums';
+import {
+  ApiErrorCodeEnum,
+  MovementWriteStatusEnum,
+  ScheduledExecutionStatusEnum,
+  ScheduledTransactionTypeEnum,
+} from '@peco/enums';
+import {negativeBalanceConflictException} from '../accounts/utils/negative-balance-conflict.exception';
+import {periodClosedException} from '../accounts/utils/period-closed.exception';
 import {selfTransferException} from '../accounts/utils/self-transfer.exception';
 import {transferRequiredException} from '../accounts/utils/transfer-required.exception';
 import {versionConflictException} from '../accounts/utils/version-conflict.exception';
+import {API_ERROR_MESSAGES} from '../common/http/api-error-messages.constant';
+import {ApiException} from '../common/http/api-exception';
 import {VALIDATION_FIELD_MESSAGES} from '../common/validation/validation-field-messages.constant';
 import {UtcClock} from '../database/clock/utc-clock';
 import type {ScheduledTransactionEntity} from '../database/entities';
@@ -18,7 +29,9 @@ import {periodUtcBounds} from '../movements/utils/period-utc-bounds.util';
 import {UserProfileRepository} from '../users/services/user-profile.repository';
 import {userNotFoundException} from '../users/utils/user-not-found.exception';
 import {MAX_RECURRENCE_STEPS} from './constants/max-recurrence-steps.constant';
+import {ExecuteScheduledTransactionResponseDto} from './dto/execute-scheduled-transaction-response.dto';
 import {ScheduledTransactionResponseDto} from './dto/scheduled-transaction-response.dto';
+import {ScheduledExecutionRepository} from './services/scheduled-execution.repository';
 import {ScheduledTransactionCreationRepository} from './services/scheduled-transaction-creation.repository';
 import {ScheduledTransactionQueryRepository} from './services/scheduled-transaction-query.repository';
 import {ScheduledTransactionUpdateRepository} from './services/scheduled-transaction-update.repository';
@@ -30,8 +43,10 @@ import {occurrenceAlreadyProcessedException} from './utils/occurrence-already-pr
 import {scheduleValidationException} from './utils/schedule-validation.exception';
 import {scheduledTransactionResourceNotFoundException} from './utils/scheduled-transaction-resource-not-found.exception';
 import {recurrenceDatesAt} from './utils/recurrence-dates-at.util';
+import {scheduleInactiveException} from './utils/schedule-inactive.exception';
+import {scheduleNotDueException} from './utils/schedule-not-due.exception';
 
-/** Authenticated schedule creation, period-scoped reads, optimistic edits and toggles (8.11/10.8). */
+/** Authenticated schedule creation, reads, edits, toggles and single-occurrence execution (8.11/10.5). */
 @Injectable()
 export class ScheduledTransactionsService {
   constructor(
@@ -39,6 +54,7 @@ export class ScheduledTransactionsService {
     private readonly creations: ScheduledTransactionCreationRepository,
     private readonly queries: ScheduledTransactionQueryRepository,
     private readonly updates: ScheduledTransactionUpdateRepository,
+    private readonly executions: ScheduledExecutionRepository,
     private readonly clock: UtcClock,
   ) {}
 
@@ -312,6 +328,56 @@ export class ScheduledTransactionsService {
     }
 
     return ScheduledTransactionResponseDto.fromEntity(result.schedule);
+  }
+
+  /** Applies exactly one due occurrence and maps replay, skip and failure outcomes (10.5/US-604). */
+  async execute(
+    publicId: string,
+    schedulePublicId: string,
+    request: ExecuteScheduledTransactionRequest,
+  ): Promise<ExecuteScheduledTransactionResponseDto> {
+    const user = await this.profile.findActiveByPublicId(publicId);
+    if (!user) {
+      throw userNotFoundException();
+    }
+
+    const schedule = await this.queries.findOwnerDetail(user.id, schedulePublicId);
+    if (!schedule) {
+      throw scheduledTransactionResourceNotFoundException();
+    }
+
+    const asOf = this.clock.now().slice(0, 10);
+    const result = await this.executions.execute(user.id, schedulePublicId, request, asOf);
+
+    if (result.status === MovementWriteStatusEnum.NOT_FOUND.toString()) {
+      throw scheduledTransactionResourceNotFoundException();
+    }
+    if (result.status === ApiErrorCodeEnum.SCHEDULE_INACTIVE.toString()) {
+      throw scheduleInactiveException();
+    }
+    if (result.status === ApiErrorCodeEnum.SCHEDULE_NOT_DUE.toString()) {
+      throw scheduleNotDueException();
+    }
+    if (result.status === ScheduledExecutionStatusEnum.FAILED.toString()) {
+      throw this.failureException(result.reason);
+    }
+
+    return new ExecuteScheduledTransactionResponseDto(
+      result.occurrence,
+      'movement' in result ? result.movement : null,
+      result.schedule,
+      result.balances,
+    );
+  }
+
+  private failureException(reason: ApiErrorCode): ApiException {
+    if (reason === ApiErrorCodeEnum.NEGATIVE_BALANCE_NOT_ALLOWED.toString()) {
+      return negativeBalanceConflictException();
+    }
+    if (reason === ApiErrorCodeEnum.PERIOD_CLOSED.toString()) {
+      return periodClosedException();
+    }
+    return new ApiException(HttpStatus.CONFLICT, reason, API_ERROR_MESSAGES[reason]);
   }
 
   private hasReachedStopCondition(schedule: ScheduledTransactionEntity): boolean {

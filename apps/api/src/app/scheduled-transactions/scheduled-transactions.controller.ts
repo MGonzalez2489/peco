@@ -30,13 +30,15 @@ import {RequireIdempotencyKey} from '../common/idempotency/decorators/require-id
 import {CurrentUser} from '../common/security/decorators/current-user.decorator';
 import {RateLimited} from '../common/security/decorators/rate-limited.decorator';
 import {CreateScheduledTransactionRequestDto} from './dto/create-scheduled-transaction-request.dto';
+import {ExecuteScheduledTransactionRequestDto} from './dto/execute-scheduled-transaction-request.dto';
+import {ExecuteScheduledTransactionResponseDto} from './dto/execute-scheduled-transaction-response.dto';
 import {ListScheduledTransactionsQueryDto} from './dto/list-scheduled-transactions-query.dto';
 import {ScheduledTransactionResponseDto} from './dto/scheduled-transaction-response.dto';
 import {ToggleScheduledTransactionRequestDto} from './dto/toggle-scheduled-transaction-request.dto';
 import {UpdateScheduledTransactionRequestDto} from './dto/update-scheduled-transaction-request.dto';
 import {ScheduledTransactionsService} from './scheduled-transactions.service';
 
-/** Authenticated schedule creation, period-scoped reads, edits and toggles (US-601–US-603). */
+/** Authenticated schedule creation, reads, edits, toggles and execution (US-601–US-604). */
 @ApiTags('scheduled-transactions')
 @Controller('scheduled-transactions')
 @UseGuards(AuthRateLimitGuard)
@@ -76,6 +78,40 @@ export class ScheduledTransactionsController {
     @Body() request: CreateScheduledTransactionRequestDto,
   ): Promise<ScheduledTransactionResponseDto> {
     return this.schedules.create(publicId, request);
+  }
+
+  @Post(':publicId/execute')
+  @RequireIdempotencyKey()
+  @ApiIdempotencyKeyHeader()
+  @RateLimited()
+  // The shared guard evaluates every named throttler; only the user policy applies (13.1).
+  @SkipThrottle({ip: true, identity: true, read: true})
+  @Throttle({
+    user: {limit: RATE_LIMITS.mutation.user.limit, ttl: RATE_LIMITS.mutation.user.ttl},
+  })
+  @ApiOperation({summary: 'Ejecutar una sola ocurrencia vencida de una programación propia'})
+  @ApiParam({name: 'publicId', description: 'Identificador público del programa.'})
+  @ApiCreatedResponse({
+    type: ExecuteScheduledTransactionResponseDto,
+    description: 'Ocurrencia aplicada u omitida en el envelope estándar {data, error}.',
+  })
+  @ApiOkResponse({
+    type: ExecuteScheduledTransactionResponseDto,
+    description: 'Replay de una ocurrencia ya procesada.',
+  })
+  @ApiBadRequestResponse({description: 'Cuerpo inválido o importe incorrecto.'})
+  @ApiNotFoundResponse({description: 'El programa no existe o pertenece a otro usuario.'})
+  @ApiConflictResponse({
+    description: 'Programa pausado, ocurrencia no vencida, saldo insuficiente o período cerrado.',
+  })
+  @ApiUnauthorizedResponse({description: 'Falta un token de acceso válido.'})
+  @ApiTooManyRequestsResponse({description: 'Límite de mutaciones excedido.'})
+  execute(
+    @CurrentUser() publicId: string,
+    @Param('publicId') schedulePublicId: string,
+    @Body() request: ExecuteScheduledTransactionRequestDto,
+  ): Promise<ExecuteScheduledTransactionResponseDto> {
+    return this.schedules.execute(publicId, schedulePublicId, request);
   }
 
   @Get()

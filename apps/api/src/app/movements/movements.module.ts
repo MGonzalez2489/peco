@@ -26,5 +26,6 @@ import {MovementUpdateRepository} from './services/movement-update.repository';
     MovementRevertRepository,
     UtcClock,
   ],
+  exports: [MovementCreationRepository],
 })
 export class MovementsModule {}
