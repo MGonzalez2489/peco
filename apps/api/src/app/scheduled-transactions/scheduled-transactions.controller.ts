@@ -2,6 +2,8 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   Patch,
   Post,
@@ -28,10 +30,14 @@ import {EnvelopeResult} from '../common/http/envelope-result';
 import {ApiIdempotencyKeyHeader} from '../common/idempotency/decorators/api-idempotency-key-header.decorator';
 import {RequireIdempotencyKey} from '../common/idempotency/decorators/require-idempotency-key.decorator';
 import {CurrentUser} from '../common/security/decorators/current-user.decorator';
+import {PreviousLastActiveAt} from '../common/security/decorators/previous-last-active-at.decorator';
 import {RateLimited} from '../common/security/decorators/rate-limited.decorator';
+import {ApplyDueRequestDto} from './dto/apply-due-request.dto';
+import {ApplyDueResponseDto} from './dto/apply-due-response.dto';
 import {CancelScheduledOccurrenceRequestDto} from './dto/cancel-scheduled-occurrence-request.dto';
 import {CancelScheduledOccurrenceResponseDto} from './dto/cancel-scheduled-occurrence-response.dto';
 import {CreateScheduledTransactionRequestDto} from './dto/create-scheduled-transaction-request.dto';
+import {DueSchedulesQueryDto} from './dto/due-schedules-query.dto';
 import {ExecuteScheduledTransactionRequestDto} from './dto/execute-scheduled-transaction-request.dto';
 import {ExecuteScheduledTransactionResponseDto} from './dto/execute-scheduled-transaction-response.dto';
 import {ListScheduledTransactionsQueryDto} from './dto/list-scheduled-transactions-query.dto';
@@ -80,6 +86,34 @@ export class ScheduledTransactionsController {
     @Body() request: CreateScheduledTransactionRequestDto,
   ): Promise<ScheduledTransactionResponseDto> {
     return this.schedules.create(publicId, request);
+  }
+
+  @Post('apply-due')
+  @HttpCode(HttpStatus.OK)
+  @RequireIdempotencyKey()
+  @ApiIdempotencyKeyHeader()
+  @RateLimited()
+  // The shared guard evaluates every named throttler; only the user policy applies (13.1).
+  @SkipThrottle({ip: true, identity: true, read: true})
+  @Throttle({
+    user: {limit: RATE_LIMITS.mutation.user.limit, ttl: RATE_LIMITS.mutation.user.ttl},
+  })
+  @ApiOperation({
+    summary: 'Aplicar todas las ocurrencias vencidas de las programaciones propias',
+  })
+  @ApiOkResponse({
+    type: ApplyDueResponseDto,
+    description: 'Resumen del catch-up en el envelope estándar {data, error}.',
+  })
+  @ApiBadRequestResponse({description: 'Cuerpo inválido: `asOf` debe ser YYYY-MM-DD.'})
+  @ApiUnauthorizedResponse({description: 'Falta un token de acceso válido.'})
+  @ApiTooManyRequestsResponse({description: 'Límite de mutaciones excedido.'})
+  applyDue(
+    @CurrentUser() publicId: string,
+    @Body() request: ApplyDueRequestDto,
+    @PreviousLastActiveAt() previousLastActiveAt: string | null,
+  ): Promise<ApplyDueResponseDto> {
+    return this.schedules.applyDue(publicId, request, previousLastActiveAt);
   }
 
   @Post(':publicId/execute')
@@ -184,6 +218,53 @@ export class ScheduledTransactionsController {
     return this.schedules.list(publicId, query).then(({items, nextCursor}) =>
       EnvelopeResult.withMeta(items, {nextCursor}),
     );
+  }
+
+  @Get('due')
+  @RateLimited()
+  // The shared guard evaluates every named throttler; only the read policy applies (13.1).
+  @SkipThrottle({ip: true, identity: true, user: true})
+  @Throttle({
+    read: {limit: RATE_LIMITS.read.user.limit, ttl: RATE_LIMITS.read.user.ttl},
+  })
+  @ApiOperation({summary: 'Previsualizar programaciones vencidas sin escribir'})
+  @ApiOkResponse({
+    description:
+      'Lista en el envelope estándar {data, meta, error}; `meta.pendingOccurrences` y `meta.skippedWhileInactive`.',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {type: 'array', items: {type: 'object'}},
+        meta: {
+          type: 'object',
+          properties: {
+            pendingOccurrences: {type: 'integer'},
+            skippedWhileInactive: {type: 'integer'},
+            correlationId: {type: 'string'},
+          },
+        },
+        error: {type: 'null', nullable: true, example: null},
+      },
+    },
+  })
+  @ApiBadRequestResponse({description: 'Filtros inválidos: `asOf` o `autoApply`.'})
+  @ApiUnauthorizedResponse({description: 'Falta un token de acceso válido.'})
+  @ApiTooManyRequestsResponse({description: 'Límite de lecturas excedido.'})
+  findDue(
+    @CurrentUser() publicId: string,
+    @Query() query: DueSchedulesQueryDto,
+    @PreviousLastActiveAt() previousLastActiveAt: string | null,
+  ): Promise<
+    EnvelopeResult<
+      ScheduledTransactionResponseDto[],
+      {pendingOccurrences: number; skippedWhileInactive: number}
+    >
+  > {
+    return this.schedules
+      .findDue(publicId, query, previousLastActiveAt)
+      .then(({items, pendingOccurrences, skippedWhileInactive}) =>
+        EnvelopeResult.withMeta(items, {pendingOccurrences, skippedWhileInactive}),
+      );
   }
 
   @Get(':publicId')

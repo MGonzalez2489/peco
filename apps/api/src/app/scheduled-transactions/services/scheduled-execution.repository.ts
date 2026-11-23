@@ -26,6 +26,7 @@ import {isDeadlockError} from '../../movements/utils/is-deadlock-error.util';
 import {MAX_RECURRENCE_STEPS} from '../constants/max-recurrence-steps.constant';
 import {MAX_SCHEDULED_EXECUTION_ATTEMPTS} from '../constants/max-scheduled-execution-attempts.constant';
 import type {CancelScheduledOccurrenceResult} from '../types/cancel-scheduled-occurrence-result.type';
+import type {ScheduledExecutionOptions} from '../types/scheduled-execution-options.type';
 import type {ScheduledExecutionResult} from '../types/scheduled-execution-result.type';
 import {recurrenceDatesAt} from '../utils/recurrence-dates-at.util';
 
@@ -43,11 +44,12 @@ export class ScheduledExecutionRepository {
     publicId: string,
     request: ExecuteScheduledTransactionRequest,
     asOf: string,
+    options: ScheduledExecutionOptions = {},
   ): Promise<ScheduledExecutionResult> {
     for (let attempt = 1; ; attempt += 1) {
       try {
         return await this.dataSource.transaction('READ COMMITTED', (manager) =>
-          this.executeOnce(userId, publicId, request, asOf, manager),
+          this.executeOnce(userId, publicId, request, asOf, manager, options),
         );
       } catch (error: unknown) {
         if (!isDeadlockError(error) || attempt >= DEADLOCK_RETRY_LIMIT) {
@@ -172,6 +174,7 @@ export class ScheduledExecutionRepository {
     request: ExecuteScheduledTransactionRequest,
     asOf: string,
     manager: EntityManager,
+    options: ScheduledExecutionOptions,
   ): Promise<ScheduledExecutionResult> {
     // The user row is locked first, matching the ledger and period-closing paths (D60).
     const user = await manager.findOne(UserEntity, {
@@ -255,6 +258,17 @@ export class ScheduledExecutionRepository {
       );
     }
 
+    // D58 wins only for open periods; closed history keeps its more specific reason.
+    if (options.inactiveBefore && occurrenceDate < options.inactiveBefore) {
+      return this.skipOccurrence(
+        manager,
+        schedule,
+        existing,
+        occurrenceDate,
+        ScheduledExecutionReasonEnum.INACTIVE_USER.toString(),
+      );
+    }
+
     const ledgerRequest: LedgerInsertRequest = {
       type: schedule.type,
       amount: request.actualAmount ?? schedule.estimatedAmount,
@@ -320,7 +334,7 @@ export class ScheduledExecutionRepository {
     schedule: ScheduledTransactionEntity,
     existing: ScheduledExecutionEntity | null,
     occurrenceDate: string,
-    reason: ApiErrorCode,
+    reason: string,
   ): Promise<ScheduledExecutionResult> {
     const occurrence = await this.saveExecution(manager, schedule, existing, {
       status: ScheduledExecutionStatusEnum.SKIPPED.toString(),

@@ -31,8 +31,8 @@ export class AccessTokenGuard implements CanActivate {
     }
 
     const claims = await this.tokens.verifyAccessToken(token);
-    await this.activity.touch(claims.sub);
-    request.auth = {publicId: claims.sub};
+    const previousLastActiveAt = await this.activity.touch(claims.sub);
+    request.auth = {publicId: claims.sub, previousLastActiveAt};
 
     return true;
   }

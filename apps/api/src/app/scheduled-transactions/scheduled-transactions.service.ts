@@ -1,9 +1,12 @@
 import {HttpStatus, Injectable} from '@nestjs/common';
 import type {
   ApiErrorCode,
+  ApplyDueRequest,
+  ApplyDueResponse,
   CancelScheduledOccurrenceRequest,
   CreateScheduledTransactionRequest,
   ExecuteScheduledTransactionRequest,
+  ListDueSchedulesQuery,
   ListScheduledTransactionsQuery,
   ScheduledTransactionResponse,
   ToggleScheduledTransactionRequest,
@@ -12,6 +15,7 @@ import type {
 import {
   ApiErrorCodeEnum,
   MovementWriteStatusEnum,
+  ScheduledExecutionReasonEnum,
   ScheduledExecutionStatusEnum,
   ScheduledTransactionTypeEnum,
 } from '@peco/enums';
@@ -23,6 +27,7 @@ import {versionConflictException} from '../accounts/utils/version-conflict.excep
 import {API_ERROR_MESSAGES} from '../common/http/api-error-messages.constant';
 import {ApiException} from '../common/http/api-exception';
 import {VALIDATION_FIELD_MESSAGES} from '../common/validation/validation-field-messages.constant';
+import {ConfigService} from '../config/config.service';
 import {UtcClock} from '../database/clock/utc-clock';
 import type {ScheduledTransactionEntity} from '../database/entities';
 import {categoryNotCompatibleException} from '../movements/utils/category-not-compatible.exception';
@@ -30,6 +35,8 @@ import {periodUtcBounds} from '../movements/utils/period-utc-bounds.util';
 import {UserProfileRepository} from '../users/services/user-profile.repository';
 import {userNotFoundException} from '../users/utils/user-not-found.exception';
 import {MAX_RECURRENCE_STEPS} from './constants/max-recurrence-steps.constant';
+import {ApplyDueResponseDto} from './dto/apply-due-response.dto';
+import {ApplyDueResultDto} from './dto/apply-due-result.dto';
 import {CancelScheduledOccurrenceResponseDto} from './dto/cancel-scheduled-occurrence-response.dto';
 import {ExecuteScheduledTransactionResponseDto} from './dto/execute-scheduled-transaction-response.dto';
 import {ScheduledTransactionResponseDto} from './dto/scheduled-transaction-response.dto';
@@ -44,11 +51,12 @@ import {movementCategoryAcceptsType} from '../movements/utils/movement-category-
 import {occurrenceAlreadyProcessedException} from './utils/occurrence-already-processed.exception';
 import {scheduleValidationException} from './utils/schedule-validation.exception';
 import {scheduledTransactionResourceNotFoundException} from './utils/scheduled-transaction-resource-not-found.exception';
+import {addDaysToDate} from './utils/add-days-to-date.util';
 import {recurrenceDatesAt} from './utils/recurrence-dates-at.util';
 import {scheduleInactiveException} from './utils/schedule-inactive.exception';
 import {scheduleNotDueException} from './utils/schedule-not-due.exception';
 
-/** Authenticated schedule creation, reads, edits, toggles and single-occurrence execution (8.11/10.5). */
+/** Authenticated schedules: creation, reads, due preview, catch-up, edits and single-occurrence execution (8.11/10.5–10.6). */
 @Injectable()
 export class ScheduledTransactionsService {
   constructor(
@@ -58,6 +66,7 @@ export class ScheduledTransactionsService {
     private readonly updates: ScheduledTransactionUpdateRepository,
     private readonly executions: ScheduledExecutionRepository,
     private readonly clock: UtcClock,
+    private readonly config: ConfigService,
   ) {}
 
   async create(
@@ -110,6 +119,130 @@ export class ScheduledTransactionsService {
       items: page.items.map((schedule) => ScheduledTransactionResponseDto.fromEntity(schedule)),
       nextCursor: page.nextCursor,
     };
+  }
+
+  /** Read-only preview of active schedules whose applied date has reached `asOf` (8.11/US-606). */
+  async findDue(
+    publicId: string,
+    query: ListDueSchedulesQuery,
+    previousLastActiveAt: string | null,
+  ): Promise<{
+    items: ScheduledTransactionResponseDto[];
+    pendingOccurrences: number;
+    skippedWhileInactive: number;
+  }> {
+    const user = await this.profile.findActiveByPublicId(publicId);
+    if (!user) {
+      throw userNotFoundException();
+    }
+
+    const asOf = query.asOf ?? this.clock.now().slice(0, 10);
+    const active = await this.queries.findDue(user.id, asOf, query.autoApply);
+    const inactiveBefore = this.inactiveBefore(previousLastActiveAt, asOf);
+    let pendingOccurrences = 0;
+    let skippedWhileInactive = 0;
+
+    for (const schedule of active) {
+      const counts = this.countDueOccurrences(schedule, asOf, inactiveBefore);
+      pendingOccurrences += counts.pending;
+      skippedWhileInactive += counts.skippedWhileInactive;
+    }
+
+    return {
+      items: active.map((schedule) => ScheduledTransactionResponseDto.fromEntity(schedule)),
+      pendingOccurrences,
+      skippedWhileInactive,
+    };
+  }
+
+  /** Applies every due occurrence oldest first, bounded per schedule and idempotent (10.6/US-606). */
+  async applyDue(
+    publicId: string,
+    request: ApplyDueRequest,
+    previousLastActiveAt: string | null,
+  ): Promise<ApplyDueResponseDto> {
+    const user = await this.profile.findActiveByPublicId(publicId);
+    if (!user) {
+      throw userNotFoundException();
+    }
+
+    const asOf = request.asOf ?? this.clock.now().slice(0, 10);
+    const due = await this.queries.findDue(user.id, asOf);
+    const inactiveBefore = this.inactiveBefore(previousLastActiveAt, asOf);
+    const batchSize = this.config.config.operational.catchupBatchSize;
+    const results: ApplyDueResultDto[] = [];
+    const schedules: ScheduledTransactionResponseDto[] = [];
+    const counters: Pick<
+      ApplyDueResponse,
+      'applied' | 'skipped' | 'failed' | 'skippedWhileInactive'
+    > = {
+      applied: 0,
+      skipped: 0,
+      failed: 0,
+      skippedWhileInactive: 0,
+    };
+
+    for (const initial of due) {
+      let schedule = initial;
+
+      for (
+        let processed = 0;
+        processed < batchSize && schedule.active && schedule.nextExecutionDate <= asOf;
+        processed += 1
+      ) {
+        const previousDate = schedule.nextExecutionDate;
+        const outcome = await this.executions.execute(
+          user.id,
+          schedule.publicId,
+          {},
+          asOf,
+          {inactiveBefore},
+        );
+
+        if (outcome.status === MovementWriteStatusEnum.NOT_FOUND.toString()) {
+          throw scheduledTransactionResourceNotFoundException();
+        }
+        if (
+          outcome.status === ApiErrorCodeEnum.SCHEDULE_INACTIVE.toString() ||
+          outcome.status === ApiErrorCodeEnum.SCHEDULE_NOT_DUE.toString() ||
+          ('replayed' in outcome && outcome.replayed)
+        ) {
+          break;
+        }
+
+        const movementPublicId =
+          outcome.status === ScheduledExecutionStatusEnum.APPLIED.toString()
+            ? outcome.movement.publicId
+            : null;
+        results.push(
+          new ApplyDueResultDto(schedule.publicId, outcome.occurrence, movementPublicId),
+        );
+
+        if (outcome.status === ScheduledExecutionStatusEnum.FAILED.toString()) {
+          counters.failed += 1;
+          break;
+        }
+        if (outcome.status === ScheduledExecutionStatusEnum.APPLIED.toString()) {
+          counters.applied += 1;
+        } else {
+          counters.skipped += 1;
+          if (outcome.occurrence.reason === ScheduledExecutionReasonEnum.INACTIVE_USER.toString()) {
+            counters.skippedWhileInactive += 1;
+          }
+        }
+
+        schedule = outcome.schedule;
+        // A successful executor always advances the grid; a stalled row must not
+        // consume the whole cap in a tight loop.
+        if (schedule.nextExecutionDate === previousDate) {
+          break;
+        }
+      }
+
+      schedules.push(ScheduledTransactionResponseDto.fromEntity(schedule));
+    }
+
+    return new ApplyDueResponseDto(asOf, results, schedules, counters);
   }
 
   async findOne(
@@ -419,6 +552,68 @@ export class ScheduledTransactionsService {
       result.movement,
       result.schedule,
     );
+  }
+
+  /**
+   * A user inactive beyond the configured cutoff only gets a seven-day grace window
+   * on return; older open-period occurrences are skipped without a movement (D58).
+   */
+  private inactiveBefore(
+    previousLastActiveAt: string | null,
+    asOf: string,
+  ): string | null {
+    if (!previousLastActiveAt) {
+      return null;
+    }
+
+    const {inactiveUserDays, inactiveGraceDays} = this.config.config.operational;
+    if (previousLastActiveAt.slice(0, 10) >= addDaysToDate(asOf, -inactiveUserDays)) {
+      return null;
+    }
+
+    return addDaysToDate(asOf, -inactiveGraceDays);
+  }
+
+  /** Bounded, read-only count of the grid points still pending for one schedule. */
+  private countDueOccurrences(
+    schedule: ScheduledTransactionEntity,
+    asOf: string,
+    inactiveBefore: string | null,
+  ): {pending: number; skippedWhileInactive: number} {
+    const cap = this.config.config.operational.catchupBatchSize;
+    let pending = 0;
+    let skippedWhileInactive = 0;
+
+    for (let step = 0; step < MAX_RECURRENCE_STEPS && pending < cap; step += 1) {
+      const dates = recurrenceDatesAt(
+        schedule.anchorDate,
+        schedule.frequency,
+        schedule.interval,
+        step,
+      );
+      if (dates.contemplatedDate < schedule.nextContemplatedDate) {
+        continue;
+      }
+      if (dates.executionDate > asOf) {
+        break;
+      }
+      if (schedule.endDate !== null && dates.contemplatedDate > schedule.endDate) {
+        break;
+      }
+      if (
+        schedule.totalOccurrences !== null &&
+        schedule.completedOccurrences + pending >= schedule.totalOccurrences
+      ) {
+        break;
+      }
+
+      pending += 1;
+      if (inactiveBefore && dates.executionDate < inactiveBefore) {
+        skippedWhileInactive += 1;
+      }
+    }
+
+    return {pending, skippedWhileInactive};
   }
 
   private failureException(reason: ApiErrorCode): ApiException {

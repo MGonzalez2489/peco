@@ -1,5 +1,5 @@
 import {Injectable} from '@nestjs/common';
-import {DataSource} from 'typeorm';
+import {DataSource, IsNull} from 'typeorm';
 import {UtcClock} from '../../database/clock/utc-clock';
 import {UserEntity} from '../../database/entities';
 
@@ -16,7 +16,13 @@ export class UserActivityRepository {
     private readonly clock: UtcClock,
   ) {}
 
-  async touch(publicId: string): Promise<void> {
+  /** Returns the timestamp that was stored before today's conditional update. */
+  async touch(publicId: string): Promise<string | null> {
+    const stored = await this.dataSource.getRepository(UserEntity).findOne({
+      where: {publicId, deletedAt: IsNull()},
+      select: {lastActiveAt: true},
+    });
+    const previousLastActiveAt = stored?.lastActiveAt ?? null;
     const now = this.clock.now();
     const startOfUtcDay = `${now.slice(0, 10)}T00:00:00.000Z`;
 
@@ -29,5 +35,7 @@ export class UserActivityRepository {
       .andWhere('deletedAt IS NULL')
       .andWhere('(lastActiveAt IS NULL OR lastActiveAt < :startOfUtcDay)', {startOfUtcDay})
       .execute();
+
+    return previousLastActiveAt;
   }
 }

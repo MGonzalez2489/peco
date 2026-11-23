@@ -720,22 +720,22 @@ describe('auth flows (MySQL 8, US-201/US-202/US-203/US-204/US-205/US-206)', () =
     const findUser = () =>
       dataSource.getRepository(UserEntity).findOneByOrFail({email: VALID_REGISTRATION.email});
 
-    it('writes lastActiveAt once per UTC day with one conditional UPDATE', async () => {
+    it('returns the pre-touch timestamp and writes lastActiveAt once per UTC day', async () => {
       const registered = await service.register(VALID_REGISTRATION);
       expect((await findUser()).lastActiveAt).toBeNull();
 
-      await activity.touch(registered.user.publicId);
+      expect(await activity.touch(registered.user.publicId)).toBeNull();
       expect((await findUser()).lastActiveAt).toBe(ACTIVITY_DAY_1);
 
       await dataSource
         .getRepository(UserEntity)
         .update({publicId: registered.user.publicId}, {lastActiveAt: ACTIVITY_SAME_DAY_LATER});
 
-      await activity.touch(registered.user.publicId);
+      expect(await activity.touch(registered.user.publicId)).toBe(ACTIVITY_SAME_DAY_LATER);
       expect((await findUser()).lastActiveAt).toBe(ACTIVITY_SAME_DAY_LATER);
 
       activityNow.mockReturnValue(ACTIVITY_DAY_2);
-      await activity.touch(registered.user.publicId);
+      expect(await activity.touch(registered.user.publicId)).toBe(ACTIVITY_SAME_DAY_LATER);
       expect((await findUser()).lastActiveAt).toBe(ACTIVITY_DAY_2);
     });
 
@@ -746,7 +746,7 @@ describe('auth flows (MySQL 8, US-201/US-202/US-203/US-204/US-205/US-206)', () =
         .update({publicId: registered.user.publicId}, {lastActiveAt: '2020-01-01T00:00:00.000Z'});
 
       activityNow.mockReturnValue(ACTIVITY_DAY_2);
-      await activity.touch(registered.user.publicId);
+      expect(await activity.touch(registered.user.publicId)).toBe('2020-01-01T00:00:00.000Z');
 
       expect((await findUser()).lastActiveAt).toBe(ACTIVITY_DAY_2);
     });
@@ -757,7 +757,7 @@ describe('auth flows (MySQL 8, US-201/US-202/US-203/US-204/US-205/US-206)', () =
         .getRepository(UserEntity)
         .update({publicId: registered.user.publicId}, {deletedAt: '2026-11-19T13:00:00.000Z'});
 
-      await activity.touch(registered.user.publicId);
+      expect(await activity.touch(registered.user.publicId)).toBeNull();
 
       expect((await findUser()).lastActiveAt).toBeNull();
     });

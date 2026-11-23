@@ -26,6 +26,7 @@ describe('shared enums', () => {
     expect(RecurrenceFrequencyEnum.FORTNIGHTLY.toString()).toBe('FORTNIGHTLY');
     expect(ScheduledExecutionStatusEnum.SKIPPED.toString()).toBe('SKIPPED');
     expect(ScheduledExecutionReasonEnum.USER_CANCELLED.toString()).toBe('USER_CANCELLED');
+    expect(ScheduledExecutionReasonEnum.INACTIVE_USER.toString()).toBe('INACTIVE_USER');
     expect(AppThemeEnum.SYSTEM.toString()).toBe('system');
     expect(RefreshRotationStatusEnum.REUSED.toString()).toBe('reused');
     expect(AccountWriteStatusEnum.UPDATED.toString()).toBe('updated');

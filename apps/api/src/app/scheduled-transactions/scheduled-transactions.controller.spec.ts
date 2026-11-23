@@ -104,6 +104,25 @@ const CANCEL_RESPONSE = {
   schedule: {...SCHEDULE, version: 1},
 };
 
+const APPLY_DUE_RESPONSE = {
+  asOf: '2026-11-23',
+  results: [
+    {
+      schedulePublicId: 'schedule-public-id',
+      contemplatedDate: '2026-11-15',
+      occurrenceDate: '2026-11-15',
+      status: 'APPLIED',
+      movementPublicId: 'movement-public-id',
+      reason: null,
+    },
+  ],
+  schedules: [{...SCHEDULE, completedOccurrences: 1, version: 1}],
+  applied: 1,
+  skipped: 0,
+  failed: 0,
+  skippedWhileInactive: 0,
+};
+
 const SILENT_LOGGER: LoggerService = {
   log: jest.fn(),
   error: jest.fn(),
@@ -113,7 +132,7 @@ const SILENT_LOGGER: LoggerService = {
   fatal: jest.fn(),
 };
 
-describe('ScheduledTransactionsController HTTP contract (US-601–US-605)', () => {
+describe('ScheduledTransactionsController HTTP contract (US-601–US-606)', () => {
   let app: INestApplication;
   let create: jest.Mock;
   let list: jest.Mock;
@@ -122,11 +141,15 @@ describe('ScheduledTransactionsController HTTP contract (US-601–US-605)', () =
   let toggle: jest.Mock;
   let execute: jest.Mock;
   let cancel: jest.Mock;
+  let applyDue: jest.Mock;
+  let findDue: jest.Mock;
+  let previousLastActiveAt: string | null;
 
   const authGuard: CanActivate = {
     canActivate: (context: ExecutionContext): boolean => {
       context.switchToHttp().getRequest<AuthenticatedRequest>().auth = {
         publicId: 'user-public-id',
+        previousLastActiveAt,
       };
       return true;
     },
@@ -140,12 +163,29 @@ describe('ScheduledTransactionsController HTTP contract (US-601–US-605)', () =
     toggle = jest.fn().mockResolvedValue({...SCHEDULE, active: false});
     execute = jest.fn().mockResolvedValue(EXECUTE_RESPONSE);
     cancel = jest.fn().mockResolvedValue(CANCEL_RESPONSE);
+    applyDue = jest.fn().mockResolvedValue(APPLY_DUE_RESPONSE);
+    findDue = jest.fn().mockResolvedValue({
+      items: [SCHEDULE],
+      pendingOccurrences: 3,
+      skippedWhileInactive: 1,
+    });
+    previousLastActiveAt = null;
     const moduleRef = await Test.createTestingModule({
       controllers: [ScheduledTransactionsController],
       providers: [
         {
           provide: ScheduledTransactionsService,
-          useValue: {create, list, findOne, update, toggle, execute, cancel},
+          useValue: {
+            create,
+            list,
+            findOne,
+            update,
+            toggle,
+            execute,
+            cancel,
+            applyDue,
+            findDue,
+          },
         },
       ],
     })
@@ -454,11 +494,75 @@ describe('ScheduledTransactionsController HTTP contract (US-601–US-605)', () =
     expect(closed.body.error.code).toBe('PERIOD_CLOSED');
   });
 
-  it('documents the list, detail, toggle, update, execute and cancel routes in OpenAPI', () => {
+  it('previews due schedules without matching the detail route', async () => {
+    previousLastActiveAt = '2020-01-01T00:00:00.000Z';
+
+    const response = await request(app.getHttpServer())
+      .get('/scheduled-transactions/due')
+      .query({asOf: '2026-11-23', autoApply: 'true'})
+      .expect(200);
+
+    expect(response.body.data).toEqual([SCHEDULE]);
+    expect(response.body.meta).toMatchObject({
+      pendingOccurrences: 3,
+      skippedWhileInactive: 1,
+      correlationId: expect.any(String),
+    });
+    expect(findDue).toHaveBeenCalledWith(
+      'user-public-id',
+      {asOf: '2026-11-23', autoApply: true},
+      '2020-01-01T00:00:00.000Z',
+    );
+    expect(findOne).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['asOf', {asOf: '2026-13-01'}],
+    ['autoApply', {autoApply: 'yes'}],
+  ])('rejects an invalid due preview %s with 400 VALIDATION_ERROR', async (_label, query) => {
+    const response = await request(app.getHttpServer())
+      .get('/scheduled-transactions/due')
+      .query(query)
+      .expect(400);
+
+    expect(response.body.error.code).toBe('VALIDATION_ERROR');
+    expect(findDue).not.toHaveBeenCalled();
+  });
+
+  it('applies all due occurrences with an idempotency key and returns 200', async () => {
+    previousLastActiveAt = '2020-01-01T00:00:00.000Z';
+
+    const response = await request(app.getHttpServer())
+      .post('/scheduled-transactions/apply-due')
+      .set('Idempotency-Key', 'schedules-apply-due-1')
+      .send({asOf: '2026-11-23'})
+      .expect(200);
+
+    expect(response.body).toEqual({data: APPLY_DUE_RESPONSE, error: null});
+    expect(applyDue).toHaveBeenCalledWith(
+      'user-public-id',
+      {asOf: '2026-11-23'},
+      '2020-01-01T00:00:00.000Z',
+    );
+  });
+
+  it('rejects an invalid asOf for apply-due with 400 VALIDATION_ERROR', async () => {
+    const invalidDate = await request(app.getHttpServer())
+      .post('/scheduled-transactions/apply-due')
+      .set('Idempotency-Key', 'schedules-apply-due-invalid')
+      .send({asOf: '2026-02-30'})
+      .expect(400);
+    expect(invalidDate.body.error.code).toBe('VALIDATION_ERROR');
+    expect(applyDue).not.toHaveBeenCalled();
+  });
+
+  it('documents the list, due preview, detail, toggle, update, execute, cancel and catch-up routes in OpenAPI', () => {
     const document = createOpenApiDocument(app);
 
     expect(document.paths['/scheduled-transactions']?.post).toBeDefined();
     expect(document.paths['/scheduled-transactions']?.get).toBeDefined();
+    expect(document.paths['/scheduled-transactions/due']?.get).toBeDefined();
+    expect(document.paths['/scheduled-transactions/apply-due']?.post).toBeDefined();
     expect(document.paths['/scheduled-transactions/{publicId}']?.get).toBeDefined();
     expect(document.paths['/scheduled-transactions/{publicId}']?.patch).toBeDefined();
     expect(document.paths['/scheduled-transactions/{publicId}/toggle']?.patch).toBeDefined();

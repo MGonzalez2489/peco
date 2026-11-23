@@ -11,7 +11,7 @@ import {ScheduledTransactionCreationRepository} from './services/scheduled-trans
 import {ScheduledTransactionQueryRepository} from './services/scheduled-transaction-query.repository';
 import {ScheduledTransactionUpdateRepository} from './services/scheduled-transaction-update.repository';
 
-/** Schedule creation, reads, edits, toggles and single-occurrence execution (US-601–US-604). */
+/** Schedule creation, reads, due preview, catch-up, edits, toggles and single-occurrence execution (US-601–US-606). */
 @Module({
   imports: [DatabaseModule, AuthModule, UsersModule, MovementsModule],
   controllers: [ScheduledTransactionsController],

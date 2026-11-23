@@ -61,6 +61,28 @@ export class ScheduledTransactionQueryRepository {
       .getOne();
   }
 
+  /** Active schedules whose next applied date is due, oldest first (8.11/US-606). */
+  findDue(
+    userId: number,
+    asOf: string,
+    autoApply?: boolean,
+  ): Promise<ScheduledTransactionEntity[]> {
+    const query = this.withRelations(this.baseQuery())
+      .where('schedule.userId = :userId', {userId})
+      .andWhere('schedule.deletedAt IS NULL')
+      .andWhere('schedule.active = 1')
+      .andWhere('schedule.nextExecutionDate <= :asOf', {asOf});
+
+    if (autoApply !== undefined) {
+      query.andWhere('schedule.autoApply = :autoApply', {autoApply});
+    }
+
+    return query
+      .orderBy('schedule.nextExecutionDate', 'ASC')
+      .addOrderBy('schedule.id', 'ASC')
+      .getMany();
+  }
+
   findActiveAccount(userId: number, publicId: string): Promise<AccountEntity | null> {
     return this.dataSource.getRepository(AccountEntity).findOne({
       where: {userId, publicId, deletedAt: IsNull()},

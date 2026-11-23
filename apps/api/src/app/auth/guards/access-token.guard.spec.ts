@@ -31,8 +31,14 @@ class ProbeController {
   }
 
   @Get('protected')
-  protectedRoute(@Req() req: AuthenticatedRequest): {publicId: string | undefined} {
-    return {publicId: req.auth?.publicId};
+  protectedRoute(@Req() req: AuthenticatedRequest): {
+    publicId: string | undefined;
+    previousLastActiveAt: string | null | undefined;
+  } {
+    return {
+      publicId: req.auth?.publicId,
+      previousLastActiveAt: req.auth?.previousLastActiveAt,
+    };
   }
 }
 
@@ -43,7 +49,7 @@ describe('AccessTokenGuard (US-206)', () => {
 
   beforeEach(async () => {
     verifyAccessToken = jest.fn().mockResolvedValue({sub: 'user-public-id'});
-    touch = jest.fn().mockResolvedValue(undefined);
+    touch = jest.fn().mockResolvedValue('2020-01-01T00:00:00.000Z');
 
     const moduleRef = await Test.createTestingModule({
       controllers: [ProbeController],
@@ -104,7 +110,10 @@ describe('AccessTokenGuard (US-206)', () => {
       .set('Authorization', 'Bearer jwt-token')
       .expect(200);
 
-    expect(response.body.data).toEqual({publicId: 'user-public-id'});
+    expect(response.body.data).toEqual({
+      publicId: 'user-public-id',
+      previousLastActiveAt: '2020-01-01T00:00:00.000Z',
+    });
     expect(verifyAccessToken).toHaveBeenCalledWith('jwt-token');
     expect(touch).toHaveBeenCalledWith('user-public-id');
   });

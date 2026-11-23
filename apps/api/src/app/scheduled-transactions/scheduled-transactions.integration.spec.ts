@@ -14,6 +14,8 @@ import {
 } from '@peco/enums';
 import {MySqlContainer, StartedMySqlContainer} from '@testcontainers/mysql';
 import {DataSource, DataSourceOptions} from 'typeorm';
+import type {AppConfig} from '../config/app-config';
+import {ConfigService} from '../config/config.service';
 import {UserProfileRepository} from '../users/services/user-profile.repository';
 import {createTypeOrmOptions} from '../database/database.config';
 import {
@@ -41,6 +43,9 @@ describe('scheduled transactions (MySQL 8, US-601–US-605)', () => {
   let container: StartedMySqlContainer;
   let dataSource: DataSource;
   let service: ScheduledTransactionsService;
+  let buildService: (
+    configOverrides?: Partial<AppConfig['operational']>,
+  ) => ScheduledTransactionsService;
 
   const seedUser = async (email: string): Promise<UserEntity> =>
     dataSource.getRepository(UserEntity).save(
@@ -173,18 +178,31 @@ describe('scheduled transactions (MySQL 8, US-601–US-605)', () => {
     await dataSource.initialize();
     await dataSource.runMigrations();
 
-    const queries = new ScheduledTransactionQueryRepository(dataSource);
-    const clock = new UtcClock();
-    jest.spyOn(clock, 'now').mockReturnValue(FIXED_NOW);
-    const creations = new MovementCreationRepository(dataSource, clock);
-    service = new ScheduledTransactionsService(
-      new UserProfileRepository(dataSource),
-      new ScheduledTransactionCreationRepository(dataSource),
-      queries,
-      new ScheduledTransactionUpdateRepository(dataSource, queries, clock),
-      new ScheduledExecutionRepository(dataSource, creations, clock),
-      clock,
-    );
+    buildService = (configOverrides = {}) => {
+      const queries = new ScheduledTransactionQueryRepository(dataSource);
+      const clock = new UtcClock();
+      jest.spyOn(clock, 'now').mockReturnValue(FIXED_NOW);
+      const creations = new MovementCreationRepository(dataSource, clock);
+      const config = new ConfigService({
+        operational: {
+          catchupBatchSize: 500,
+          inactiveGraceDays: 7,
+          inactiveUserDays: 90,
+          ...configOverrides,
+        },
+      } as AppConfig);
+
+      return new ScheduledTransactionsService(
+        new UserProfileRepository(dataSource),
+        new ScheduledTransactionCreationRepository(dataSource),
+        queries,
+        new ScheduledTransactionUpdateRepository(dataSource, queries, clock),
+        new ScheduledExecutionRepository(dataSource, creations, clock),
+        clock,
+        config,
+      );
+    };
+    service = buildService();
   });
 
   afterAll(async () => {
@@ -931,5 +949,201 @@ describe('scheduled transactions (MySQL 8, US-601–US-605)', () => {
     });
     expect(await dataSource.getRepository(MovementEntity).count()).toBe(1);
     expect(await dataSource.getRepository(ScheduledExecutionEntity).count()).toBe(1);
+  });
+
+  it('previews due occurrences read-only with a bounded pending count', async () => {
+    const user = await seedUser('due-preview@example.com');
+    const account = await seedAccount(user, {currentBalance: 1_000_000});
+    const category = await seedCategory(null, CategoryApplyTypeEnum.EXPENSE.toString());
+    const created = await service.create(
+      user.publicId,
+      request({
+        anchorDate: '2026-11-20',
+        frequency: RecurrenceFrequencyEnum.DAILY.toString(),
+        estimatedAmount: 1000,
+        categoryPublicId: category.publicId,
+        sourceAccountPublicId: account.publicId,
+        totalOccurrences: null,
+        endDate: null,
+      }),
+    );
+
+    const preview = await service.findDue(user.publicId, {}, null);
+
+    expect(preview.items.map((item) => item.publicId)).toEqual([created.publicId]);
+    expect(preview.pendingOccurrences).toBe(4);
+    expect(preview.skippedWhileInactive).toBe(0);
+    expect(await dataSource.getRepository(ScheduledExecutionEntity).count()).toBe(0);
+    expect(await dataSource.getRepository(MovementEntity).count()).toBe(0);
+    expect(
+      await dataSource.getRepository(ScheduledTransactionEntity).findOneByOrFail({publicId: created.publicId}),
+    ).toMatchObject({nextExecutionDate: '2026-11-20', completedOccurrences: 0, version: 0});
+  });
+
+  it('catches up every due occurrence oldest first and returns an empty replay', async () => {
+    const user = await seedUser('apply-due@example.com');
+    const account = await seedAccount(user, {currentBalance: 1_000_000});
+    const category = await seedCategory(null, CategoryApplyTypeEnum.EXPENSE.toString());
+    const created = await service.create(
+      user.publicId,
+      request({
+        anchorDate: '2026-11-20',
+        frequency: RecurrenceFrequencyEnum.DAILY.toString(),
+        estimatedAmount: 1000,
+        categoryPublicId: category.publicId,
+        sourceAccountPublicId: account.publicId,
+        totalOccurrences: null,
+        endDate: null,
+      }),
+    );
+
+    const summary = await service.applyDue(user.publicId, {asOf: '2026-11-23'}, null);
+
+    expect(summary).toMatchObject({asOf: '2026-11-23', applied: 4, skipped: 0, failed: 0});
+    expect(summary.results.map((result) => result.contemplatedDate)).toEqual([
+      '2026-11-20',
+      '2026-11-21',
+      '2026-11-22',
+      '2026-11-23',
+    ]);
+    expect(summary.results.every((result) => result.movementPublicId !== null)).toBe(true);
+    expect(summary.schedules[0]).toMatchObject({
+      completedOccurrences: 4,
+      nextContemplatedDate: '2026-11-24',
+      nextExecutionDate: '2026-11-24',
+      version: created.version + 4,
+    });
+    expect(await dataSource.getRepository(MovementEntity).count()).toBe(4);
+
+    const replay = await service.applyDue(user.publicId, {asOf: '2026-11-23'}, null);
+
+    expect(replay.results).toEqual([]);
+    expect(replay.schedules).toEqual([]);
+    expect(await dataSource.getRepository(MovementEntity).count()).toBe(4);
+    expect(await dataSource.getRepository(ScheduledExecutionEntity).count()).toBe(4);
+  });
+
+  it('caps catch-up at the configured number of occurrences per schedule', async () => {
+    const user = await seedUser('apply-due-cap@example.com');
+    const account = await seedAccount(user, {currentBalance: 1_000_000});
+    const category = await seedCategory(null, CategoryApplyTypeEnum.EXPENSE.toString());
+    await service.create(
+      user.publicId,
+      request({
+        anchorDate: '2026-11-20',
+        frequency: RecurrenceFrequencyEnum.DAILY.toString(),
+        estimatedAmount: 1000,
+        categoryPublicId: category.publicId,
+        sourceAccountPublicId: account.publicId,
+        totalOccurrences: null,
+        endDate: null,
+      }),
+    );
+    const capped = buildService({catchupBatchSize: 2});
+
+    const first = await capped.applyDue(user.publicId, {asOf: '2026-11-23'}, null);
+    expect(first.applied).toBe(2);
+    expect(first.schedules[0].nextExecutionDate).toBe('2026-11-22');
+
+    const second = await capped.applyDue(user.publicId, {asOf: '2026-11-23'}, null);
+    expect(second.applied).toBe(2);
+    expect(second.schedules[0].nextExecutionDate).toBe('2026-11-24');
+    expect(await dataSource.getRepository(MovementEntity).count()).toBe(4);
+  });
+
+  it('skips closed-period occurrences before applying the open ones', async () => {
+    const user = await seedUser('apply-due-closed@example.com');
+    const account = await seedAccount(user, {currentBalance: 1_000_000});
+    const category = await seedCategory(null, CategoryApplyTypeEnum.EXPENSE.toString());
+    await service.create(
+      user.publicId,
+      request({
+        anchorDate: '2026-10-01',
+        estimatedAmount: 1000,
+        categoryPublicId: category.publicId,
+        sourceAccountPublicId: account.publicId,
+        totalOccurrences: null,
+        endDate: null,
+      }),
+    );
+    await seedClosedPeriod(user, '2026-10');
+
+    const summary = await service.applyDue(user.publicId, {asOf: '2026-11-23'}, null);
+
+    expect(summary.results).toHaveLength(2);
+    expect(summary.results[0]).toMatchObject({
+      contemplatedDate: '2026-10-01',
+      status: ScheduledExecutionStatusEnum.SKIPPED.toString(),
+      reason: ApiErrorCodeEnum.PERIOD_CLOSED.toString(),
+      movementPublicId: null,
+    });
+    expect(summary.results[1]).toMatchObject({
+      contemplatedDate: '2026-11-01',
+      status: ScheduledExecutionStatusEnum.APPLIED.toString(),
+      reason: null,
+    });
+    expect(summary).toMatchObject({applied: 1, skipped: 1, failed: 0, skippedWhileInactive: 0});
+    expect(await dataSource.getRepository(MovementEntity).count()).toBe(1);
+  });
+
+  it('applies the D58 grace window for a returning inactive user', async () => {
+    const user = await seedUser('apply-due-inactive@example.com');
+    await dataSource
+      .getRepository(UserEntity)
+      .update({id: user.id}, {lastActiveAt: '2020-01-01T00:00:00.000Z'});
+    const account = await seedAccount(user, {currentBalance: 1_000_000});
+    const category = await seedCategory(null, CategoryApplyTypeEnum.EXPENSE.toString());
+    await service.create(
+      user.publicId,
+      request({
+        anchorDate: '2026-11-01',
+        frequency: RecurrenceFrequencyEnum.DAILY.toString(),
+        estimatedAmount: 1000,
+        categoryPublicId: category.publicId,
+        sourceAccountPublicId: account.publicId,
+        totalOccurrences: null,
+        endDate: null,
+      }),
+    );
+
+    const summary = await service.applyDue(
+      user.publicId,
+      {asOf: '2026-11-23'},
+      '2020-01-01T00:00:00.000Z',
+    );
+
+    expect(summary).toMatchObject({applied: 8, skipped: 15, skippedWhileInactive: 15});
+    expect(
+      summary.results.filter(
+        (result) => result.reason === ScheduledExecutionReasonEnum.INACTIVE_USER.toString(),
+      ),
+    ).toHaveLength(15);
+    expect(await dataSource.getRepository(MovementEntity).count()).toBe(8);
+  });
+
+  it('never applies another user\'s due occurrences', async () => {
+    const owner = await seedUser('apply-due-owner@example.com');
+    const outsider = await seedUser('apply-due-outsider@example.com');
+    const account = await seedAccount(owner, {currentBalance: 1_000_000});
+    const category = await seedCategory(null, CategoryApplyTypeEnum.EXPENSE.toString());
+    await service.create(
+      owner.publicId,
+      request({
+        anchorDate: '2026-11-20',
+        frequency: RecurrenceFrequencyEnum.DAILY.toString(),
+        estimatedAmount: 1000,
+        categoryPublicId: category.publicId,
+        sourceAccountPublicId: account.publicId,
+        totalOccurrences: null,
+        endDate: null,
+      }),
+    );
+
+    const summary = await service.applyDue(outsider.publicId, {asOf: '2026-11-23'}, null);
+
+    expect(summary.results).toEqual([]);
+    expect(summary.schedules).toEqual([]);
+    expect(await dataSource.getRepository(MovementEntity).count()).toBe(0);
+    expect(await dataSource.getRepository(ScheduledExecutionEntity).count()).toBe(0);
   });
 });
