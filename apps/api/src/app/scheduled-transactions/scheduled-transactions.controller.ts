@@ -1,10 +1,21 @@
-import {Body, Controller, Post, UseGuards} from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiConflictResponse,
   ApiCreatedResponse,
   ApiNotFoundResponse,
+  ApiOkResponse,
   ApiOperation,
+  ApiParam,
   ApiTags,
   ApiTooManyRequestsResponse,
   ApiUnauthorizedResponse,
@@ -13,13 +24,18 @@ import {
 import {SkipThrottle, Throttle} from '@nestjs/throttler';
 import {AuthRateLimitGuard} from '../auth/guards/auth-rate-limit.guard';
 import {RATE_LIMITS} from '../common/constants/rate-limits.constant';
-import {RateLimited} from '../common/security/decorators/rate-limited.decorator';
+import {EnvelopeResult} from '../common/http/envelope-result';
+import {ApiIdempotencyKeyHeader} from '../common/idempotency/decorators/api-idempotency-key-header.decorator';
+import {RequireIdempotencyKey} from '../common/idempotency/decorators/require-idempotency-key.decorator';
 import {CurrentUser} from '../common/security/decorators/current-user.decorator';
+import {RateLimited} from '../common/security/decorators/rate-limited.decorator';
 import {CreateScheduledTransactionRequestDto} from './dto/create-scheduled-transaction-request.dto';
+import {ListScheduledTransactionsQueryDto} from './dto/list-scheduled-transactions-query.dto';
 import {ScheduledTransactionResponseDto} from './dto/scheduled-transaction-response.dto';
+import {UpdateScheduledTransactionRequestDto} from './dto/update-scheduled-transaction-request.dto';
 import {ScheduledTransactionsService} from './scheduled-transactions.service';
 
-/** Authenticated schedule creation (US-601). */
+/** Authenticated schedule creation, period-scoped reads and optimistic edits (US-601/US-602). */
 @ApiTags('scheduled-transactions')
 @Controller('scheduled-transactions')
 @UseGuards(AuthRateLimitGuard)
@@ -59,5 +75,116 @@ export class ScheduledTransactionsController {
     @Body() request: CreateScheduledTransactionRequestDto,
   ): Promise<ScheduledTransactionResponseDto> {
     return this.schedules.create(publicId, request);
+  }
+
+  @Get()
+  @RateLimited()
+  // The shared guard evaluates every named throttler; only the read policy applies (13.1).
+  @SkipThrottle({ip: true, identity: true, user: true})
+  @Throttle({
+    read: {limit: RATE_LIMITS.read.user.limit, ttl: RATE_LIMITS.read.user.ttl},
+  })
+  @ApiOperation({
+    summary: 'Listar programas programados por período con cursor y filtros',
+  })
+  @ApiOkResponse({
+    description: 'Lista en el envelope estándar {data, meta, error}; `meta.nextCursor`.',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {type: 'array', items: {type: 'object'}},
+        meta: {
+          type: 'object',
+          properties: {
+            correlationId: {type: 'string'},
+            nextCursor: {type: 'string', nullable: true, example: null},
+          },
+        },
+        error: {type: 'null', nullable: true, example: null},
+      },
+    },
+  })
+  @ApiBadRequestResponse({description: 'Filtros, período o cursor inválidos.'})
+  @ApiUnauthorizedResponse({description: 'Falta un token de acceso válido.'})
+  @ApiTooManyRequestsResponse({description: 'Límite de lecturas excedido.'})
+  list(
+    @CurrentUser() publicId: string,
+    @Query() query: ListScheduledTransactionsQueryDto,
+  ): Promise<EnvelopeResult<ScheduledTransactionResponseDto[], {nextCursor: string | null}>> {
+    return this.schedules.list(publicId, query).then(({items, nextCursor}) =>
+      EnvelopeResult.withMeta(items, {nextCursor}),
+    );
+  }
+
+  @Get(':publicId')
+  @RateLimited()
+  // The shared guard evaluates every named throttler; only the read policy applies (13.1).
+  @SkipThrottle({ip: true, identity: true, user: true})
+  @Throttle({
+    read: {limit: RATE_LIMITS.read.user.limit, ttl: RATE_LIMITS.read.user.ttl},
+  })
+  @ApiOperation({summary: 'Obtener el detalle de un programa programado propio'})
+  @ApiParam({name: 'publicId', description: 'Identificador público del programa.'})
+  @ApiOkResponse({
+    description: 'Programa en el envelope estándar {data, error}.',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {type: 'object'},
+        error: {type: 'null', nullable: true, example: null},
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({description: 'Falta un token de acceso válido.'})
+  @ApiNotFoundResponse({
+    description: 'El programa no existe, pertenece a otro usuario o fue eliminado.',
+  })
+  @ApiTooManyRequestsResponse({description: 'Límite de lecturas excedido.'})
+  findOne(
+    @CurrentUser() publicId: string,
+    @Param('publicId') schedulePublicId: string,
+  ): Promise<ScheduledTransactionResponseDto> {
+    return this.schedules.findOne(publicId, schedulePublicId);
+  }
+
+  @Patch(':publicId')
+  @RequireIdempotencyKey()
+  @ApiIdempotencyKeyHeader()
+  @RateLimited()
+  // The shared guard evaluates every named throttler; only the user policy applies (13.1).
+  @SkipThrottle({ip: true, identity: true, read: true})
+  @Throttle({
+    user: {limit: RATE_LIMITS.mutation.user.limit, ttl: RATE_LIMITS.mutation.user.ttl},
+  })
+  @ApiOperation({summary: 'Editar un programa programado propio con bloqueo optimista'})
+  @ApiParam({name: 'publicId', description: 'Identificador público del programa.'})
+  @ApiOkResponse({
+    description: 'Programa actualizado en el envelope estándar {data, error}.',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {type: 'object'},
+        error: {type: 'null', nullable: true, example: null},
+      },
+    },
+  })
+  @ApiBadRequestResponse({
+    description: 'Cuerpo inválido, fecha de fin anterior al ancla o malla agotada.',
+  })
+  @ApiNotFoundResponse({description: 'El programa o un recurso referenciado no existe.'})
+  @ApiConflictResponse({
+    description: 'Versión obsoleta u ocurrencia reprocesada al re-anclar la malla.',
+  })
+  @ApiUnprocessableEntityResponse({
+    description: 'Transferencia sin destino, destino propio o categoría incompatible.',
+  })
+  @ApiUnauthorizedResponse({description: 'Falta un token de acceso válido.'})
+  @ApiTooManyRequestsResponse({description: 'Límite de mutaciones excedido.'})
+  update(
+    @CurrentUser() publicId: string,
+    @Param('publicId') schedulePublicId: string,
+    @Body() request: UpdateScheduledTransactionRequestDto,
+  ): Promise<ScheduledTransactionResponseDto> {
+    return this.schedules.update(publicId, schedulePublicId, request);
   }
 }

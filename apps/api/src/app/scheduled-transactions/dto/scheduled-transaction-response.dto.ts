@@ -10,6 +10,15 @@ import {ScheduledCategorySummaryDto} from './scheduled-category-summary.dto';
 
 /** Public schedule shape; internal ids and relations never leave the API (8.11). */
 export class ScheduledTransactionResponseDto implements ScheduledTransactionResponse {
+  /** Maps a schedule whose category and accounts were joined by a query repository. */
+  static fromEntity(schedule: ScheduledTransactionEntity): ScheduledTransactionResponseDto {
+    return new ScheduledTransactionResponseDto(schedule, {
+      category: schedule.category,
+      sourceAccount: schedule.sourceAccount,
+      destinationAccount: schedule.destinationAccount,
+    });
+  }
+
   @ApiProperty({description: 'Identificador público del programa.'})
   readonly publicId: string;
 

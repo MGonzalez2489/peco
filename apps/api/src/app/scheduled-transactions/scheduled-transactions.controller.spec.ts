@@ -8,6 +8,7 @@ import {Test} from '@nestjs/testing';
 import request from 'supertest';
 import {selfTransferException} from '../accounts/utils/self-transfer.exception';
 import {transferRequiredException} from '../accounts/utils/transfer-required.exception';
+import {versionConflictException} from '../accounts/utils/version-conflict.exception';
 import {AuthRateLimitGuard} from '../auth/guards/auth-rate-limit.guard';
 import {API_ERROR_MESSAGES} from '../common/http/api-error-messages.constant';
 import {configureHttp} from '../common/http/configure-http';
@@ -18,6 +19,7 @@ import {categoryNotCompatibleException} from '../movements/utils/category-not-co
 import {userNotFoundException} from '../users/utils/user-not-found.exception';
 import {ScheduledTransactionsController} from './scheduled-transactions.controller';
 import {ScheduledTransactionsService} from './scheduled-transactions.service';
+import {occurrenceAlreadyProcessedException} from './utils/occurrence-already-processed.exception';
 import {scheduledTransactionResourceNotFoundException} from './utils/scheduled-transaction-resource-not-found.exception';
 
 const SCHEDULE = {
@@ -76,9 +78,12 @@ const SILENT_LOGGER: LoggerService = {
   fatal: jest.fn(),
 };
 
-describe('ScheduledTransactionsController HTTP contract (US-601)', () => {
+describe('ScheduledTransactionsController HTTP contract (US-601/US-602)', () => {
   let app: INestApplication;
   let create: jest.Mock;
+  let list: jest.Mock;
+  let findOne: jest.Mock;
+  let update: jest.Mock;
 
   const authGuard: CanActivate = {
     canActivate: (context: ExecutionContext): boolean => {
@@ -91,9 +96,12 @@ describe('ScheduledTransactionsController HTTP contract (US-601)', () => {
 
   beforeEach(async () => {
     create = jest.fn().mockResolvedValue(SCHEDULE);
+    list = jest.fn().mockResolvedValue({items: [SCHEDULE], nextCursor: 'next-cursor'});
+    findOne = jest.fn().mockResolvedValue(SCHEDULE);
+    update = jest.fn().mockResolvedValue(SCHEDULE);
     const moduleRef = await Test.createTestingModule({
       controllers: [ScheduledTransactionsController],
-      providers: [{provide: ScheduledTransactionsService, useValue: {create}}],
+      providers: [{provide: ScheduledTransactionsService, useValue: {create, list, findOne, update}}],
     })
       .overrideGuard(AuthRateLimitGuard)
       .useValue({canActivate: () => true})
@@ -195,9 +203,87 @@ describe('ScheduledTransactionsController HTTP contract (US-601)', () => {
     expect(response.body.error.code).toBe(code);
   });
 
-  it('documents the create route in OpenAPI', () => {
+  it('lists schedules with a next cursor in meta', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/scheduled-transactions')
+      .query({period: '2026-11', active: 'true', limit: 5})
+      .expect(200);
+
+    expect(response.body).toMatchObject({
+      data: [SCHEDULE],
+      meta: {nextCursor: 'next-cursor'},
+      error: null,
+    });
+    expect(response.body.meta.correlationId).toEqual(expect.any(String));
+    expect(list).toHaveBeenCalledWith('user-public-id', {
+      period: '2026-11',
+      active: true,
+      limit: 5,
+    });
+  });
+
+  it.each([
+    ['period', {period: '2026-13'}],
+    ['cursor', {cursor: 'not-a-cursor'}],
+    ['boolean filter', {active: 'yes'}],
+  ])('rejects an invalid %s with 400 VALIDATION_ERROR', async (_label, query) => {
+    const response = await request(app.getHttpServer())
+      .get('/scheduled-transactions')
+      .query(query)
+      .expect(400);
+
+    expect(response.body.error.code).toBe('VALIDATION_ERROR');
+    expect(list).not.toHaveBeenCalled();
+  });
+
+  it('returns an owner-scoped schedule detail', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/scheduled-transactions/schedule-public-id')
+      .expect(200);
+
+    expect(response.body).toEqual({data: SCHEDULE, error: null});
+    expect(findOne).toHaveBeenCalledWith('user-public-id', 'schedule-public-id');
+  });
+
+  it('updates a schedule with a version and an idempotency key', async () => {
+    const response = await request(app.getHttpServer())
+      .patch('/scheduled-transactions/schedule-public-id')
+      .set('Idempotency-Key', 'schedules-update-1')
+      .send({name: '  Renta actualizada  ', estimatedAmount: 900000, version: 0})
+      .expect(200);
+
+    expect(response.body).toEqual({data: SCHEDULE, error: null});
+    expect(update).toHaveBeenCalledWith('user-public-id', 'schedule-public-id', {
+      name: 'Renta actualizada',
+      estimatedAmount: 900000,
+      version: 0,
+    });
+  });
+
+  it('maps version and occurrence conflicts to 409', async () => {
+    update.mockRejectedValueOnce(versionConflictException(0, 1));
+    const conflict = await request(app.getHttpServer())
+      .patch('/scheduled-transactions/schedule-public-id')
+      .set('Idempotency-Key', 'schedules-update-2')
+      .send({version: 0})
+      .expect(409);
+    expect(conflict.body.error.code).toBe('VERSION_CONFLICT');
+
+    update.mockRejectedValueOnce(occurrenceAlreadyProcessedException());
+    const processed = await request(app.getHttpServer())
+      .patch('/scheduled-transactions/schedule-public-id')
+      .set('Idempotency-Key', 'schedules-update-3')
+      .send({anchorDate: '2026-12-01'})
+      .expect(409);
+    expect(processed.body.error.code).toBe('OCCURRENCE_ALREADY_PROCESSED');
+  });
+
+  it('documents the list, detail and update routes in OpenAPI', () => {
     const document = createOpenApiDocument(app);
 
     expect(document.paths['/scheduled-transactions']?.post).toBeDefined();
+    expect(document.paths['/scheduled-transactions']?.get).toBeDefined();
+    expect(document.paths['/scheduled-transactions/{publicId}']?.get).toBeDefined();
+    expect(document.paths['/scheduled-transactions/{publicId}']?.patch).toBeDefined();
   });
 });

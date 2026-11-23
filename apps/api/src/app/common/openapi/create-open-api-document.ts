@@ -2,6 +2,8 @@ import type {INestApplication} from '@nestjs/common';
 import {DocumentBuilder, SwaggerModule} from '@nestjs/swagger';
 import {CreateAccountRequestDto} from '../../accounts/dto/create-account-request.dto';
 import {ListMovementsQueryDto} from '../../movements/dto/list-movements-query.dto';
+import {ListScheduledTransactionsQueryDto} from '../../scheduled-transactions/dto/list-scheduled-transactions-query.dto';
+import {UpdateScheduledTransactionRequestDto} from '../../scheduled-transactions/dto/update-scheduled-transaction-request.dto';
 import {ListQueryDto} from '../dto/list-query.dto';
 
 /** Builds the OpenAPI document from the same DTOs used by validation. */
@@ -16,6 +18,12 @@ export const createOpenApiDocument = (app: INestApplication) => {
     .build();
 
   return SwaggerModule.createDocument(app, documentConfig, {
-    extraModels: [ListQueryDto, CreateAccountRequestDto, ListMovementsQueryDto],
+    extraModels: [
+      ListQueryDto,
+      CreateAccountRequestDto,
+      ListMovementsQueryDto,
+      ListScheduledTransactionsQueryDto,
+      UpdateScheduledTransactionRequestDto,
+    ],
   });
 };

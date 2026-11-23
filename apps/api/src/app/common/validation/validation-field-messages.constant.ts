@@ -20,6 +20,8 @@ export const VALIDATION_FIELD_MESSAGES: Readonly<Record<string, string>> = {
   isPositive: 'Debe ser mayor que cero.',
   isDateString: 'Debe ser una fecha válida.',
   endDateNotBeforeAnchor: 'La fecha final no puede ser anterior a la fecha de inicio.',
+  scheduleGridUnavailable: 'No se pudo derivar una fecha válida para la malla de recurrencia.',
+  scheduledTransactionCursor: 'El cursor no es válido.',
   minLength: 'La longitud no es válida.',
   maxLength: 'La longitud no es válida.',
   min: 'El valor está fuera del rango permitido.',

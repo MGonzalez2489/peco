@@ -1,6 +1,6 @@
 import {registerDecorator, type ValidationArguments, type ValidationOptions} from 'class-validator';
 
-/** Cross-field rule for schedule creation: `endDate` cannot precede `anchorDate` (8.11/US-601). */
+/** Cross-field rule for schedules: `endDate` cannot precede `anchorDate` (8.11/US-601/US-602). */
 export const IsEndDateNotBeforeAnchor =
   (validationOptions?: ValidationOptions): PropertyDecorator =>
   (object: object, propertyName: string | symbol): void => {
