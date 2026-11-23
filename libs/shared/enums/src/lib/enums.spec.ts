@@ -4,6 +4,8 @@ import {
   AccountWriteStatusEnum,
   ApiErrorCodeEnum,
   AppThemeEnum,
+  AuditActionEnum,
+  AuditEntityEnum,
   CategoryApplyTypeEnum,
   MovementTypeEnum,
   MovementWriteStatusEnum,
@@ -48,6 +50,8 @@ describe('shared enums', () => {
     expect(MovementWriteStatusEnum.PERIOD_CLOSED.toString()).toBe('period-closed');
     expect(MovementWriteStatusEnum.LOCKED.toString()).toBe('locked');
     expect(MovementWriteStatusEnum.CONFLICT.toString()).toBe('conflict');
+    expect(AuditActionEnum.RECONCILE_MISMATCH.toString()).toBe('RECONCILE_MISMATCH');
+    expect(AuditEntityEnum.ACCOUNTS.toString()).toBe('accounts');
   });
 
   it('keeps every account write status in a single registry', () => {
@@ -79,6 +83,21 @@ describe('shared enums', () => {
       'period-closed',
       'locked',
       'conflict',
+    ]);
+  });
+
+  it('keeps every audit action and entity in a single registry', () => {
+    expect(Object.values(AuditActionEnum).map((action) => action.toString())).toEqual([
+      'DELETE',
+      'EDIT',
+      'REPLACE',
+      'REVERSAL',
+      'RECONCILE_MISMATCH',
+    ]);
+    expect(Object.values(AuditEntityEnum).map((entity) => entity.toString())).toEqual([
+      'accounts',
+      'movements',
+      'users',
     ]);
   });
 

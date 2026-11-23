@@ -7,6 +7,7 @@ import {CategoriesModule} from './categories/categories.module';
 import {IdempotencyModule} from './common/idempotency/idempotency.module';
 import {ConfigModule} from './config/config.module';
 import {HealthModule} from './health/health.module';
+import {ReconciliationModule} from './jobs/reconciliation/reconciliation.module';
 import {MovementsModule} from './movements/movements.module';
 import {UsersModule} from './users/users.module';
 
@@ -25,6 +26,7 @@ import {UsersModule} from './users/users.module';
     AccountsModule,
     CategoriesModule,
     MovementsModule,
+    ReconciliationModule,
   ],
   controllers: [AppController],
   providers: [AppService],
