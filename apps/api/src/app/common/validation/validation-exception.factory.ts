@@ -27,6 +27,7 @@ const CONSTRAINT_PRIORITY: readonly string[] = [
   'isEnum',
   'isIn',
   'isDateString',
+  'endDateNotBeforeAnchor',
   'isNumberString',
   'matches',
   'minLength',

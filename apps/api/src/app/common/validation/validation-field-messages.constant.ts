@@ -19,6 +19,7 @@ export const VALIDATION_FIELD_MESSAGES: Readonly<Record<string, string>> = {
   isIn: 'El valor no está permitido.',
   isPositive: 'Debe ser mayor que cero.',
   isDateString: 'Debe ser una fecha válida.',
+  endDateNotBeforeAnchor: 'La fecha final no puede ser anterior a la fecha de inicio.',
   minLength: 'La longitud no es válida.',
   maxLength: 'La longitud no es válida.',
   min: 'El valor está fuera del rango permitido.',
