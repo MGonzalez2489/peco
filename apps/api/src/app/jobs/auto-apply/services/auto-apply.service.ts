@@ -1,0 +1,89 @@
+import {Injectable, Logger} from '@nestjs/common';
+import {ConfigService} from '../../../config/config.service';
+import {UtcClock} from '../../../database/clock/utc-clock';
+import {ScheduledTransactionsService} from '../../../scheduled-transactions/scheduled-transactions.service';
+import type {AutoApplyResult} from '../types/auto-apply-result.type';
+import {AutoApplyRepository} from './auto-apply.repository';
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+/** Nightly catch-up for active users, reusing the idempotent on-demand executor (12/D54/D57/D58). */
+@Injectable()
+export class AutoApplyService {
+  private readonly logger = new Logger(AutoApplyService.name);
+
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly clock: UtcClock,
+    private readonly repository: AutoApplyRepository,
+    private readonly schedules: ScheduledTransactionsService,
+  ) {}
+
+  async run(): Promise<AutoApplyResult> {
+    const now = this.clock.now();
+    const asOf = now.slice(0, 10);
+    const inactiveDays = this.configService.config.operational.inactiveUserDays;
+    const activeSince = new Date(Date.parse(now) - inactiveDays * MS_PER_DAY).toISOString();
+    const batchSize = this.configService.config.operational.catchupBatchSize;
+    let errors = 0;
+
+    const run = await this.repository.withLock(async () => {
+      const users = await this.repository.findEligibleUserPublicIds(activeSince, asOf);
+      const totals = {
+        usersProcessed: users.length,
+        applied: 0,
+        skipped: 0,
+        failed: 0,
+        skippedWhileInactive: 0,
+      };
+
+      for (const {publicId} of users) {
+        try {
+          const result = await this.schedules.applyDue(publicId, {asOf}, null, {
+            autoApply: true,
+            onScheduleError: (schedulePublicId: string, error: unknown) => {
+              errors += 1;
+              this.logger.error(
+                `Auto-apply failed for schedule ${schedulePublicId}`,
+                error instanceof Error ? error.stack : String(error),
+              );
+            },
+          });
+
+          totals.applied += result.applied;
+          totals.skipped += result.skipped;
+          totals.failed += result.failed;
+          totals.skippedWhileInactive += result.skippedWhileInactive;
+
+          if (result.results.length >= batchSize) {
+            this.logger.warn(
+              `Auto-apply hit the ${batchSize}-occurrence cap for user ${publicId}; closing waits for the next run`,
+            );
+          }
+        } catch (error: unknown) {
+          errors += 1;
+          this.logger.error(
+            `Auto-apply failed for user ${publicId}`,
+            error instanceof Error ? error.stack : String(error),
+          );
+        }
+      }
+
+      return totals;
+    });
+
+    if (run === null) {
+      return {
+        acquired: false,
+        usersProcessed: 0,
+        applied: 0,
+        skipped: 0,
+        failed: 0,
+        skippedWhileInactive: 0,
+        errors: 0,
+      };
+    }
+
+    return {acquired: true, ...run, errors};
+  }
+}

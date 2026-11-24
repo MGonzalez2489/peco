@@ -23,5 +23,6 @@ import {ScheduledTransactionUpdateRepository} from './services/scheduled-transac
     ScheduledExecutionRepository,
     UtcClock,
   ],
+  exports: [ScheduledTransactionsService],
 })
 export class ScheduledTransactionsModule {}

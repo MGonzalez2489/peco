@@ -44,6 +44,7 @@ import {ScheduledExecutionRepository} from './services/scheduled-execution.repos
 import {ScheduledTransactionCreationRepository} from './services/scheduled-transaction-creation.repository';
 import {ScheduledTransactionQueryRepository} from './services/scheduled-transaction-query.repository';
 import {ScheduledTransactionUpdateRepository} from './services/scheduled-transaction-update.repository';
+import type {ApplyDueOptions} from './types/apply-due-options.type';
 import type {ScheduledTransactionActiveValues} from './types/scheduled-transaction-active-values.type';
 import type {ScheduledTransactionListFilter} from './types/scheduled-transaction-list-filter.type';
 import type {ScheduledTransactionUpdateValues} from './types/scheduled-transaction-update-values.type';
@@ -155,11 +156,12 @@ export class ScheduledTransactionsService {
     };
   }
 
-  /** Applies every due occurrence oldest first, bounded per schedule and idempotent (10.6/US-606). */
+  /** Applies every due occurrence oldest first, bounded per schedule and idempotent (10.6/US-606/US-607). */
   async applyDue(
     publicId: string,
     request: ApplyDueRequest,
     previousLastActiveAt: string | null,
+    options: ApplyDueOptions = {},
   ): Promise<ApplyDueResponseDto> {
     const user = await this.profile.findActiveByPublicId(publicId);
     if (!user) {
@@ -167,7 +169,7 @@ export class ScheduledTransactionsService {
     }
 
     const asOf = request.asOf ?? this.clock.now().slice(0, 10);
-    const due = await this.queries.findDue(user.id, asOf);
+    const due = await this.queries.findDue(user.id, asOf, options.autoApply);
     const inactiveBefore = this.inactiveBefore(previousLastActiveAt, asOf);
     const batchSize = this.config.config.operational.catchupBatchSize;
     const results: ApplyDueResultDto[] = [];
@@ -185,58 +187,67 @@ export class ScheduledTransactionsService {
     for (const initial of due) {
       let schedule = initial;
 
-      for (
-        let processed = 0;
-        processed < batchSize && schedule.active && schedule.nextExecutionDate <= asOf;
-        processed += 1
-      ) {
-        const previousDate = schedule.nextExecutionDate;
-        const outcome = await this.executions.execute(
-          user.id,
-          schedule.publicId,
-          {},
-          asOf,
-          {inactiveBefore},
-        );
-
-        if (outcome.status === MovementWriteStatusEnum.NOT_FOUND.toString()) {
-          throw scheduledTransactionResourceNotFoundException();
-        }
-        if (
-          outcome.status === ApiErrorCodeEnum.SCHEDULE_INACTIVE.toString() ||
-          outcome.status === ApiErrorCodeEnum.SCHEDULE_NOT_DUE.toString() ||
-          ('replayed' in outcome && outcome.replayed)
+      try {
+        for (
+          let processed = 0;
+          processed < batchSize && schedule.active && schedule.nextExecutionDate <= asOf;
+          processed += 1
         ) {
-          break;
-        }
+          const previousDate = schedule.nextExecutionDate;
+          const outcome = await this.executions.execute(
+            user.id,
+            schedule.publicId,
+            {},
+            asOf,
+            {inactiveBefore},
+          );
 
-        const movementPublicId =
-          outcome.status === ScheduledExecutionStatusEnum.APPLIED.toString()
-            ? outcome.movement.publicId
-            : null;
-        results.push(
-          new ApplyDueResultDto(schedule.publicId, outcome.occurrence, movementPublicId),
-        );
+          if (outcome.status === MovementWriteStatusEnum.NOT_FOUND.toString()) {
+            throw scheduledTransactionResourceNotFoundException();
+          }
+          if (
+            outcome.status === ApiErrorCodeEnum.SCHEDULE_INACTIVE.toString() ||
+            outcome.status === ApiErrorCodeEnum.SCHEDULE_NOT_DUE.toString() ||
+            ('replayed' in outcome && outcome.replayed)
+          ) {
+            break;
+          }
 
-        if (outcome.status === ScheduledExecutionStatusEnum.FAILED.toString()) {
-          counters.failed += 1;
-          break;
-        }
-        if (outcome.status === ScheduledExecutionStatusEnum.APPLIED.toString()) {
-          counters.applied += 1;
-        } else {
-          counters.skipped += 1;
-          if (outcome.occurrence.reason === ScheduledExecutionReasonEnum.INACTIVE_USER.toString()) {
-            counters.skippedWhileInactive += 1;
+          const movementPublicId =
+            outcome.status === ScheduledExecutionStatusEnum.APPLIED.toString()
+              ? outcome.movement.publicId
+              : null;
+          results.push(
+            new ApplyDueResultDto(schedule.publicId, outcome.occurrence, movementPublicId),
+          );
+
+          if (outcome.status === ScheduledExecutionStatusEnum.FAILED.toString()) {
+            counters.failed += 1;
+            break;
+          }
+          if (outcome.status === ScheduledExecutionStatusEnum.APPLIED.toString()) {
+            counters.applied += 1;
+          } else {
+            counters.skipped += 1;
+            if (
+              outcome.occurrence.reason === ScheduledExecutionReasonEnum.INACTIVE_USER.toString()
+            ) {
+              counters.skippedWhileInactive += 1;
+            }
+          }
+
+          schedule = outcome.schedule;
+          // A successful executor always advances the grid; a stalled row must not
+          // consume the whole cap in a tight loop.
+          if (schedule.nextExecutionDate === previousDate) {
+            break;
           }
         }
-
-        schedule = outcome.schedule;
-        // A successful executor always advances the grid; a stalled row must not
-        // consume the whole cap in a tight loop.
-        if (schedule.nextExecutionDate === previousDate) {
-          break;
+      } catch (error: unknown) {
+        if (!options.onScheduleError) {
+          throw error;
         }
+        options.onScheduleError(schedule.publicId, error);
       }
 
       schedules.push(ScheduledTransactionResponseDto.fromEntity(schedule));

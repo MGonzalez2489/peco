@@ -225,18 +225,6 @@ export class ScheduledExecutionRepository {
         schedule,
       };
     }
-    if (
-      existing?.status === ScheduledExecutionStatusEnum.FAILED.toString() &&
-      existing.attempts >= MAX_SCHEDULED_EXECUTION_ATTEMPTS
-    ) {
-      return {
-        status: ScheduledExecutionStatusEnum.FAILED.toString(),
-        occurrence: existing,
-        reason: this.failureCode(existing.reason),
-        schedule,
-      };
-    }
-
     // Replays are answered before due checks so a completed schedule can return its stored outcome (D21).
     if (!schedule.active) {
       return {status: ApiErrorCodeEnum.SCHEDULE_INACTIVE.toString(), schedule};
@@ -256,6 +244,19 @@ export class ScheduledExecutionRepository {
         occurrenceDate,
         ApiErrorCodeEnum.PERIOD_CLOSED.toString(),
       );
+    }
+
+    // Three attempts exhaust the retry budget: pause the grid but keep the FAILED row (10.10/US-607).
+    if (
+      existing?.status === ScheduledExecutionStatusEnum.FAILED.toString() &&
+      existing.attempts >= MAX_SCHEDULED_EXECUTION_ATTEMPTS
+    ) {
+      return {
+        status: ScheduledExecutionStatusEnum.FAILED.toString(),
+        occurrence: existing,
+        reason: this.failureCode(existing.reason),
+        schedule: await this.pauseSchedule(manager, schedule),
+      };
     }
 
     // D58 wins only for open periods; closed history keeps its more specific reason.
@@ -314,19 +315,37 @@ export class ScheduledExecutionRepository {
     }
 
     const reason = this.failureCodeFromLedger(ledger.status);
+    const attempts = (existing?.attempts ?? 0) + 1;
     const occurrence = await this.saveExecution(manager, schedule, existing, {
       status: ScheduledExecutionStatusEnum.FAILED.toString(),
       occurrenceDate,
       movementId: null,
       reason,
-      attempts: (existing?.attempts ?? 0) + 1,
+      attempts,
     });
     return {
       status: ScheduledExecutionStatusEnum.FAILED.toString(),
       occurrence,
       reason,
-      schedule,
+      schedule:
+        attempts >= MAX_SCHEDULED_EXECUTION_ATTEMPTS
+          ? await this.pauseSchedule(manager, schedule)
+          : schedule,
     };
+  }
+
+  /** Stops future attempts after the retry budget while preserving the failed row (D52/US-607). */
+  private async pauseSchedule(
+    manager: EntityManager,
+    schedule: ScheduledTransactionEntity,
+  ): Promise<ScheduledTransactionEntity> {
+    if (!schedule.active) {
+      return schedule;
+    }
+    schedule.active = false;
+    schedule.version += 1;
+    schedule.updatedAt = this.clock.now();
+    return manager.save(schedule);
   }
 
   private async skipOccurrence(
