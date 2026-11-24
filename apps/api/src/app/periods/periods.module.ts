@@ -6,12 +6,20 @@ import {UsersModule} from '../users/users.module';
 import {PeriodsController} from './periods.controller';
 import {PeriodClosingRepository} from './services/period-closing.repository';
 import {PeriodClosingService} from './services/period-closing.service';
+import {PeriodReadRepository} from './services/period-read.repository';
+import {PeriodReadService} from './services/period-read.service';
 
-/** Monthly period closing and immutable snapshot projection (US-701). */
+/** Owner-scoped period reads and immutable snapshot projection (US-701/US-703). */
 @Module({
   imports: [DatabaseModule, AuthModule, UsersModule],
   controllers: [PeriodsController],
-  providers: [UtcClock, PeriodClosingRepository, PeriodClosingService],
-  exports: [PeriodClosingService],
+  providers: [
+    UtcClock,
+    PeriodClosingRepository,
+    PeriodClosingService,
+    PeriodReadRepository,
+    PeriodReadService,
+  ],
+  exports: [PeriodClosingService, PeriodReadService],
 })
 export class PeriodsModule {}

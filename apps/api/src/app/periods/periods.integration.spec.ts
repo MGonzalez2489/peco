@@ -26,6 +26,8 @@ import {PERIOD_BACKFILL_TRUNCATED_CODE} from './constants/period-backfill-trunca
 import {SNAPSHOT_GAP_REPAIRED_CODE} from './constants/snapshot-gap-repaired-code.constant';
 import {PeriodClosingRepository} from './services/period-closing.repository';
 import {PeriodClosingService} from './services/period-closing.service';
+import {PeriodReadRepository} from './services/period-read.repository';
+import {PeriodReadService} from './services/period-read.service';
 
 jest.setTimeout(180_000);
 
@@ -47,6 +49,7 @@ describe('period closing and snapshots (MySQL 8, US-701)', () => {
   let container: StartedMySqlContainer;
   let dataSource: DataSource;
   let service: PeriodClosingService;
+  let reads: PeriodReadService;
   let repository: PeriodClosingRepository;
   let creations: MovementCreationRepository;
   let categoryId: number;
@@ -152,6 +155,11 @@ describe('period closing and snapshots (MySQL 8, US-701)', () => {
       new UserProfileRepository(dataSource),
       clock,
       config(),
+    );
+    reads = new PeriodReadService(
+      new PeriodReadRepository(dataSource),
+      new UserProfileRepository(dataSource),
+      clock,
     );
     creations = new MovementCreationRepository(dataSource, clock);
   });
@@ -513,5 +521,61 @@ describe('period closing and snapshots (MySQL 8, US-701)', () => {
     expect(result).toMatchObject({usersProcessed: 2, closed: 2, errors: 1});
     expect(await dataSource.getRepository(PeriodSnapshotEntity).countBy({userId: failing.id})).toBe(0);
     expect(await dataSource.getRepository(PeriodSnapshotEntity).countBy({userId: healthy.id})).toBe(2);
+  });
+
+  it('lists owned snapshots newest first with closedAt taken from createdAt', async () => {
+    const user = await seedUser('reader@example.com');
+    await seedAccount(user, {initialBalance: 10_000, currentBalance: 10_000});
+    await service.close(user.publicId, '2026-10');
+
+    const result = await reads.list(user.publicId, {});
+
+    expect(result.map(({period}) => period)).toEqual(['2026-10', '2026-09']);
+    const stored = await dataSource
+      .getRepository(PeriodSnapshotEntity)
+      .findOneOrFail({where: {userId: user.id, period: '2026-10'}});
+    expect(result[0].closedAt).toBe(stored.createdAt);
+    expect(result[0]).not.toHaveProperty('accountBalances');
+  });
+
+  it('filters an explicit range and never returns another owner snapshots', async () => {
+    const owner = await seedUser('owner-read@example.com');
+    const foreign = await seedUser('foreign-read@example.com');
+    await seedAccount(owner, {initialBalance: 10_000, currentBalance: 10_000});
+    await seedAccount(foreign, {initialBalance: 90_000, currentBalance: 90_000});
+    await service.close(owner.publicId, '2026-10');
+    await service.close(foreign.publicId, '2026-10');
+
+    const result = await reads.list(owner.publicId, {from: '2026-10', to: '2026-10'});
+
+    expect(result.map(({period}) => period)).toEqual(['2026-10']);
+    expect(result[0].globalFinalBalance).toBe(10_000);
+  });
+
+  it('returns frozen account labels in the detail and 404 for foreign periods', async () => {
+    const owner = await seedUser('detail-owner@example.com', '2026-10-01T00:00:00.000Z');
+    const foreign = await seedUser('detail-foreign@example.com');
+    const account = await seedAccount(owner, {
+      name: 'Efectivo',
+      initialBalance: 10_000,
+      currentBalance: 10_000,
+    });
+    await seedAccount(foreign, {initialBalance: 90_000, currentBalance: 90_000});
+    await service.close(owner.publicId, '2026-10');
+    await service.close(foreign.publicId, '2026-09');
+    account.name = 'Renombrada después del cierre';
+    await dataSource.getRepository(AccountEntity).save(account);
+
+    const detail = await reads.find(owner.publicId, '2026-10');
+
+    expect(detail.accountBalances).toHaveLength(1);
+    expect(detail.accountBalances[0].accountName).toBe('Efectivo');
+    expect(detail.accountBalances[0].accountPublicId).toBe(account.publicId);
+    expect((await reads.find(foreign.publicId, '2026-09')).period).toBe('2026-09');
+
+    await expect(reads.find(owner.publicId, '2026-09')).rejects.toMatchObject({
+      code: ApiErrorCodeEnum.NOT_FOUND.toString(),
+      userMessage: API_ERROR_MESSAGES.NOT_FOUND,
+    });
   });
 });

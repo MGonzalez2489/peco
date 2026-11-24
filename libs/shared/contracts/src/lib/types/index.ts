@@ -29,6 +29,7 @@ export * from './execute-scheduled-transaction-response.type';
 export * from './forgot-password-request.type';
 export * from './list-due-schedules-query.type';
 export * from './list-movements-query.type';
+export * from './list-periods-query.type';
 export * from './list-scheduled-transactions-query.type';
 export * from './login-request.type';
 export * from './movement-list-meta.type';
