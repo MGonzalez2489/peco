@@ -10,6 +10,7 @@ import {HealthModule} from './health/health.module';
 import {AutoApplyModule} from './jobs/auto-apply/auto-apply.module';
 import {ReconciliationModule} from './jobs/reconciliation/reconciliation.module';
 import {MovementsModule} from './movements/movements.module';
+import {PeriodsModule} from './periods/periods.module';
 import {ScheduledTransactionsModule} from './scheduled-transactions/scheduled-transactions.module';
 import {UsersModule} from './users/users.module';
 
@@ -29,6 +30,7 @@ import {UsersModule} from './users/users.module';
     CategoriesModule,
     MovementsModule,
     ScheduledTransactionsModule,
+    PeriodsModule,
     AutoApplyModule,
     ReconciliationModule,
   ],

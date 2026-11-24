@@ -2,6 +2,9 @@ import type {INestApplication} from '@nestjs/common';
 import {DocumentBuilder, SwaggerModule} from '@nestjs/swagger';
 import {CreateAccountRequestDto} from '../../accounts/dto/create-account-request.dto';
 import {ListMovementsQueryDto} from '../../movements/dto/list-movements-query.dto';
+import {AccountPeriodBalanceResponseDto} from '../../periods/dto/account-period-balance-response.dto';
+import {ClosePeriodParamsDto} from '../../periods/dto/close-period-params.dto';
+import {PeriodSnapshotResponseDto} from '../../periods/dto/period-snapshot-response.dto';
 import {ApplyDueRequestDto} from '../../scheduled-transactions/dto/apply-due-request.dto';
 import {ApplyDueResponseDto} from '../../scheduled-transactions/dto/apply-due-response.dto';
 import {CancelScheduledOccurrenceRequestDto} from '../../scheduled-transactions/dto/cancel-scheduled-occurrence-request.dto';
@@ -27,13 +30,16 @@ export const createOpenApiDocument = (app: INestApplication) => {
     extraModels: [
       ListQueryDto,
       CreateAccountRequestDto,
+      AccountPeriodBalanceResponseDto,
       ApplyDueRequestDto,
       ApplyDueResponseDto,
+      ClosePeriodParamsDto,
       CancelScheduledOccurrenceRequestDto,
       DueSchedulesQueryDto,
       ExecuteScheduledTransactionRequestDto,
       ListMovementsQueryDto,
       ListScheduledTransactionsQueryDto,
+      PeriodSnapshotResponseDto,
       ToggleScheduledTransactionRequestDto,
       UpdateScheduledTransactionRequestDto,
     ],
