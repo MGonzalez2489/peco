@@ -8,6 +8,7 @@ import {IdempotencyModule} from './common/idempotency/idempotency.module';
 import {ConfigModule} from './config/config.module';
 import {HealthModule} from './health/health.module';
 import {AutoApplyModule} from './jobs/auto-apply/auto-apply.module';
+import {PeriodCloseModule} from './jobs/period-close/period-close.module';
 import {ReconciliationModule} from './jobs/reconciliation/reconciliation.module';
 import {MovementsModule} from './movements/movements.module';
 import {PeriodsModule} from './periods/periods.module';
@@ -32,6 +33,7 @@ import {UsersModule} from './users/users.module';
     ScheduledTransactionsModule,
     PeriodsModule,
     AutoApplyModule,
+    PeriodCloseModule,
     ReconciliationModule,
   ],
   controllers: [AppController],

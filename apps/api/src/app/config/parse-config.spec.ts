@@ -129,6 +129,17 @@ describe('parseConfig', () => {
     it('rejects an invalid AUTO_APPLY_CRON and names it', () => {
       expect(() => parse({AUTO_APPLY_CRON: '5 0 * *'})).toThrow(/AUTO_APPLY_CRON/);
     });
+
+    it('keeps the documented auto-apply → closing → reconciliation order', () => {
+      const minuteOf = (expression: string): number => {
+        const [minute, hour] = expression.split(' ');
+        return Number(hour) * 60 + Number(minute);
+      };
+      const jobs = parse().jobs;
+
+      expect(minuteOf(jobs.autoApplyCron)).toBeLessThan(minuteOf(jobs.periodCloseCron));
+      expect(minuteOf(jobs.periodCloseCron)).toBeLessThan(minuteOf(jobs.reconciliationCron));
+    });
   });
 
   describe('behavioural settings', () => {

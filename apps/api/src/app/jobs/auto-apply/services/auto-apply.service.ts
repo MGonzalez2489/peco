@@ -11,6 +11,8 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
 @Injectable()
 export class AutoApplyService {
   private readonly logger = new Logger(AutoApplyService.name);
+  private readonly cappedUserPublicIds: string[] = [];
+  private lastCompletedAsOf?: string;
 
   constructor(
     private readonly configService: ConfigService,
@@ -18,6 +20,16 @@ export class AutoApplyService {
     private readonly repository: AutoApplyRepository,
     private readonly schedules: ScheduledTransactionsService,
   ) {}
+
+  /** True only after an acquired run finished for the requested UTC date (11.7). */
+  hasCompletedForDate(asOf: string): boolean {
+    return this.lastCompletedAsOf === asOf;
+  }
+
+  /** Hands the pending cap signal to one close run, so the postpone lasts one run. */
+  takeCappedUserPublicIds(): string[] {
+    return this.cappedUserPublicIds.splice(0);
+  }
 
   async run(): Promise<AutoApplyResult> {
     const now = this.clock.now();
@@ -56,6 +68,9 @@ export class AutoApplyService {
           totals.skippedWhileInactive += result.skippedWhileInactive;
 
           if (result.results.length >= batchSize) {
+            if (!this.cappedUserPublicIds.includes(publicId)) {
+              this.cappedUserPublicIds.push(publicId);
+            }
             this.logger.warn(
               `Auto-apply hit the ${batchSize}-occurrence cap for user ${publicId}; closing waits for the next run`,
             );
@@ -72,6 +87,7 @@ export class AutoApplyService {
       return totals;
     });
 
+    const cappedUserPublicIds = [...this.cappedUserPublicIds];
     if (run === null) {
       return {
         acquired: false,
@@ -81,9 +97,11 @@ export class AutoApplyService {
         failed: 0,
         skippedWhileInactive: 0,
         errors: 0,
+        cappedUserPublicIds,
       };
     }
 
-    return {acquired: true, ...run, errors};
+    this.lastCompletedAsOf = asOf;
+    return {acquired: true, ...run, errors, cappedUserPublicIds};
   }
 }

@@ -220,6 +220,7 @@ describe('nightly auto-apply (MySQL 8, US-607)', () => {
       failed: 0,
       skippedWhileInactive: 0,
       errors: 0,
+      cappedUserPublicIds: [],
     });
     expect(await dataSource.getRepository(MovementEntity).count()).toBe(1);
 

@@ -63,7 +63,9 @@ describe('AutoApplyService', () => {
       failed: 0,
       skippedWhileInactive: 0,
       errors: 0,
+      cappedUserPublicIds: [],
     });
+    expect(service.hasCompletedForDate('2026-11-23')).toBe(true);
   });
 
   it('isolates a failing user so the remaining queue still runs', async () => {
@@ -90,8 +92,10 @@ describe('AutoApplyService', () => {
       failed: 0,
       skippedWhileInactive: 0,
       errors: 0,
+      cappedUserPublicIds: [],
     });
     expect(schedules.applyDue).not.toHaveBeenCalled();
+    expect(service.hasCompletedForDate('2026-11-23')).toBe(false);
   });
 
   it('counts isolated per-schedule failures reported by the catch-up executor', async () => {
@@ -106,5 +110,18 @@ describe('AutoApplyService', () => {
     const result = await service.run();
 
     expect(result.errors).toBe(1);
+  });
+
+  it('exposes capped users once so closing postpones exactly one run', async () => {
+    const {schedules, service} = setup([{publicId: 'capped'}]);
+    jest
+      .spyOn(schedules, 'applyDue')
+      .mockResolvedValue(dueResult(500) as never);
+
+    const result = await service.run();
+
+    expect(result.cappedUserPublicIds).toEqual(['capped']);
+    expect(service.takeCappedUserPublicIds()).toEqual(['capped']);
+    expect(service.takeCappedUserPublicIds()).toEqual([]);
   });
 });
