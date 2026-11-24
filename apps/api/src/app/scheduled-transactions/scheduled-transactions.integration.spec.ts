@@ -39,7 +39,7 @@ jest.setTimeout(180_000);
 
 const FIXED_NOW = '2026-11-23T12:00:00.000Z';
 
-describe('scheduled transactions (MySQL 8, US-601–US-605)', () => {
+describe('scheduled transactions (MySQL 8, US-601–US-608)', () => {
   let container: StartedMySqlContainer;
   let dataSource: DataSource;
   let service: ScheduledTransactionsService;
@@ -1119,6 +1119,100 @@ describe('scheduled transactions (MySQL 8, US-601–US-605)', () => {
       ),
     ).toHaveLength(15);
     expect(await dataSource.getRepository(MovementEntity).count()).toBe(8);
+  });
+
+  it('soft deletes a schedule while keeping its executions and movements', async () => {
+    const user = await seedUser('delete@example.com');
+    const foreign = await seedUser('delete-foreign@example.com');
+    const account = await seedAccount(user, {currentBalance: 100000});
+    const category = await seedCategory(null, CategoryApplyTypeEnum.EXPENSE.toString());
+    const created = await service.create(
+      user.publicId,
+      request({
+        anchorDate: '2026-11-20',
+        frequency: RecurrenceFrequencyEnum.DAILY.toString(),
+        estimatedAmount: 10000,
+        categoryPublicId: category.publicId,
+        sourceAccountPublicId: account.publicId,
+        totalOccurrences: null,
+        endDate: null,
+      }),
+    );
+    const applied = await service.execute(user.publicId, created.publicId, {});
+    const movement = applied.movement;
+    if (!movement) {
+      throw new Error('Expected an applied movement');
+    }
+
+    const period = FIXED_NOW.slice(0, 7);
+    expect(
+      (await service.findDue(user.publicId, {}, null)).items.map((item) => item.publicId),
+    ).toContain(created.publicId);
+    const beforeDelete = await service.list(user.publicId, listRequest({period}));
+    expect(beforeDelete.items.map((item) => item.publicId)).toContain(created.publicId);
+
+    await expect(service.remove(user.publicId, created.publicId)).resolves.toBeUndefined();
+
+    const stored = await dataSource.getRepository(ScheduledTransactionEntity).findOneByOrFail({
+      publicId: created.publicId,
+    });
+    expect(stored).toMatchObject({deletedAt: FIXED_NOW, version: applied.schedule.version + 1});
+    expect(await dataSource.getRepository(ScheduledExecutionEntity).count()).toBe(1);
+    expect(await dataSource.getRepository(MovementEntity).count()).toBe(1);
+    expect(
+      await dataSource.getRepository(MovementEntity).findOneByOrFail({publicId: movement.publicId}),
+    ).toMatchObject({scheduledTransactionId: stored.id});
+
+    await expect(service.findOne(user.publicId, created.publicId)).rejects.toMatchObject({
+      status: 404,
+      code: 'NOT_FOUND',
+    });
+    await expect(service.remove(user.publicId, created.publicId)).rejects.toMatchObject({
+      status: 404,
+      code: 'NOT_FOUND',
+    });
+    await expect(service.remove(foreign.publicId, created.publicId)).rejects.toMatchObject({
+      status: 404,
+      code: 'NOT_FOUND',
+    });
+    expect((await service.findDue(user.publicId, {}, null)).items).toEqual([]);
+    expect((await service.list(user.publicId, listRequest({period}))).items).toEqual([]);
+  });
+
+  it('deactivates at endDate after an occurrence and writes no further rows', async () => {
+    const user = await seedUser('stop-end-date@example.com');
+    const account = await seedAccount(user, {currentBalance: 100000});
+    const category = await seedCategory(null, CategoryApplyTypeEnum.EXPENSE.toString());
+    const created = await service.create(
+      user.publicId,
+      request({
+        anchorDate: '2026-11-23',
+        frequency: RecurrenceFrequencyEnum.DAILY.toString(),
+        estimatedAmount: 10000,
+        endDate: '2026-11-23',
+        totalOccurrences: null,
+        categoryPublicId: category.publicId,
+        sourceAccountPublicId: account.publicId,
+      }),
+    );
+
+    const applied = await service.execute(user.publicId, created.publicId, {});
+
+    expect(applied.schedule).toMatchObject({
+      active: false,
+      completedOccurrences: 1,
+      nextContemplatedDate: '2026-11-24',
+      nextExecutionDate: '2026-11-24',
+    });
+    expect(await dataSource.getRepository(ScheduledExecutionEntity).count()).toBe(1);
+    expect(await dataSource.getRepository(MovementEntity).count()).toBe(1);
+
+    await expect(service.execute(user.publicId, created.publicId, {})).rejects.toMatchObject({
+      status: 409,
+      code: 'SCHEDULE_INACTIVE',
+    });
+    expect(await dataSource.getRepository(ScheduledExecutionEntity).count()).toBe(1);
+    expect(await dataSource.getRepository(MovementEntity).count()).toBe(1);
   });
 
   it('never applies another user\'s due occurrences', async () => {

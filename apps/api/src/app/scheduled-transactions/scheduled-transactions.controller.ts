@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -14,6 +15,7 @@ import {
   ApiBadRequestResponse,
   ApiConflictResponse,
   ApiCreatedResponse,
+  ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -369,5 +371,28 @@ export class ScheduledTransactionsController {
     @Body() request: UpdateScheduledTransactionRequestDto,
   ): Promise<ScheduledTransactionResponseDto> {
     return this.schedules.update(publicId, schedulePublicId, request);
+  }
+
+  @Delete(':publicId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @RateLimited()
+  // The shared guard evaluates every named throttler; only the user policy applies (13.1).
+  @SkipThrottle({ip: true, identity: true, read: true})
+  @Throttle({
+    user: {limit: RATE_LIMITS.mutation.user.limit, ttl: RATE_LIMITS.mutation.user.ttl},
+  })
+  @ApiOperation({summary: 'Eliminar una programación propia sin borrar su historial'})
+  @ApiParam({name: 'publicId', description: 'Identificador público del programa.'})
+  @ApiNoContentResponse({description: 'Programa eliminado. Respuesta sin cuerpo.'})
+  @ApiNotFoundResponse({
+    description: 'El programa no existe, pertenece a otro usuario o ya fue eliminado.',
+  })
+  @ApiUnauthorizedResponse({description: 'Falta un token de acceso válido.'})
+  @ApiTooManyRequestsResponse({description: 'Límite de mutaciones excedido.'})
+  remove(
+    @CurrentUser() publicId: string,
+    @Param('publicId') schedulePublicId: string,
+  ): Promise<void> {
+    return this.schedules.remove(publicId, schedulePublicId);
   }
 }

@@ -37,11 +37,17 @@ export class ScheduledTransactionUpdateRepository {
     return this.compareAndSet(userId, publicId, expectedVersion, values);
   }
 
+  /** Soft delete stamps the schedule row only; executions and movements stay (10.8/US-608). */
+  softDelete(userId: number, publicId: string): Promise<ScheduledTransactionUpdateResult> {
+    return this.compareAndSet(userId, publicId, undefined, {}, true);
+  }
+
   private async compareAndSet(
     userId: number,
     publicId: string,
     expectedVersion: number | undefined,
-    values: ScheduledTransactionUpdateValues | ScheduledTransactionActiveValues,
+    values: Partial<ScheduledTransactionUpdateValues & ScheduledTransactionActiveValues>,
+    softDelete = false,
   ): Promise<ScheduledTransactionUpdateResult> {
     const current = await this.queries.findOwnerDetail(userId, publicId);
     if (!current) {
@@ -55,10 +61,12 @@ export class ScheduledTransactionUpdateRepository {
       };
     }
 
+    const now = this.clock.now();
     const set = {
       ...values,
+      ...(softDelete ? {deletedAt: now} : {}),
       version: () => '`version` + 1',
-      updatedAt: this.clock.now(),
+      updatedAt: now,
     } as QueryDeepPartialEntity<ScheduledTransactionEntity>;
 
     const query = this.dataSource
@@ -79,6 +87,11 @@ export class ScheduledTransactionUpdateRepository {
       return latest
         ? {status: MovementWriteStatusEnum.CONFLICT.toString(), currentVersion: latest.version}
         : {status: MovementWriteStatusEnum.NOT_FOUND.toString()};
+    }
+
+    // A deleted row no longer matches `findOwnerDetail`, so it cannot be re-read here.
+    if (softDelete) {
+      return {status: MovementWriteStatusEnum.DELETED.toString()};
     }
 
     const updated = await this.queries.findOwnerDetail(userId, publicId);

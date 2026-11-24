@@ -273,6 +273,19 @@ export class ScheduledTransactionsService {
     return ScheduledTransactionResponseDto.fromEntity(schedule);
   }
 
+  /** Soft deletes a schedule; its executions and movements remain in the ledger (10.8/US-608). */
+  async remove(publicId: string, schedulePublicId: string): Promise<void> {
+    const user = await this.profile.findActiveByPublicId(publicId);
+    if (!user) {
+      throw userNotFoundException();
+    }
+
+    const result = await this.updates.softDelete(user.id, schedulePublicId);
+    if (result.status === MovementWriteStatusEnum.NOT_FOUND.toString()) {
+      throw scheduledTransactionResourceNotFoundException();
+    }
+  }
+
   async update(
     publicId: string,
     schedulePublicId: string,
@@ -409,7 +422,10 @@ export class ScheduledTransactionsService {
     };
     const result = await this.updates.update(user.id, schedulePublicId, request, values);
 
-    if (result.status === MovementWriteStatusEnum.NOT_FOUND.toString()) {
+    if (
+      result.status === MovementWriteStatusEnum.NOT_FOUND.toString() ||
+      result.status === MovementWriteStatusEnum.DELETED.toString()
+    ) {
       throw scheduledTransactionResourceNotFoundException();
     }
     if (result.status === MovementWriteStatusEnum.CONFLICT.toString()) {
@@ -466,7 +482,10 @@ export class ScheduledTransactionsService {
       values,
     );
 
-    if (result.status === MovementWriteStatusEnum.NOT_FOUND.toString()) {
+    if (
+      result.status === MovementWriteStatusEnum.NOT_FOUND.toString() ||
+      result.status === MovementWriteStatusEnum.DELETED.toString()
+    ) {
       throw scheduledTransactionResourceNotFoundException();
     }
     if (result.status === MovementWriteStatusEnum.CONFLICT.toString()) {

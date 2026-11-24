@@ -132,12 +132,13 @@ const SILENT_LOGGER: LoggerService = {
   fatal: jest.fn(),
 };
 
-describe('ScheduledTransactionsController HTTP contract (US-601–US-606)', () => {
+describe('ScheduledTransactionsController HTTP contract (US-601–US-608)', () => {
   let app: INestApplication;
   let create: jest.Mock;
   let list: jest.Mock;
   let findOne: jest.Mock;
   let update: jest.Mock;
+  let remove: jest.Mock;
   let toggle: jest.Mock;
   let execute: jest.Mock;
   let cancel: jest.Mock;
@@ -160,6 +161,7 @@ describe('ScheduledTransactionsController HTTP contract (US-601–US-606)', () =
     list = jest.fn().mockResolvedValue({items: [SCHEDULE], nextCursor: 'next-cursor'});
     findOne = jest.fn().mockResolvedValue(SCHEDULE);
     update = jest.fn().mockResolvedValue(SCHEDULE);
+    remove = jest.fn().mockResolvedValue(undefined);
     toggle = jest.fn().mockResolvedValue({...SCHEDULE, active: false});
     execute = jest.fn().mockResolvedValue(EXECUTE_RESPONSE);
     cancel = jest.fn().mockResolvedValue(CANCEL_RESPONSE);
@@ -180,6 +182,7 @@ describe('ScheduledTransactionsController HTTP contract (US-601–US-606)', () =
             list,
             findOne,
             update,
+            remove,
             toggle,
             execute,
             cancel,
@@ -362,6 +365,25 @@ describe('ScheduledTransactionsController HTTP contract (US-601–US-606)', () =
       .send({anchorDate: '2026-12-01'})
       .expect(409);
     expect(processed.body.error.code).toBe('OCCURRENCE_ALREADY_PROCESSED');
+  });
+
+  it('soft deletes a schedule with a bodyless 204 response', async () => {
+    const response = await request(app.getHttpServer())
+      .delete('/scheduled-transactions/schedule-public-id')
+      .expect(204);
+
+    expect(response.text).toBe('');
+    expect(remove).toHaveBeenCalledWith('user-public-id', 'schedule-public-id');
+  });
+
+  it('maps a missing or already deleted schedule to 404 on delete', async () => {
+    remove.mockRejectedValueOnce(scheduledTransactionResourceNotFoundException());
+
+    const response = await request(app.getHttpServer())
+      .delete('/scheduled-transactions/schedule-public-id')
+      .expect(404);
+
+    expect(response.body.error.code).toBe('NOT_FOUND');
   });
 
   it('sets the active state explicitly without requiring an idempotency key', async () => {
@@ -556,7 +578,7 @@ describe('ScheduledTransactionsController HTTP contract (US-601–US-606)', () =
     expect(applyDue).not.toHaveBeenCalled();
   });
 
-  it('documents the list, due preview, detail, toggle, update, execute, cancel and catch-up routes in OpenAPI', () => {
+  it('documents the list, due preview, detail, toggle, update, delete, execute, cancel and catch-up routes in OpenAPI', () => {
     const document = createOpenApiDocument(app);
 
     expect(document.paths['/scheduled-transactions']?.post).toBeDefined();
@@ -565,6 +587,7 @@ describe('ScheduledTransactionsController HTTP contract (US-601–US-606)', () =
     expect(document.paths['/scheduled-transactions/apply-due']?.post).toBeDefined();
     expect(document.paths['/scheduled-transactions/{publicId}']?.get).toBeDefined();
     expect(document.paths['/scheduled-transactions/{publicId}']?.patch).toBeDefined();
+    expect(document.paths['/scheduled-transactions/{publicId}']?.delete).toBeDefined();
     expect(document.paths['/scheduled-transactions/{publicId}/toggle']?.patch).toBeDefined();
     expect(document.paths['/scheduled-transactions/{publicId}/execute']?.post).toBeDefined();
     expect(

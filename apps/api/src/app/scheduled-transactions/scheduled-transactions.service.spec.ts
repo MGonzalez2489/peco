@@ -75,7 +75,7 @@ const makeMovement = (overrides: Partial<MovementEntity> = {}) =>
     ...overrides,
   }) as unknown as MovementEntity;
 
-describe('ScheduledTransactionsService (US-602–US-606)', () => {
+describe('ScheduledTransactionsService (US-602–US-608)', () => {
   const setup = (
     overrides: Partial<ScheduledTransactionEntity> = {},
     configOverrides: Partial<AppConfig['operational']> = {},
@@ -101,6 +101,7 @@ describe('ScheduledTransactionsService (US-602–US-606)', () => {
     const updates = {
       update: jest.fn().mockResolvedValue({status: 'UPDATED', schedule}),
       setActive: jest.fn().mockResolvedValue({status: 'UPDATED', schedule}),
+      softDelete: jest.fn().mockResolvedValue({status: MovementWriteStatusEnum.DELETED.toString()}),
     } as unknown as ScheduledTransactionUpdateRepository;
     const executions = {
       execute: jest.fn().mockResolvedValue({
@@ -592,6 +593,26 @@ describe('ScheduledTransactionsService (US-602–US-606)', () => {
       skippedWhileInactive: 0,
       results: [],
       schedules: [],
+    });
+  });
+
+  it('soft deletes an owned schedule through the schedule write repository', async () => {
+    const {updates, service} = setup();
+
+    await expect(service.remove('user-public-id', 'schedule-public-id')).resolves.toBeUndefined();
+
+    expect(updates.softDelete).toHaveBeenCalledWith(1, 'schedule-public-id');
+  });
+
+  it('maps a missing or already deleted schedule to 404 on delete', async () => {
+    const {updates, service} = setup();
+    jest
+      .spyOn(updates, 'softDelete')
+      .mockResolvedValueOnce({status: MovementWriteStatusEnum.NOT_FOUND.toString()});
+
+    await expect(service.remove('user-public-id', 'schedule-public-id')).rejects.toMatchObject({
+      status: 404,
+      code: 'NOT_FOUND',
     });
   });
 });
