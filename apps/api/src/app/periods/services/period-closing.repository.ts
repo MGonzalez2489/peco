@@ -55,6 +55,17 @@ export class PeriodClosingRepository {
       : registration;
   }
 
+  /** All stored periods from `from` onward, used to locate the first gap (11.5). */
+  async findClosedPeriods(userId: number, from: string): Promise<string[]> {
+    const snapshots = await this.dataSource.getRepository(PeriodSnapshotEntity).find({
+      select: {period: true},
+      where: {userId, period: MoreThanOrEqual(from)},
+      order: {period: 'ASC'},
+    });
+
+    return snapshots.map(({period}) => period);
+  }
+
   /** Closes one period or replays its immutable snapshot inside one transaction. */
   async close(userId: number, period: string): Promise<PeriodCloseResult> {
     return this.dataSource.transaction('READ COMMITTED', (manager) =>

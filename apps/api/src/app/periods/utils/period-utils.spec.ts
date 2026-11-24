@@ -1,3 +1,4 @@
+import {firstMissingPeriod} from './first-missing-period.util';
 import {nextPeriod} from './next-period.util';
 import {periodsFrom} from './periods-from.util';
 import {previousPeriod} from './previous-period.util';
@@ -11,5 +12,10 @@ describe('calendar period utilities (11.2)', () => {
   it('returns an inclusive oldest-first range', () => {
     expect(periodsFrom('2026-10', '2026-12')).toEqual(['2026-10', '2026-11', '2026-12']);
     expect(periodsFrom('2026-12', '2026-12')).toEqual(['2026-12']);
+  });
+
+  it('finds the oldest missing period without touching a middle hole', () => {
+    expect(firstMissingPeriod('2026-09', '2026-11', ['2026-09'])).toBe('2026-10');
+    expect(firstMissingPeriod('2026-09', '2026-11', ['2026-09', '2026-10', '2026-11'])).toBeNull();
   });
 });

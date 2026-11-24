@@ -1,3 +1,4 @@
+import {Logger} from '@nestjs/common';
 import {
   AccountTypeEnum,
   ApiErrorCodeEnum,
@@ -5,9 +6,10 @@ import {
   MovementWriteStatusEnum,
 } from '@peco/enums';
 import {MySqlContainer, type StartedMySqlContainer} from '@testcontainers/mysql';
-import {DataSource, IsNull, type DataSourceOptions} from 'typeorm';
+import {DataSource, In, IsNull, type DataSourceOptions} from 'typeorm';
 import {CategoryRepository} from '../categories/services/category.repository';
 import {API_ERROR_MESSAGES} from '../common/http/api-error-messages.constant';
+import {ConfigService} from '../config/config.service';
 import {UtcClock} from '../database/clock/utc-clock';
 import {createTypeOrmOptions} from '../database/database.config';
 import {
@@ -20,6 +22,8 @@ import {
 } from '../database/entities';
 import {MovementCreationRepository} from '../movements/services/movement-creation.repository';
 import {UserProfileRepository} from '../users/services/user-profile.repository';
+import {PERIOD_BACKFILL_TRUNCATED_CODE} from './constants/period-backfill-truncated-code.constant';
+import {SNAPSHOT_GAP_REPAIRED_CODE} from './constants/snapshot-gap-repaired-code.constant';
 import {PeriodClosingRepository} from './services/period-closing.repository';
 import {PeriodClosingService} from './services/period-closing.service';
 
@@ -35,6 +39,9 @@ const createGate = (): {opened: Promise<void>; open: () => void} => {
   });
   return {opened, open: () => release()};
 };
+
+const config = (maxBackfillMonths = 120): ConfigService =>
+  ({config: {operational: {maxBackfillMonths}}}) as unknown as ConfigService;
 
 describe('period closing and snapshots (MySQL 8, US-701)', () => {
   let container: StartedMySqlContainer;
@@ -140,7 +147,12 @@ describe('period closing and snapshots (MySQL 8, US-701)', () => {
 
     const clock = {now: () => NOW} as UtcClock;
     repository = new PeriodClosingRepository(dataSource);
-    service = new PeriodClosingService(repository, new UserProfileRepository(dataSource), clock);
+    service = new PeriodClosingService(
+      repository,
+      new UserProfileRepository(dataSource),
+      clock,
+      config(),
+    );
     creations = new MovementCreationRepository(dataSource, clock);
   });
 
@@ -167,6 +179,10 @@ describe('period closing and snapshots (MySQL 8, US-701)', () => {
       where: {name: 'unknown', userId: IsNull()},
     });
     categoryId = category.id;
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   it('writes one snapshot and one frozen row per account with the exact invariants', async () => {
@@ -385,5 +401,117 @@ describe('period closing and snapshots (MySQL 8, US-701)', () => {
       expect(balance.finalBalance).toBe(balance.initialBalance);
       expect(balance.totalTransactions).toBe(0);
     }
+  });
+
+  it('repairs a middle gap without rewriting its neighbours', async () => {
+    const user = await seedUser('gap@example.com');
+    await seedAccount(user, {initialBalance: 10_000, currentBalance: 10_000});
+    await service.close(user.publicId, '2026-09');
+
+    const snapshots = dataSource.getRepository(PeriodSnapshotEntity);
+    const later = await snapshots.save(
+      snapshots.create({
+        userId: user.id,
+        period: '2026-11',
+        startDate: '2026-11-01',
+        endDate: '2026-11-30',
+        globalInitialBalance: 10_000,
+        globalFinalBalance: 10_000,
+        totalInflows: 0,
+        totalOutflows: 0,
+        totalTransfers: 0,
+        totalTransactionsCount: 0,
+      }),
+    );
+    const neighbours = await snapshots.find({
+      where: {userId: user.id, period: In(['2026-09', '2026-11'])},
+      order: {period: 'ASC'},
+    });
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+
+    const outcome = await service.close(user.publicId, '2026-10');
+
+    expect(outcome.created).toBe(true);
+    expect(warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: SNAPSHOT_GAP_REPAIRED_CODE,
+        period: '2026-10',
+        nextClosedPeriod: '2026-11',
+      }),
+    );
+    const after = await snapshots.find({
+      where: {userId: user.id, period: In(['2026-09', '2026-10', '2026-11'])},
+      order: {period: 'ASC'},
+    });
+    expect(after.map(({period}) => period)).toEqual(['2026-09', '2026-10', '2026-11']);
+    expect(after[0].createdAt).toBe(neighbours[0].createdAt);
+    expect(after[2].createdAt).toBe(later.createdAt);
+  });
+
+  it('caps a bounded backfill and resumes on the next run', async () => {
+    const user = await seedUser('cap@example.com', '2024-01-01T00:00:00.000Z');
+    const account = await seedAccount(user, {initialBalance: 10_000});
+    await dataSource
+      .getRepository(AccountEntity)
+      .update({id: account.id}, {createdAt: '2024-01-01T00:00:00.000Z'});
+    const capped = new PeriodClosingService(
+      repository,
+      new UserProfileRepository(dataSource),
+      {now: () => NOW} as UtcClock,
+      config(2),
+    );
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    const snapshots = dataSource.getRepository(PeriodSnapshotEntity);
+
+    const first = await capped.backfill([user.publicId]);
+    expect(first).toMatchObject({closed: 2, truncated: 1, errors: 0});
+    expect(warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: PERIOD_BACKFILL_TRUNCATED_CODE,
+        closedThrough: '2024-02',
+        nextPeriod: '2024-03',
+      }),
+    );
+    expect(
+      (await snapshots.find({where: {userId: user.id}, order: {period: 'ASC'}})).map(
+        ({period}) => period,
+      ),
+    ).toEqual(['2024-01', '2024-02']);
+
+    const second = await capped.backfill([user.publicId]);
+    expect(second).toMatchObject({closed: 2, truncated: 1, errors: 0});
+    expect(warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: PERIOD_BACKFILL_TRUNCATED_CODE,
+        closedThrough: '2024-04',
+        nextPeriod: '2024-05',
+      }),
+    );
+    expect(
+      (await snapshots.find({where: {userId: user.id}, order: {period: 'ASC'}})).map(
+        ({period}) => period,
+      ),
+    ).toEqual(['2024-01', '2024-02', '2024-03', '2024-04']);
+  });
+
+  it('keeps processing the batch when one user fails', async () => {
+    const failing = await seedUser('failing@example.com');
+    const healthy = await seedUser('healthy@example.com');
+    await seedAccount(failing, {initialBalance: 10_000});
+    await seedAccount(healthy, {initialBalance: 90_000});
+    const original = repository.close.bind(repository);
+    jest.spyOn(repository, 'close').mockImplementation(async (userId, period) => {
+      if (userId === failing.id) {
+        throw new Error('broken user');
+      }
+      return original(userId, period);
+    });
+    jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+
+    const result = await service.backfill([failing.publicId, healthy.publicId]);
+
+    expect(result).toMatchObject({usersProcessed: 2, closed: 2, errors: 1});
+    expect(await dataSource.getRepository(PeriodSnapshotEntity).countBy({userId: failing.id})).toBe(0);
+    expect(await dataSource.getRepository(PeriodSnapshotEntity).countBy({userId: healthy.id})).toBe(2);
   });
 });

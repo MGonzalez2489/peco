@@ -1,6 +1,9 @@
-import {HttpStatus} from '@nestjs/common';
+import {HttpStatus, Logger} from '@nestjs/common';
 import {ApiErrorCodeEnum} from '@peco/enums';
 import {UtcClock} from '../../database/clock/utc-clock';
+import {ConfigService} from '../../config/config.service';
+import {PERIOD_BACKFILL_TRUNCATED_CODE} from '../constants/period-backfill-truncated-code.constant';
+import {SNAPSHOT_GAP_REPAIRED_CODE} from '../constants/snapshot-gap-repaired-code.constant';
 import type {
   AccountPeriodBalanceEntity,
   PeriodSnapshotEntity,
@@ -68,17 +71,28 @@ const expectApiFailure = async (
   return exception;
 };
 
-describe('PeriodClosingService (US-701)', () => {
+describe('PeriodClosingService (US-701/US-702)', () => {
   let repository: {
     findFirstActivityPeriod: jest.Mock;
+    findClosedPeriods: jest.Mock;
     close: jest.Mock;
   };
   let users: {findActiveByPublicId: jest.Mock};
   let service: PeriodClosingService;
+  let operational: {maxBackfillMonths: number};
+  let warn: jest.SpyInstance;
+  let error: jest.SpyInstance;
+
+  const config = (): ConfigService =>
+    ({config: {operational}}) as unknown as ConfigService;
 
   beforeEach(() => {
+    operational = {maxBackfillMonths: 120};
+    warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    error = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
     repository = {
       findFirstActivityPeriod: jest.fn().mockResolvedValue('2026-09'),
+      findClosedPeriods: jest.fn().mockResolvedValue([]),
       close: jest.fn().mockImplementation(async (_id: number, period: string) => success(period, true)),
     };
     users = {
@@ -88,7 +102,12 @@ describe('PeriodClosingService (US-701)', () => {
       repository as unknown as PeriodClosingRepository,
       users as unknown as UserProfileRepository,
       {now: () => NOW} as UtcClock,
+      config(),
     );
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   it('closes every missing month from the first activity, oldest first', async () => {
@@ -104,11 +123,13 @@ describe('PeriodClosingService (US-701)', () => {
   });
 
   it('reports a replay without recomputing the stored snapshot', async () => {
+    repository.findClosedPeriods.mockResolvedValue(['2026-09', '2026-10']);
     repository.close.mockResolvedValue(success('2026-10', false));
 
     await expect(service.close('user-public-id', '2026-10')).resolves.toMatchObject({
       created: false,
     });
+    expect(repository.close.mock.calls).toEqual([[7, '2026-10']]);
   });
 
   it.each(['2026-11', '2026-12'])('rejects the current or a future period %s', async (period) => {
@@ -143,5 +164,96 @@ describe('PeriodClosingService (US-701)', () => {
     repository.close.mockResolvedValue({status: ApiErrorCodeEnum.NOT_FOUND.toString()});
 
     await expect(service.close('user-public-id', '2026-10')).rejects.toBeInstanceOf(ApiException);
+  });
+
+  it('repairs a middle hole without touching the snapshots around it', async () => {
+    repository.findClosedPeriods.mockResolvedValue(['2026-09', '2026-11']);
+
+    const outcome = await service.close('user-public-id', '2026-10');
+
+    expect(repository.close.mock.calls).toEqual([[7, '2026-10']]);
+    expect(warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: SNAPSHOT_GAP_REPAIRED_CODE,
+        userPublicId: 'user-public-id',
+        period: '2026-10',
+        nextClosedPeriod: '2026-11',
+      }),
+    );
+    expect(outcome.created).toBe(true);
+  });
+
+  it('stops a bounded run at the cap and logs the truncation', async () => {
+    operational.maxBackfillMonths = 2;
+    repository.findFirstActivityPeriod.mockResolvedValue('2026-01');
+    repository.findClosedPeriods.mockResolvedValue(['2026-01']);
+
+    const result = await service.backfill([`user-public-id`], '2026-05');
+
+    expect(repository.close.mock.calls).toEqual([
+      [7, '2026-02'],
+      [7, '2026-03'],
+    ]);
+    expect(warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: PERIOD_BACKFILL_TRUNCATED_CODE,
+        userPublicId: 'user-public-id',
+        closedThrough: '2026-03',
+        nextPeriod: '2026-04',
+        remaining: 2,
+      }),
+    );
+    expect(result).toEqual({usersProcessed: 1, closed: 2, repaired: 0, truncated: 1, errors: 0});
+  });
+
+  it('continues a capped backfill where the previous run stopped', async () => {
+    operational.maxBackfillMonths = 2;
+    repository.findFirstActivityPeriod.mockResolvedValue('2026-01');
+    repository.findClosedPeriods.mockResolvedValueOnce(['2026-01']);
+
+    await service.backfill(['user-public-id'], '2026-05');
+
+    repository.close.mockClear();
+    repository.findClosedPeriods.mockResolvedValue(['2026-01', '2026-02', '2026-03']);
+    const result = await service.backfill(['user-public-id'], '2026-05');
+
+    expect(repository.close.mock.calls).toEqual([
+      [7, '2026-04'],
+      [7, '2026-05'],
+    ]);
+    expect(result).toEqual({usersProcessed: 1, closed: 2, repaired: 0, truncated: 0, errors: 0});
+  });
+
+  it('logs a repaired gap and counts it in a bounded run', async () => {
+    repository.findClosedPeriods.mockResolvedValue(['2026-09', '2026-11']);
+
+    const result = await service.backfill(['user-public-id'], '2026-10');
+
+    expect(result).toEqual({usersProcessed: 1, closed: 1, repaired: 1, truncated: 0, errors: 0});
+    expect(warn).toHaveBeenCalledWith(
+      expect.objectContaining({code: SNAPSHOT_GAP_REPAIRED_CODE, period: '2026-10'}),
+    );
+  });
+
+  it('isolates one failing user from the rest of the batch', async () => {
+    users.findActiveByPublicId.mockImplementation(async (publicId: string) => ({
+      id: publicId === 'broken' ? 7 : 8,
+    }));
+    repository.close.mockImplementation(async (userId: number, period: string) => {
+      if (userId === 7) {
+        throw new Error('broken user');
+      }
+      return success(period, true);
+    });
+
+    const result = await service.backfill(['broken', 'healthy'], '2026-10');
+
+    expect(error).toHaveBeenCalledWith('Period backfill failed for user broken', expect.any(String));
+    expect(repository.close.mock.calls).toEqual([
+      [7, '2026-09'],
+      [8, '2026-09'],
+      [8, '2026-10'],
+    ]);
+    expect(result).toEqual({usersProcessed: 2, closed: 2, repaired: 0, truncated: 0, errors: 1});
   });
 });
