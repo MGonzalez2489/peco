@@ -54,6 +54,7 @@ export * from './period-snapshot-response.type';
 export * from './period-summary-response.type';
 export * from './recurrence-frequency.type';
 export * from './refresh-request.type';
+export * from './report-period-query.type';
 export * from './report-period-status.type';
 export * from './revert-movement-response.type';
 export * from './register-request.type';

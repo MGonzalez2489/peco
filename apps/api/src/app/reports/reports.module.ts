@@ -12,6 +12,7 @@ import {CategoryDistributionRepository} from './services/category-distribution.r
 import {CategoryDistributionService} from './services/category-distribution.service';
 import {MovementProgressionRepository} from './services/movement-progression.repository';
 import {MovementProgressionService} from './services/movement-progression.service';
+import {ReportPeriodResolver} from './services/report-period-resolver.service';
 import {ScheduledCommitmentsRepository} from './services/scheduled-commitments.repository';
 import {ScheduledCommitmentsService} from './services/scheduled-commitments.service';
 
@@ -28,6 +29,7 @@ import {ScheduledCommitmentsService} from './services/scheduled-commitments.serv
     CategoryDistributionService,
     ScheduledCommitmentsRepository,
     ScheduledCommitmentsService,
+    ReportPeriodResolver,
     AccountRepository,
     UtcClock,
   ],

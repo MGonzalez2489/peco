@@ -1,14 +1,4 @@
-import {ApiProperty} from '@nestjs/swagger';
-import {IsString, Matches} from 'class-validator';
+import {ReportPeriodQueryDto} from './report-period-query.dto';
 
-/** Validates the UTC month before reading applied executions or recurrence grids (US-805). */
-export class ScheduledCommitmentsQueryDto {
-  @ApiProperty({
-    pattern: '^\\d{4}-(0[1-9]|1[0-2])$',
-    example: '2026-11',
-    description: 'Mes UTC del reporte.',
-  })
-  @IsString()
-  @Matches(/^\d{4}-(0[1-9]|1[0-2])$/)
-  period!: string;
-}
+/** Optional UTC month or bounded month range for scheduled commitments (US-806). */
+export class ScheduledCommitmentsQueryDto extends ReportPeriodQueryDto {}

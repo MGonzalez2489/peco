@@ -14,11 +14,21 @@ import type {AuthenticatedRequest} from '../common/types/authenticated-request.t
 import {accountNotFoundException} from '../accounts/utils/account-not-found.exception';
 import {periodReadException} from '../periods/utils/period-read.exception';
 import {PeriodReportService} from '../periods/services/period-report.service';
+import {UtcClock} from '../database/clock/utc-clock';
 import {AccountProgressionService} from './services/account-progression.service';
 import {CategoryDistributionService} from './services/category-distribution.service';
 import {MovementProgressionService} from './services/movement-progression.service';
+import {ReportPeriodResolver} from './services/report-period-resolver.service';
 import {ScheduledCommitmentsService} from './services/scheduled-commitments.service';
 import {ReportsController} from './reports.controller';
+
+const NOW = '2026-11-05T10:00:00.000Z';
+
+const routeUrl = (path: string, baseQuery: string, extraQuery: string): string => {
+  const query = [baseQuery, extraQuery].filter(Boolean).join('&');
+
+  return query ? `${path}?${query}` : path;
+};
 
 const SILENT_LOGGER: LoggerService = {
   log: jest.fn(),
@@ -124,6 +134,8 @@ describe('ReportsController (US-801–US-805)', () => {
         {provide: MovementProgressionService, useValue: {find: findMovementProgression}},
         {provide: CategoryDistributionService, useValue: {find: findCategoryDistribution}},
         {provide: ScheduledCommitmentsService, useValue: {find: findScheduledCommitments}},
+        {provide: UtcClock, useValue: {now: () => NOW}},
+        ReportPeriodResolver,
       ],
     })
       .overrideGuard(AuthRateLimitGuard)
@@ -165,11 +177,144 @@ describe('ReportsController (US-801–US-805)', () => {
     },
   );
 
-  it('requires the period query parameter', async () => {
-    const response = await request(app.getHttpServer()).get('/reports/dashboard').expect(400);
+  it('defaults an omitted dashboard period to the current UTC month', async () => {
+    await request(app.getHttpServer()).get('/reports/dashboard').expect(200);
 
-    expect(response.body.error.details.fields).toHaveProperty('period');
-    expect(find).not.toHaveBeenCalled();
+    expect(find).toHaveBeenCalledWith('user-public-id', '2026-11');
+  });
+
+  it('defaults an omitted account progression period to the current UTC month', async () => {
+    await request(app.getHttpServer())
+      .get('/reports/accounts/account-public-id/progression')
+      .expect(200);
+
+    expect(findProgression).toHaveBeenCalledWith(
+      'user-public-id',
+      'account-public-id',
+      '2026-11',
+    );
+  });
+
+  it('defaults an omitted movement progression period to the current UTC month', async () => {
+    await request(app.getHttpServer()).get('/reports/movements/progression').expect(200);
+
+    expect(findMovementProgression).toHaveBeenCalledWith('user-public-id', '2026-11', false);
+  });
+
+  it('defaults an omitted category distribution period to the current UTC month', async () => {
+    await request(app.getHttpServer())
+      .get('/reports/categories/distribution?type=EXPENSE')
+      .expect(200);
+
+    expect(findCategoryDistribution).toHaveBeenCalledWith(
+      'user-public-id',
+      '2026-11',
+      'EXPENSE',
+    );
+  });
+
+  it('defaults an omitted commitments period to the current UTC month', async () => {
+    await request(app.getHttpServer()).get('/reports/scheduled/commitments').expect(200);
+
+    expect(findScheduledCommitments).toHaveBeenCalledWith('user-public-id', '2026-11');
+  });
+
+  const reportRoutes = [
+    {
+      path: '/reports/dashboard',
+      query: '',
+      verify: (period: string): void => {
+        expect(find).toHaveBeenCalledWith('user-public-id', period);
+      },
+      verifyNotCalled: (): void => expect(find).not.toHaveBeenCalled(),
+    },
+    {
+      path: '/reports/accounts/account-public-id/progression',
+      query: '',
+      verify: (period: string): void => {
+        expect(findProgression).toHaveBeenCalledWith(
+          'user-public-id',
+          'account-public-id',
+          period,
+        );
+      },
+      verifyNotCalled: (): void => expect(findProgression).not.toHaveBeenCalled(),
+    },
+    {
+      path: '/reports/movements/progression',
+      query: '',
+      verify: (period: string): void => {
+        expect(findMovementProgression).toHaveBeenCalledWith('user-public-id', period, false);
+      },
+      verifyNotCalled: (): void => expect(findMovementProgression).not.toHaveBeenCalled(),
+    },
+    {
+      path: '/reports/categories/distribution',
+      query: 'type=EXPENSE',
+      verify: (period: string): void => {
+        expect(findCategoryDistribution).toHaveBeenCalledWith(
+          'user-public-id',
+          period,
+          'EXPENSE',
+        );
+      },
+      verifyNotCalled: (): void => expect(findCategoryDistribution).not.toHaveBeenCalled(),
+    },
+    {
+      path: '/reports/scheduled/commitments',
+      query: '',
+      verify: (period: string): void => {
+        expect(findScheduledCommitments).toHaveBeenCalledWith('user-public-id', period);
+      },
+      verifyNotCalled: (): void => expect(findScheduledCommitments).not.toHaveBeenCalled(),
+    },
+  ];
+
+  it.each(reportRoutes)('resolves an explicit range to its end month on $path', async (route) => {
+    await request(app.getHttpServer())
+      .get(routeUrl(route.path, route.query, 'from=2026-09&to=2026-10'))
+      .expect(200);
+
+    route.verify('2026-10');
+  });
+
+  it.each(reportRoutes)('rejects a reversed range on $path with fields.to', async (route) => {
+    const response = await request(app.getHttpServer())
+      .get(routeUrl(route.path, route.query, 'from=2026-11&to=2026-10'))
+      .expect(400);
+
+    expect(response.body.error).toMatchObject({
+      code: 'VALIDATION_ERROR',
+      details: {fields: {to: expect.any(String)}},
+    });
+    route.verifyNotCalled();
+  });
+
+  it.each(reportRoutes)(
+    'rejects a range longer than 24 months on $path with fields.to',
+    async (route) => {
+      const response = await request(app.getHttpServer())
+        .get(routeUrl(route.path, route.query, 'from=2024-10&to=2026-11'))
+        .expect(400);
+
+      expect(response.body.error).toMatchObject({
+        code: 'VALIDATION_ERROR',
+        details: {fields: {to: expect.any(String)}},
+      });
+      route.verifyNotCalled();
+    },
+  );
+
+  it.each(reportRoutes)('rejects period combined with a range on $path', async (route) => {
+    const response = await request(app.getHttpServer())
+      .get(routeUrl(route.path, route.query, 'period=2026-10&from=2026-09&to=2026-10'))
+      .expect(400);
+
+    expect(response.body.error).toMatchObject({
+      code: 'VALIDATION_ERROR',
+      details: {fields: {period: expect.any(String)}},
+    });
+    route.verifyNotCalled();
   });
 
   it('renders a missing user as the standard error envelope', async () => {
@@ -298,7 +443,7 @@ describe('ReportsController (US-801–US-805)', () => {
     'period=2026-13&type=EXPENSE',
     'period=2026-11&type=TRANSFER',
     'period=2026-11',
-    'type=INCOME',
+    'type=EXPENSE&from=2026-13',
   ])('rejects the invalid category query %s with 400 VALIDATION_ERROR', async (query) => {
     const response = await request(app.getHttpServer())
       .get(`/reports/categories/distribution?${query}`)
@@ -334,7 +479,7 @@ describe('ReportsController (US-801–US-805)', () => {
     expect(findScheduledCommitments).toHaveBeenCalledWith('user-public-id', '2026-11');
   });
 
-  it.each(['period=2026-13', 'period=2026-1', ''])(
+  it.each(['period=2026-13', 'period=2026-1', 'from=2026-13'])(
     'rejects the invalid commitment query %s with 400 VALIDATION_ERROR',
     async (query) => {
       const response = await request(app.getHttpServer())
@@ -344,7 +489,7 @@ describe('ReportsController (US-801–US-805)', () => {
       expect(response.body.error).toMatchObject({
         code: 'VALIDATION_ERROR',
         message: API_ERROR_MESSAGES.VALIDATION_ERROR,
-        details: {fields: {period: expect.any(String)}},
+        details: {fields: expect.any(Object)},
       });
       expect(findScheduledCommitments).not.toHaveBeenCalled();
     },
@@ -399,6 +544,13 @@ describe('ReportsController (US-801–US-805)', () => {
     expect(document.paths?.['/reports/movements/progression']?.get?.parameters).toEqual(
       expect.arrayContaining([expect.objectContaining({name: 'excludeReversals', required: false})]),
     );
+    expect(document.paths?.['/reports/dashboard']?.get?.parameters).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({name: 'period', required: false}),
+        expect.objectContaining({name: 'from', required: false}),
+        expect.objectContaining({name: 'to', required: false}),
+      ]),
+    );
     expect(document.components?.schemas?.CategoryDistributionResponseDto).toMatchObject({
       properties: {
         type: {enum: ['INCOME', 'EXPENSE']},
@@ -410,7 +562,9 @@ describe('ReportsController (US-801–US-805)', () => {
     });
     expect(document.paths?.['/reports/categories/distribution']?.get?.parameters).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({name: 'period', required: true}),
+        expect.objectContaining({name: 'period', required: false}),
+        expect.objectContaining({name: 'from', required: false}),
+        expect.objectContaining({name: 'to', required: false}),
         expect.objectContaining({name: 'type', required: true}),
       ]),
     );
@@ -428,7 +582,11 @@ describe('ReportsController (US-801–US-805)', () => {
       },
     });
     expect(document.paths?.['/reports/scheduled/commitments']?.get?.parameters).toEqual(
-      expect.arrayContaining([expect.objectContaining({name: 'period', required: true})]),
+      expect.arrayContaining([
+        expect.objectContaining({name: 'period', required: false}),
+        expect.objectContaining({name: 'from', required: false}),
+        expect.objectContaining({name: 'to', required: false}),
+      ]),
     );
   });
 });

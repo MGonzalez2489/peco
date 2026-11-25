@@ -28,9 +28,10 @@ import {ScheduledCommitmentsResponseDto} from './dto/scheduled-commitments-respo
 import {AccountProgressionService} from './services/account-progression.service';
 import {CategoryDistributionService} from './services/category-distribution.service';
 import {MovementProgressionService} from './services/movement-progression.service';
+import {ReportPeriodResolver} from './services/report-period-resolver.service';
 import {ScheduledCommitmentsService} from './services/scheduled-commitments.service';
 
-/** Read-only dashboard, progression, distribution and commitment reports (US-801–US-805). */
+/** Read-only dashboard, progression, distribution and commitment reports (US-801–US-806). */
 @ApiTags('reports')
 @Controller('reports')
 @UseGuards(AuthRateLimitGuard)
@@ -41,6 +42,7 @@ export class ReportsController {
     private readonly movementProgressionService: MovementProgressionService,
     private readonly categoryDistributionService: CategoryDistributionService,
     private readonly scheduledCommitmentsService: ScheduledCommitmentsService,
+    private readonly periodResolver: ReportPeriodResolver,
   ) {}
 
   @Get('dashboard')
@@ -50,12 +52,16 @@ export class ReportsController {
   @Throttle({
     read: {limit: RATE_LIMITS.read.user.limit, ttl: RATE_LIMITS.read.user.ttl},
   })
-  @ApiOperation({summary: 'Obtener el reporte del dashboard para un mes UTC'})
+  @ApiOperation({
+    summary: 'Obtener el reporte del dashboard para un mes UTC (por defecto, el actual)',
+  })
   @ApiOkResponse({
     type: DashboardReportResponseDto,
     description: 'Reporte en el envelope estándar {data, error}.',
   })
-  @ApiBadRequestResponse({description: 'El período no tiene el formato YYYY-MM.'})
+  @ApiBadRequestResponse({
+    description: 'El período o el rango YYYY-MM no son válidos (máximo 24 meses).',
+  })
   @ApiNotFoundResponse({description: 'El usuario ya no está activo.'})
   @ApiUnauthorizedResponse({description: 'Falta un token de acceso válido.'})
   @ApiTooManyRequestsResponse({description: 'Límite de lecturas excedido.'})
@@ -64,7 +70,7 @@ export class ReportsController {
     @Query() query: DashboardReportQueryDto,
   ): Promise<DashboardReportResponseDto> {
     return new DashboardReportResponseDto(
-      await this.reports.find(publicId, query.period),
+      await this.reports.find(publicId, this.periodResolver.resolve(query)),
     );
   }
 
@@ -81,7 +87,9 @@ export class ReportsController {
     type: AccountProgressionResponseDto,
     description: 'Progresión en el envelope estándar {data, error}.',
   })
-  @ApiBadRequestResponse({description: 'El período no tiene el formato YYYY-MM.'})
+  @ApiBadRequestResponse({
+    description: 'El período o el rango YYYY-MM no son válidos (máximo 24 meses).',
+  })
   @ApiNotFoundResponse({description: 'La cuenta no existe o pertenece a otro usuario.'})
   @ApiUnauthorizedResponse({description: 'Falta un token de acceso válido.'})
   @ApiTooManyRequestsResponse({description: 'Límite de lecturas excedido.'})
@@ -91,7 +99,11 @@ export class ReportsController {
     @Query() query: AccountProgressionQueryDto,
   ): Promise<AccountProgressionResponseDto> {
     return new AccountProgressionResponseDto(
-      await this.accountProgressionService.find(publicId, accountPublicId, query.period),
+      await this.accountProgressionService.find(
+        publicId,
+        accountPublicId,
+        this.periodResolver.resolve(query),
+      ),
     );
   }
 
@@ -118,7 +130,7 @@ export class ReportsController {
     return new MovementProgressionResponseDto(
       await this.movementProgressionService.find(
         publicId,
-        query.period,
+        this.periodResolver.resolve(query),
         query.excludeReversals ?? false,
       ),
     );
@@ -145,7 +157,11 @@ export class ReportsController {
     @Query() query: CategoryDistributionQueryDto,
   ): Promise<CategoryDistributionResponseDto> {
     return new CategoryDistributionResponseDto(
-      await this.categoryDistributionService.find(publicId, query.period, query.type),
+      await this.categoryDistributionService.find(
+        publicId,
+        this.periodResolver.resolve(query),
+        query.type,
+      ),
     );
   }
 
@@ -161,7 +177,9 @@ export class ReportsController {
     type: ScheduledCommitmentsResponseDto,
     description: 'Compromisos en el envelope estándar {data, error}.',
   })
-  @ApiBadRequestResponse({description: 'El período no tiene el formato YYYY-MM.'})
+  @ApiBadRequestResponse({
+    description: 'El período o el rango YYYY-MM no son válidos (máximo 24 meses).',
+  })
   @ApiNotFoundResponse({description: 'El usuario ya no está activo.'})
   @ApiUnauthorizedResponse({description: 'Falta un token de acceso válido.'})
   @ApiTooManyRequestsResponse({description: 'Límite de lecturas excedido.'})
@@ -170,7 +188,10 @@ export class ReportsController {
     @Query() query: ScheduledCommitmentsQueryDto,
   ): Promise<ScheduledCommitmentsResponseDto> {
     return new ScheduledCommitmentsResponseDto(
-      await this.scheduledCommitmentsService.find(publicId, query.period),
+      await this.scheduledCommitmentsService.find(
+        publicId,
+        this.periodResolver.resolve(query),
+      ),
     );
   }
 }
