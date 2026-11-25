@@ -1,3 +1,4 @@
+import type {DashboardReportComparison, ReportPeriodStatus} from '@peco/contracts';
 import type {PeriodReportBalances} from './period-report-balances.type';
 import type {PeriodReportTotals} from './period-report-totals.type';
 
@@ -5,6 +6,8 @@ import type {PeriodReportTotals} from './period-report-totals.type';
 export interface PeriodReport {
   period: string;
   frozen: boolean;
+  status: ReportPeriodStatus;
   totals: PeriodReportTotals;
   balances: PeriodReportBalances;
+  comparison: DashboardReportComparison | null;
 }

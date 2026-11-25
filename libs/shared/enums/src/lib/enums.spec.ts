@@ -11,6 +11,7 @@ import {
   MovementWriteStatusEnum,
   RecurrenceFrequencyEnum,
   RefreshRotationStatusEnum,
+  ReportPeriodStatusEnum,
   ScheduledExecutionReasonEnum,
   ScheduledExecutionStatusEnum,
   ScheduledTransactionTypeEnum,
@@ -38,6 +39,9 @@ describe('shared enums', () => {
     expect(AccountWriteStatusEnum.TRANSFER_REQUIRED.toString()).toBe('transfer-required');
     expect(AccountWriteStatusEnum.NEGATIVE_BALANCE.toString()).toBe('negative-balance');
     expect(AccountWriteStatusEnum.PERIOD_CLOSED.toString()).toBe('period-closed');
+    expect(ReportPeriodStatusEnum.CLOSED.toString()).toBe('CLOSED');
+    expect(ReportPeriodStatusEnum.CURRENT.toString()).toBe('CURRENT');
+    expect(ReportPeriodStatusEnum.FUTURE.toString()).toBe('FUTURE');
     expect(MovementWriteStatusEnum.CREATED.toString()).toBe('created');
     expect(MovementWriteStatusEnum.UPDATED.toString()).toBe('updated');
     expect(MovementWriteStatusEnum.REPLACED.toString()).toBe('replaced');
@@ -68,6 +72,14 @@ describe('shared enums', () => {
       'transfer-required',
       'negative-balance',
       'period-closed',
+    ]);
+  });
+
+  it('keeps every report period status in a single registry', () => {
+    expect(Object.values(ReportPeriodStatusEnum).map((status) => status.toString())).toEqual([
+      'CLOSED',
+      'CURRENT',
+      'FUTURE',
     ]);
   });
 

@@ -1,4 +1,4 @@
-import {AccountTypeEnum} from '@peco/enums';
+import {AccountTypeEnum, ReportPeriodStatusEnum} from '@peco/enums';
 import {ApiException} from '../../common/http/api-exception';
 import {UtcClock} from '../../database/clock/utc-clock';
 import type {
@@ -12,6 +12,7 @@ import {PeriodReadRepository} from './period-read.repository';
 import {PeriodReportService} from './period-report.service';
 
 const NOW = '2026-11-05T10:00:00.000Z';
+const FIRST_ACTIVITY = '2026-09';
 
 const snapshot = (period: string): PeriodSnapshotEntity =>
   ({
@@ -58,15 +59,18 @@ const ledgerCalculation = (): PeriodCalculation =>
     totalTransactionsCount: 3,
   }) as PeriodCalculation;
 
-describe('PeriodReportService (US-705)', () => {
+describe('PeriodReportService (US-705/US-801)', () => {
   let read: {findByPeriod: jest.Mock};
-  let closing: {project: jest.Mock};
+  let closing: {project: jest.Mock; findFirstActivityPeriod: jest.Mock};
   let users: {findActiveByPublicId: jest.Mock};
   let service: PeriodReportService;
 
   beforeEach(() => {
     read = {findByPeriod: jest.fn().mockResolvedValue(null)};
-    closing = {project: jest.fn().mockResolvedValue(ledgerCalculation())};
+    closing = {
+      project: jest.fn().mockResolvedValue(ledgerCalculation()),
+      findFirstActivityPeriod: jest.fn().mockResolvedValue(FIRST_ACTIVITY),
+    };
     users = {findActiveByPublicId: jest.fn().mockResolvedValue({id: 7})};
     service = new PeriodReportService(
       read as unknown as PeriodReadRepository,
@@ -89,11 +93,13 @@ describe('PeriodReportService (US-705)', () => {
     const result = await service.find('user-public-id', '2026-09');
 
     expect(users.findActiveByPublicId).toHaveBeenCalledWith('user-public-id');
+    expect(closing.findFirstActivityPeriod).toHaveBeenCalledWith(7);
     expect(read.findByPeriod).toHaveBeenCalledWith(7, '2026-09');
     expect(closing.project).not.toHaveBeenCalled();
     expect(result).toEqual({
       period: '2026-09',
       frozen: true,
+      status: ReportPeriodStatusEnum.CLOSED.toString(),
       totals: {
         totalIncome: 50_000,
         totalExpenses: 25_000,
@@ -105,6 +111,7 @@ describe('PeriodReportService (US-705)', () => {
         availableBalance: 130_000,
         liabilitiesBalance: 35_000,
       },
+      comparison: null,
     });
   });
 
@@ -119,14 +126,52 @@ describe('PeriodReportService (US-705)', () => {
       availableBalance: 130_000,
       liabilitiesBalance: 35_000,
     });
+    expect(result.comparison).toBeNull();
   });
 
-  it.each(['2026-11', '2026-12'])('projects the %s month from the live ledger', async (period) => {
+  it.each([
+    ['2026-11', 'CURRENT'],
+    ['2026-12', 'FUTURE'],
+  ])('projects the %s month from the live ledger with %s status', async (period, status) => {
     const result = await service.find('user-public-id', period);
 
-    expect(read.findByPeriod).not.toHaveBeenCalled();
+    expect(read.findByPeriod).not.toHaveBeenCalledWith(7, period);
     expect(closing.project).toHaveBeenCalledWith(7, period);
-    expect(result).toMatchObject({period, frozen: false, totals: {transactionCount: 3}});
+    expect(result).toMatchObject({
+      period,
+      frozen: false,
+      status,
+      totals: {transactionCount: 3},
+    });
+  });
+
+  it('compares a later period with the previous period totals', async () => {
+    const result = await service.find('user-public-id', '2026-10');
+
+    expect(closing.project).toHaveBeenCalledWith(7, '2026-10');
+    expect(closing.project).toHaveBeenCalledWith(7, '2026-09');
+    expect(result.status).toBe(ReportPeriodStatusEnum.CLOSED.toString());
+    expect(result.comparison).toEqual({
+      period: '2026-09',
+      totalIncome: 50_000,
+      totalExpenses: 25_000,
+      netBalance: 25_000,
+    });
+  });
+
+  it('returns zeros before the first activity without reading a snapshot or the ledger', async () => {
+    const result = await service.find('user-public-id', '2026-07');
+
+    expect(read.findByPeriod).not.toHaveBeenCalled();
+    expect(closing.project).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      period: '2026-07',
+      frozen: false,
+      status: ReportPeriodStatusEnum.CLOSED.toString(),
+      totals: {totalIncome: 0, totalExpenses: 0, netBalance: 0, transactionCount: 0},
+      balances: {totalBalance: 0, availableBalance: 0, liabilitiesBalance: 0},
+      comparison: null,
+    });
   });
 
   it('answers 404 for a missing or foreign user without touching either repository', async () => {

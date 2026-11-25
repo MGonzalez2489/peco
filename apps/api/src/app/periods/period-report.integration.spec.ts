@@ -1,5 +1,10 @@
 import type {AccountType, MovementType} from '@peco/contracts';
-import {AccountTypeEnum, CategoryApplyTypeEnum, MovementTypeEnum} from '@peco/enums';
+import {
+  AccountTypeEnum,
+  CategoryApplyTypeEnum,
+  MovementTypeEnum,
+  ReportPeriodStatusEnum,
+} from '@peco/enums';
 import {MySqlContainer, type StartedMySqlContainer} from '@testcontainers/mysql';
 import {DataSource, type DataSourceOptions} from 'typeorm';
 import type {AppConfig} from '../config/app-config';
@@ -130,14 +135,14 @@ describe('period report frozen/ledger split (MySQL 8, US-705)', () => {
       }),
     );
 
-  const close = async (user: UserEntity): Promise<void> => {
+  const close = async (user: UserEntity, period = CLOSED_PERIOD): Promise<void> => {
     const closing = new PeriodClosingService(
       new PeriodClosingRepository(dataSource),
       new UserProfileRepository(dataSource),
       clock,
       config,
     );
-    await closing.close(user.publicId, CLOSED_PERIOD);
+    await closing.close(user.publicId, period);
   };
 
   beforeAll(async () => {
@@ -207,13 +212,24 @@ describe('period report frozen/ledger split (MySQL 8, US-705)', () => {
     expect(frozen).toEqual({
       period: CLOSED_PERIOD,
       frozen: true,
+      status: ReportPeriodStatusEnum.CLOSED.toString(),
       totals: {totalIncome: 50_000, totalExpenses: 25_000, netBalance: 25_000, transactionCount: 3},
       balances: {totalBalance: 115_000, availableBalance: 130_000, liabilitiesBalance: 35_000},
+      comparison: {
+        period: '2026-08',
+        totalIncome: 0,
+        totalExpenses: 0,
+        netBalance: 0,
+      },
     });
 
     await dataSource.getRepository(PeriodSnapshotEntity).delete({
       userId: user.id,
       period: CLOSED_PERIOD,
+    });
+    await dataSource.getRepository(PeriodSnapshotEntity).delete({
+      userId: user.id,
+      period: '2026-08',
     });
 
     const ledger = await reports.find(user.publicId, CLOSED_PERIOD);
@@ -221,6 +237,7 @@ describe('period report frozen/ledger split (MySQL 8, US-705)', () => {
     expect(ledger.frozen).toBe(false);
     expect(ledger.totals).toEqual(frozen.totals);
     expect(ledger.balances).toEqual(frozen.balances);
+    expect(ledger.comparison).toEqual(frozen.comparison);
     expect(
       await dataSource.getRepository(MovementEntity).countBy({userId: user.id}),
     ).toBe(3);
@@ -247,7 +264,7 @@ describe('period report frozen/ledger split (MySQL 8, US-705)', () => {
     });
   });
 
-  it('projects current, future and unsnapshotted past months from the ledger', async () => {
+  it('classifies current, future, before-activity and foreign periods', async () => {
     const user = await seedUser('ledger@example.com');
     const other = await seedUser('other@example.com');
     const {cash} = await seedAccounts(user);
@@ -257,22 +274,59 @@ describe('period report frozen/ledger split (MySQL 8, US-705)', () => {
 
     const current = await reports.find(user.publicId, '2026-11');
     const future = await reports.find(user.publicId, '2026-12');
-    const unsnapshotted = await reports.find(user.publicId, '2026-07');
+    const beforeActivity = await reports.find(user.publicId, '2026-07');
     const foreign = await reports.find(other.publicId, CLOSED_PERIOD);
 
     expect(current).toMatchObject({
       frozen: false,
+      status: ReportPeriodStatusEnum.CURRENT.toString(),
       totals: {totalIncome: 10_000, totalExpenses: 0, transactionCount: 1},
     });
-    expect(future.frozen).toBe(false);
-    expect(unsnapshotted).toMatchObject({
+    expect(future).toMatchObject({
       frozen: false,
-      totals: {totalIncome: 0, totalExpenses: 0, transactionCount: 0},
+      status: ReportPeriodStatusEnum.FUTURE.toString(),
+    });
+    expect(beforeActivity).toEqual({
+      period: '2026-07',
+      frozen: false,
+      status: ReportPeriodStatusEnum.CLOSED.toString(),
+      totals: {totalIncome: 0, totalExpenses: 0, netBalance: 0, transactionCount: 0},
+      balances: {totalBalance: 0, availableBalance: 0, liabilitiesBalance: 0},
+      comparison: null,
     });
     expect(foreign).toMatchObject({
       period: CLOSED_PERIOD,
       frozen: false,
+      status: ReportPeriodStatusEnum.CLOSED.toString(),
       totals: {transactionCount: 0},
+    });
+  });
+
+  it('returns null comparison for the first period and previous figures afterwards', async () => {
+    const user = await seedUser('comparison@example.com');
+    const {cash} = await seedAccounts(user);
+    const category = await seedCategory();
+    await seedMovement(user, cash, category, MovementTypeEnum.INCOME.toString(), 20_000, '2026-09-05T12:00:00.000Z');
+    await close(user, '2026-09');
+    await seedMovement(user, cash, category, MovementTypeEnum.EXPENSE.toString(), 5_000, '2026-10-05T12:00:00.000Z');
+    await close(user, '2026-10');
+
+    const first = await reports.find(user.publicId, '2026-08');
+    const october = await reports.find(user.publicId, '2026-10');
+
+    expect(first.comparison).toBeNull();
+    expect(first.totals.transactionCount).toBe(0);
+    expect(october.comparison).toEqual({
+      period: '2026-09',
+      totalIncome: 20_000,
+      totalExpenses: 0,
+      netBalance: 20_000,
+    });
+    expect(october.totals).toEqual({
+      totalIncome: 0,
+      totalExpenses: 5_000,
+      netBalance: -5_000,
+      transactionCount: 1,
     });
   });
 });
