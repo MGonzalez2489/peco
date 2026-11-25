@@ -11,8 +11,10 @@ import {API_ERROR_MESSAGES} from '../common/http/api-error-messages.constant';
 import {configureHttp} from '../common/http/configure-http';
 import {createOpenApiDocument} from '../common/openapi/create-open-api-document';
 import type {AuthenticatedRequest} from '../common/types/authenticated-request.type';
+import {accountNotFoundException} from '../accounts/utils/account-not-found.exception';
 import {periodReadException} from '../periods/utils/period-read.exception';
 import {PeriodReportService} from '../periods/services/period-report.service';
+import {AccountProgressionService} from './services/account-progression.service';
 import {ReportsController} from './reports.controller';
 
 const SILENT_LOGGER: LoggerService = {
@@ -32,9 +34,28 @@ const REPORT = {
   comparison: {period: '2026-10', totalIncome: 280_000, totalExpenses: 150_000, netBalance: 130_000},
 };
 
-describe('ReportsController (US-801)', () => {
+const PROGRESSION = {
+  period: '2026-11',
+  account: {
+    publicId: 'account-public-id',
+    name: 'Efectivo',
+    type: 'CASH',
+    color: '#10B981',
+    icon: 'banknote',
+  },
+  initialBalance: 100_000,
+  finalBalance: 150_000,
+  creditUsage: null,
+  points: [
+    {date: '2026-11-01', balance: 100_000},
+    {date: '2026-11-12', balance: 150_000},
+  ],
+};
+
+describe('ReportsController (US-801/US-802)', () => {
   let app: INestApplication;
   let find: jest.Mock;
+  let findProgression: jest.Mock;
 
   const authGuard: CanActivate = {
     canActivate: (context: ExecutionContext): boolean => {
@@ -48,10 +69,14 @@ describe('ReportsController (US-801)', () => {
 
   beforeEach(async () => {
     find = jest.fn().mockResolvedValue(REPORT);
+    findProgression = jest.fn().mockResolvedValue(PROGRESSION);
 
     const moduleRef = await Test.createTestingModule({
       controllers: [ReportsController],
-      providers: [{provide: PeriodReportService, useValue: {find}}],
+      providers: [
+        {provide: PeriodReportService, useValue: {find}},
+        {provide: AccountProgressionService, useValue: {find: findProgression}},
+      ],
     })
       .overrideGuard(AuthRateLimitGuard)
       .useValue({canActivate: () => true})
@@ -112,13 +137,67 @@ describe('ReportsController (US-801)', () => {
     });
   });
 
-  it('documents the dashboard route and its status enum in OpenAPI', () => {
+  it('returns an account progression in the standard envelope', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/reports/accounts/account-public-id/progression?period=2026-11')
+      .expect(200);
+
+    expect(response.body).toEqual({data: PROGRESSION, error: null});
+    expect(findProgression).toHaveBeenCalledWith(
+      'user-public-id',
+      'account-public-id',
+      '2026-11',
+    );
+  });
+
+  it.each(['2026-13', 'octubre', '2026-1'])(
+    'rejects the progression period %s with 400 VALIDATION_ERROR',
+    async (period) => {
+      const response = await request(app.getHttpServer())
+        .get(`/reports/accounts/account-public-id/progression?period=${period}`)
+        .expect(400);
+
+      expect(response.body.error).toMatchObject({
+        code: 'VALIDATION_ERROR',
+        message: API_ERROR_MESSAGES.VALIDATION_ERROR,
+        details: {fields: {period: expect.any(String)}},
+      });
+      expect(findProgression).not.toHaveBeenCalled();
+    },
+  );
+
+  it('renders a foreign or missing account as 404', async () => {
+    findProgression.mockRejectedValue(accountNotFoundException());
+
+    const response = await request(app.getHttpServer())
+      .get('/reports/accounts/foreign-account/progression?period=2026-11')
+      .expect(404);
+
+    expect(response.body.error).toMatchObject({
+      code: 'NOT_FOUND',
+      message: API_ERROR_MESSAGES.NOT_FOUND,
+    });
+  });
+
+  it('documents both report routes and their schemas in OpenAPI', () => {
     const document = createOpenApiDocument(app);
 
     expect(Object.keys(document.paths ?? {})).toContain('/reports/dashboard');
+    expect(Object.keys(document.paths ?? {})).toContain(
+      '/reports/accounts/{publicId}/progression',
+    );
     expect(document.components?.schemas?.DashboardReportResponseDto).toMatchObject({
       properties: {
         status: {enum: ['CLOSED', 'CURRENT', 'FUTURE']},
+      },
+    });
+    expect(document.components?.schemas?.AccountProgressionResponseDto).toMatchObject({
+      properties: {
+        account: {$ref: '#/components/schemas/AccountProgressionAccountDto'},
+        points: {
+          items: {$ref: '#/components/schemas/AccountProgressionPointDto'},
+          type: 'array',
+        },
       },
     });
   });

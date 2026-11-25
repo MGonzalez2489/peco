@@ -1,3 +1,7 @@
+export * from './account-progression-account.type';
+export * from './account-progression-credit-usage.type';
+export * from './account-progression-point.type';
+export * from './account-progression-response.type';
 export * from './account-response.type';
 export * from './account-summary.type';
 export * from './account-type-summary.type';
