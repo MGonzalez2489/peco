@@ -20,6 +20,7 @@ import {
 import {periodUtcBounds} from '../../movements/utils/period-utc-bounds.util';
 import {PERIOD_LEDGER_BATCH_SIZE} from '../constants/period-ledger-batch-size.constant';
 import {SNAPSHOT_CHAIN_MISMATCH_CODE} from '../constants/snapshot-chain-mismatch-code.constant';
+import type {PeriodCalculation} from '../types/period-calculation.type';
 import type {PeriodCloseResult} from '../types/period-close-result.type';
 import type {PeriodLedgerMovement} from '../types/period-ledger-movement.type';
 import {calculatePeriod} from '../utils/calculate-period.util';
@@ -66,6 +67,11 @@ export class PeriodClosingRepository {
     return snapshots.map(({period}) => period);
   }
 
+  /** Same ledger projection a close uses, read-only, for months without a snapshot (11.6). */
+  async project(userId: number, period: string): Promise<PeriodCalculation> {
+    return this.projectWithManager(this.dataSource.manager, userId, period);
+  }
+
   /** Closes one period or replays its immutable snapshot inside one transaction. */
   async close(userId: number, period: string): Promise<PeriodCloseResult> {
     return this.dataSource.transaction('READ COMMITTED', (manager) =>
@@ -102,22 +108,9 @@ export class PeriodClosingRepository {
       return {status: ApiErrorCodeEnum.PERIOD_BEFORE_ACTIVITY.toString()};
     }
 
-    const bounds = periodUtcBounds(period);
-    const [accounts, movementsBefore, movementsInPeriod] = await Promise.all([
-      manager.find(AccountEntity, {
-        where: {
-          userId,
-          createdAt: LessThanOrEqual(bounds.to),
-          deletedAt: Or(IsNull(), MoreThanOrEqual(bounds.from)),
-        },
-        order: {id: 'ASC'},
-      }),
-      this.readMovements(manager, userId, {date: LessThan(bounds.from)}),
-      this.readMovements(manager, userId, {date: Between(bounds.from, bounds.to)}),
-    ]);
-
-    const calculation = calculatePeriod(accounts, movementsBefore, movementsInPeriod);
+    const calculation = await this.projectWithManager(manager, userId, period);
     await this.warnOnChainMismatch(manager, userId, period, calculation.accountBalances);
+    const bounds = periodUtcBounds(period);
 
     const snapshot = await manager.save(
       manager.create(PeriodSnapshotEntity, {
@@ -159,6 +152,29 @@ export class PeriodClosingRepository {
     }
 
     return {created: true, snapshot, balances};
+  }
+
+  /** Shared read-only projection so a closed month and its ledger path cannot diverge. */
+  private async projectWithManager(
+    manager: EntityManager,
+    userId: number,
+    period: string,
+  ): Promise<PeriodCalculation> {
+    const bounds = periodUtcBounds(period);
+    const [accounts, movementsBefore, movementsInPeriod] = await Promise.all([
+      manager.find(AccountEntity, {
+        where: {
+          userId,
+          createdAt: LessThanOrEqual(bounds.to),
+          deletedAt: Or(IsNull(), MoreThanOrEqual(bounds.from)),
+        },
+        order: {id: 'ASC'},
+      }),
+      this.readMovements(manager, userId, {date: LessThan(bounds.from)}),
+      this.readMovements(manager, userId, {date: Between(bounds.from, bounds.to)}),
+    ]);
+
+    return calculatePeriod(accounts, movementsBefore, movementsInPeriod);
   }
 
   private async firstActivityWithManager(
