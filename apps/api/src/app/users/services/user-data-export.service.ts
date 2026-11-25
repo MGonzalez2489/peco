@@ -14,8 +14,8 @@ import {
   UserEntity,
   UserPreferencesEntity,
 } from '../../database/entities';
-import {DEFAULT_USER_DATA_EXPORT_PREFERENCES} from '../constants/default-user-data-export-preferences.constant';
 import {USER_DATA_EXPORT_SCHEMA_VERSION} from '../constants/user-data-export-schema-version.constant';
+import {mergeUserDataExportPreferences} from '../utils/merge-user-data-export-preferences.util';
 import {userNotFoundException} from '../utils/user-not-found.exception';
 import {UserDataExportRepository} from './user-data-export.repository';
 import {UserProfileRepository} from './user-profile.repository';
@@ -163,16 +163,9 @@ export class UserDataExportService {
   }
 
   private mapPreferences(value: UserPreferencesEntity | null): UserDataExport['preferences'] {
-    if (!value) {
-      return {...DEFAULT_USER_DATA_EXPORT_PREFERENCES};
-    }
-
     return {
-      theme: value.theme,
-      pwaBannerDismissedAt: value.pwaBannerDismissedAt,
-      accounts: {hideBalance: value.hideBalance},
-      movements: {hideReversal: value.hideReversal},
-      updatedAt: value.updatedAt,
+      ...mergeUserDataExportPreferences(value),
+      ...(value ? {updatedAt: value.updatedAt} : {}),
     };
   }
 

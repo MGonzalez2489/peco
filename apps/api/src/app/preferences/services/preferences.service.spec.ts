@@ -51,6 +51,22 @@ describe('PreferencesService (US-901)', () => {
     });
   });
 
+  it('ignores unknown stored fields and merges missing ones from defaults', async () => {
+    repository.find.mockResolvedValue({
+      ...stored,
+      hideReversal: undefined,
+      futurePreference: 'not-on-the-wire',
+    } as unknown as UserPreferencesEntity);
+
+    await expect(service.find(USER_PUBLIC_ID)).resolves.toEqual({
+      theme: SYSTEM,
+      pwaBannerDismissedAt: DISMISSED_AT,
+      accounts: {hideBalance: false},
+      movements: {hideReversal: true},
+      updatedAt: stored.updatedAt,
+    });
+  });
+
   it('returns documented defaults with a null timestamp when the row is missing', async () => {
     repository.find.mockResolvedValue(null);
 

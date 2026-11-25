@@ -310,6 +310,28 @@ describe('UserDataExportService (US-209)', () => {
     });
   });
 
+  it('ignores unknown stored preference fields and fills missing ones from defaults', async () => {
+    repository.findPreferences.mockResolvedValue({
+      theme: AppThemeEnum.SYSTEM.toString(),
+      pwaBannerDismissedAt: null,
+      hideBalance: true,
+      hideReversal: undefined,
+      futurePreference: 'not-on-the-wire',
+      updatedAt: '2026-11-19T00:00:00.000Z',
+    } as unknown as UserPreferencesEntity);
+
+    const stream = await service.exportData(USER_PUBLIC_ID);
+    const envelope = JSON.parse(await collect(stream)) as {data: UserDataExport; error: null};
+
+    expect(envelope.data.preferences).toEqual({
+      theme: AppThemeEnum.SYSTEM.toString(),
+      pwaBannerDismissedAt: null,
+      accounts: {hideBalance: true},
+      movements: {hideReversal: true},
+      updatedAt: '2026-11-19T00:00:00.000Z',
+    });
+  });
+
   it('rejects a soft-deleted user before starting the stream', async () => {
     profile.findActiveByPublicId.mockResolvedValue(null);
 

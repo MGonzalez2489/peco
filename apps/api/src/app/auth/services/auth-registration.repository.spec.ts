@@ -1,8 +1,13 @@
 import {HttpStatus} from '@nestjs/common';
-import {AccountTypeEnum} from '@peco/enums';
+import {AccountTypeEnum, AppThemeEnum} from '@peco/enums';
 import {DataSource} from 'typeorm';
 import {ApiException} from '../../common/http/api-exception';
-import {AccountEntity, RefreshTokenEntity, UserEntity} from '../../database/entities';
+import {
+  AccountEntity,
+  RefreshTokenEntity,
+  UserEntity,
+  UserPreferencesEntity,
+} from '../../database/entities';
 import {AuthRegistrationRepository} from './auth-registration.repository';
 
 const INPUT = {
@@ -46,15 +51,16 @@ describe('AuthRegistrationRepository', () => {
     repository = new AuthRegistrationRepository({transaction} as unknown as DataSource);
   });
 
-  it('writes the user, root account and refresh token inside one transaction', async () => {
+  it('writes the user, root account, refresh token and preferences in one transaction', async () => {
     const user = await repository.create(INPUT);
 
     expect(transaction).toHaveBeenCalledTimes(1);
     expect(findOne).toHaveBeenCalledWith({where: {email: 'user@example.com'}});
-    expect(save).toHaveBeenCalledTimes(3);
+    expect(save).toHaveBeenCalledTimes(4);
     expect(save.mock.calls[0][0]).toBeInstanceOf(UserEntity);
     expect(save.mock.calls[1][0]).toBeInstanceOf(AccountEntity);
     expect(save.mock.calls[2][0]).toBeInstanceOf(RefreshTokenEntity);
+    expect(save.mock.calls[3][0]).toBeInstanceOf(UserPreferencesEntity);
 
     expect(save.mock.calls[1][0]).toMatchObject({
       userId: 7,
@@ -71,6 +77,14 @@ describe('AuthRegistrationRepository', () => {
       tokenHash: 'refresh-hash',
       expiresAt: INPUT.refreshExpiresAt,
       revokedAt: null,
+    });
+    expect(save.mock.calls[3][0]).toMatchObject({
+      userId: 7,
+      theme: AppThemeEnum.LIGHT.toString(),
+      pwaBannerDismissedAt: null,
+      hideBalance: false,
+      hideReversal: true,
+      deletedAt: null,
     });
     expect(user.publicId).toBe('user-public-id');
   });

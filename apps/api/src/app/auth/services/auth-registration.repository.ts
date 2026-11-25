@@ -1,15 +1,22 @@
 import {Injectable} from '@nestjs/common';
 import {AccountTypeEnum} from '@peco/enums';
 import {DataSource, IsNull} from 'typeorm';
-import {AccountEntity, RefreshTokenEntity, UserEntity} from '../../database/entities';
+import {
+  AccountEntity,
+  RefreshTokenEntity,
+  UserEntity,
+  UserPreferencesEntity,
+} from '../../database/entities';
+import {DEFAULT_USER_DATA_EXPORT_PREFERENCES} from '../../users/constants/default-user-data-export-preferences.constant';
 import {ROOT_ACCOUNT_NAME} from '../constants/root-account-name.constant';
 import type {RegistrationInput} from '../types/registration-input.type';
 import {duplicateEmailException} from '../utils/duplicate-email.exception';
 import {isDuplicateEmailError} from '../utils/is-duplicate-email-error.util';
 
 /**
- * Owns the single registration transaction: user, root account and refresh token
- * are written together, so a failed account insert leaves no user behind (D35).
+ * Owns the single registration transaction: user, root account, refresh token and
+ * canonical preferences are written together, so a failed insert leaves no user
+ * behind (D35/D132).
  */
 @Injectable()
 export class AuthRegistrationRepository {
@@ -69,6 +76,19 @@ export class AuthRegistrationRepository {
             tokenHash: input.refreshTokenHash,
             expiresAt: input.refreshExpiresAt,
             revokedAt: null,
+          }),
+        );
+
+        // The canonical row is created with the user (US-902). Writing it last
+        // keeps the existing insert order stable and rolls it back with the user.
+        await manager.save(
+          manager.create(UserPreferencesEntity, {
+            userId: user.id,
+            theme: DEFAULT_USER_DATA_EXPORT_PREFERENCES.theme,
+            pwaBannerDismissedAt: DEFAULT_USER_DATA_EXPORT_PREFERENCES.pwaBannerDismissedAt,
+            hideBalance: DEFAULT_USER_DATA_EXPORT_PREFERENCES.accounts.hideBalance,
+            hideReversal: DEFAULT_USER_DATA_EXPORT_PREFERENCES.movements.hideReversal,
+            deletedAt: null,
           }),
         );
 

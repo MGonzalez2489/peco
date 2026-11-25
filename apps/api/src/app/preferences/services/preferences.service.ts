@@ -3,6 +3,7 @@ import type {PreferencesResponse, UpdatePreferencesRequest} from '@peco/contract
 import type {UserEntity, UserPreferencesEntity} from '../../database/entities';
 import {DEFAULT_USER_DATA_EXPORT_PREFERENCES} from '../../users/constants/default-user-data-export-preferences.constant';
 import {UserProfileRepository} from '../../users/services/user-profile.repository';
+import {mergeUserDataExportPreferences} from '../../users/utils/merge-user-data-export-preferences.util';
 import {userNotFoundException} from '../../users/utils/user-not-found.exception';
 import {normalizePreferencesPatch} from '../utils/normalize-preferences-patch.util';
 import {PreferencesRepository} from './preferences.repository';
@@ -80,22 +81,9 @@ export class PreferencesService {
   }
 
   private map(value: UserPreferencesEntity | null): PreferencesResponse {
-    if (!value) {
-      return {
-        theme: DEFAULT_USER_DATA_EXPORT_PREFERENCES.theme,
-        pwaBannerDismissedAt: DEFAULT_USER_DATA_EXPORT_PREFERENCES.pwaBannerDismissedAt,
-        accounts: {...DEFAULT_USER_DATA_EXPORT_PREFERENCES.accounts},
-        movements: {...DEFAULT_USER_DATA_EXPORT_PREFERENCES.movements},
-        updatedAt: null,
-      };
-    }
-
     return {
-      theme: value.theme,
-      pwaBannerDismissedAt: value.pwaBannerDismissedAt,
-      accounts: {hideBalance: value.hideBalance},
-      movements: {hideReversal: value.hideReversal},
-      updatedAt: value.updatedAt,
+      ...mergeUserDataExportPreferences(value),
+      updatedAt: value?.updatedAt ?? null,
     };
   }
 }

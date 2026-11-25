@@ -1,6 +1,6 @@
 import {createHash} from 'node:crypto';
 import {JwtService} from '@nestjs/jwt';
-import {AccountTypeEnum} from '@peco/enums';
+import {AccountTypeEnum, AppThemeEnum} from '@peco/enums';
 import {MySqlContainer, StartedMySqlContainer} from '@testcontainers/mysql';
 import {DataSource, DataSourceOptions} from 'typeorm';
 import {API_ERROR_MESSAGES} from '../common/http/api-error-messages.constant';
@@ -12,6 +12,7 @@ import {
   PasswordResetTokenEntity,
   RefreshTokenEntity,
   UserEntity,
+  UserPreferencesEntity,
 } from '../database/entities';
 import type {MailService} from '../mail/mail-service';
 import type {PasswordResetMail} from '../mail/types/password-reset-mail.type';
@@ -112,11 +113,12 @@ describe('auth flows (MySQL 8, US-201/US-202/US-203/US-204/US-205/US-206)', () =
     activityNow.mockReturnValue(ACTIVITY_DAY_1);
     await dataSource.query('DELETE FROM passwordResetTokens');
     await dataSource.query('DELETE FROM refreshTokens');
+    await dataSource.query('DELETE FROM userPreferences');
     await dataSource.query('DELETE FROM accounts');
     await dataSource.query('DELETE FROM users');
   });
 
-  it('persists the normalized user, root account and hashed refresh token', async () => {
+  it('persists the normalized user, root account, hashed refresh token and canonical preferences', async () => {
     const response = await service.register({
       ...VALID_REGISTRATION,
       email: '  Manuel@Example.COM ',
@@ -149,6 +151,17 @@ describe('auth flows (MySQL 8, US-201/US-202/US-203/US-204/US-205/US-206)', () =
     );
     expect(refreshTokens[0].tokenHash).not.toBe(response.refreshToken);
 
+    const preferences = await dataSource.getRepository(UserPreferencesEntity).find();
+    expect(preferences).toHaveLength(1);
+    expect(preferences[0]).toMatchObject({
+      userId: users[0].id,
+      theme: AppThemeEnum.LIGHT.toString(),
+      pwaBannerDismissedAt: null,
+      hideBalance: false,
+      hideReversal: true,
+      deletedAt: null,
+    });
+
     const payload = new JwtService().verify<{sub: string; id?: number}>(response.accessToken, {
       secret: ACCESS_SECRET,
     });
@@ -173,6 +186,7 @@ describe('auth flows (MySQL 8, US-201/US-202/US-203/US-204/US-205/US-206)', () =
     expect(await dataSource.getRepository(UserEntity).count()).toBe(1);
     expect(await dataSource.getRepository(AccountEntity).count()).toBe(1);
     expect(await dataSource.getRepository(RefreshTokenEntity).count()).toBe(1);
+    expect(await dataSource.getRepository(UserPreferencesEntity).count()).toBe(1);
   });
 
   it('rolls back the user and refresh token when the root account insert fails', async () => {
@@ -189,6 +203,7 @@ describe('auth flows (MySQL 8, US-201/US-202/US-203/US-204/US-205/US-206)', () =
       expect(await dataSource.getRepository(UserEntity).count()).toBe(0);
       expect(await dataSource.getRepository(AccountEntity).count()).toBe(0);
       expect(await dataSource.getRepository(RefreshTokenEntity).count()).toBe(0);
+      expect(await dataSource.getRepository(UserPreferencesEntity).count()).toBe(0);
     } finally {
       await dataSource.query('ALTER TABLE accounts DROP CHECK chk_accounts_no_root');
     }
