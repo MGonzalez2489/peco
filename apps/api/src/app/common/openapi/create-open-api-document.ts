@@ -3,6 +3,8 @@ import {DocumentBuilder, SwaggerModule} from '@nestjs/swagger';
 import {CreateAccountRequestDto} from '../../accounts/dto/create-account-request.dto';
 import {ListMovementsQueryDto} from '../../movements/dto/list-movements-query.dto';
 import {AccountPeriodBalanceResponseDto} from '../../periods/dto/account-period-balance-response.dto';
+import {PreferencesResponseDto} from '../../preferences/dto/preferences-response.dto';
+import {UpdatePreferencesRequestDto} from '../../preferences/dto/update-preferences-request.dto';
 import {ClosePeriodParamsDto} from '../../periods/dto/close-period-params.dto';
 import {PeriodSnapshotResponseDto} from '../../periods/dto/period-snapshot-response.dto';
 import {ApplyDueRequestDto} from '../../scheduled-transactions/dto/apply-due-request.dto';
@@ -40,7 +42,9 @@ export const createOpenApiDocument = (app: INestApplication) => {
       ListMovementsQueryDto,
       ListScheduledTransactionsQueryDto,
       PeriodSnapshotResponseDto,
+      PreferencesResponseDto,
       ToggleScheduledTransactionRequestDto,
+      UpdatePreferencesRequestDto,
       UpdateScheduledTransactionRequestDto,
     ],
   });

@@ -12,6 +12,7 @@ import {PeriodCloseModule} from './jobs/period-close/period-close.module';
 import {ReconciliationModule} from './jobs/reconciliation/reconciliation.module';
 import {MovementsModule} from './movements/movements.module';
 import {PeriodsModule} from './periods/periods.module';
+import {PreferencesModule} from './preferences/preferences.module';
 import {ReportsModule} from './reports/reports.module';
 import {ScheduledTransactionsModule} from './scheduled-transactions/scheduled-transactions.module';
 import {UsersModule} from './users/users.module';
@@ -33,6 +34,7 @@ import {UsersModule} from './users/users.module';
     MovementsModule,
     ScheduledTransactionsModule,
     PeriodsModule,
+    PreferencesModule,
     ReportsModule,
     AutoApplyModule,
     PeriodCloseModule,
