@@ -1,12 +1,14 @@
 import {Logger} from '@nestjs/common';
 import {
   AccountTypeEnum,
+  AccountWriteStatusEnum,
   ApiErrorCodeEnum,
   MovementTypeEnum,
   MovementWriteStatusEnum,
 } from '@peco/enums';
 import {MySqlContainer, type StartedMySqlContainer} from '@testcontainers/mysql';
 import {DataSource, In, IsNull, type DataSourceOptions} from 'typeorm';
+import {AccountDeletionRepository} from '../accounts/services/account-deletion.repository';
 import {CategoryRepository} from '../categories/services/category.repository';
 import {API_ERROR_MESSAGES} from '../common/http/api-error-messages.constant';
 import {ConfigService} from '../config/config.service';
@@ -21,8 +23,11 @@ import {
   UserEntity,
 } from '../database/entities';
 import {MovementCreationRepository} from '../movements/services/movement-creation.repository';
+import {MovementDeleteRepository} from '../movements/services/movement-delete.repository';
+import {MovementRevertRepository} from '../movements/services/movement-revert.repository';
 import {UserProfileRepository} from '../users/services/user-profile.repository';
 import {PERIOD_BACKFILL_TRUNCATED_CODE} from './constants/period-backfill-truncated-code.constant';
+import {SNAPSHOT_CHAIN_MISMATCH_CODE} from './constants/snapshot-chain-mismatch-code.constant';
 import {SNAPSHOT_GAP_REPAIRED_CODE} from './constants/snapshot-gap-repaired-code.constant';
 import {PeriodClosingRepository} from './services/period-closing.repository';
 import {PeriodClosingService} from './services/period-closing.service';
@@ -45,6 +50,8 @@ const createGate = (): {opened: Promise<void>; open: () => void} => {
 const config = (maxBackfillMonths = 120): ConfigService =>
   ({config: {operational: {maxBackfillMonths}}}) as unknown as ConfigService;
 
+const clockAt = (date: string): UtcClock => ({now: () => date}) as UtcClock;
+
 describe('period closing and snapshots (MySQL 8, US-701)', () => {
   let container: StartedMySqlContainer;
   let dataSource: DataSource;
@@ -52,6 +59,8 @@ describe('period closing and snapshots (MySQL 8, US-701)', () => {
   let reads: PeriodReadService;
   let repository: PeriodClosingRepository;
   let creations: MovementCreationRepository;
+  let deletions: MovementDeleteRepository;
+  let reverts: MovementRevertRepository;
   let categoryId: number;
 
   const seedUser = async (email: string, createdAt = REGISTRATION): Promise<UserEntity> => {
@@ -162,6 +171,8 @@ describe('period closing and snapshots (MySQL 8, US-701)', () => {
       clock,
     );
     creations = new MovementCreationRepository(dataSource, clock);
+    deletions = new MovementDeleteRepository(dataSource, clock);
+    reverts = new MovementRevertRepository(dataSource, clock);
   });
 
   afterAll(async () => {
@@ -330,6 +341,9 @@ describe('period closing and snapshots (MySQL 8, US-701)', () => {
       userMessage: API_ERROR_MESSAGES.PERIOD_BEFORE_ACTIVITY,
     });
     await expect(service.close(user.publicId, '2026-11')).rejects.toMatchObject({
+      code: ApiErrorCodeEnum.PERIOD_NOT_CLOSABLE.toString(),
+    });
+    await expect(service.close(user.publicId, '2026-12')).rejects.toMatchObject({
       code: ApiErrorCodeEnum.PERIOD_NOT_CLOSABLE.toString(),
     });
   });
@@ -576,6 +590,280 @@ describe('period closing and snapshots (MySQL 8, US-701)', () => {
     await expect(reads.find(owner.publicId, '2026-09')).rejects.toMatchObject({
       code: ApiErrorCodeEnum.NOT_FOUND.toString(),
       userMessage: API_ERROR_MESSAGES.NOT_FOUND,
+    });
+  });
+
+  describe('lifecycle and edge cases (US-706)', () => {
+    it('closes a month without activity with an unchanged opening and zero counters', async () => {
+      const user = await seedUser('empty@example.com');
+      const cash = await seedAccount(user, {initialBalance: 42_000, currentBalance: 42_000});
+
+      const outcome = await service.close(user.publicId, '2026-09');
+
+      expect(outcome.created).toBe(true);
+      expect(outcome.snapshot).toMatchObject({
+        globalInitialBalance: 42_000,
+        globalFinalBalance: 42_000,
+        totalInflows: 0,
+        totalOutflows: 0,
+        totalTransfers: 0,
+        totalTransactionsCount: 0,
+      });
+      expect(outcome.snapshot.accountBalances).toHaveLength(1);
+      expect(outcome.snapshot.accountBalances[0]).toMatchObject({
+        accountPublicId: cash.publicId,
+        initialBalance: 42_000,
+        finalBalance: 42_000,
+        totalTransactions: 0,
+      });
+    });
+
+    it('includes an account created in the month and excludes accounts outside it', async () => {
+      const user = await seedUser('lifecycle@example.com');
+      const created = await seedAccount(user, {
+        name: 'Creada en septiembre',
+        initialBalance: 25_000,
+        currentBalance: 999_999,
+      });
+      const future = await seedAccount(user, {
+        name: 'Creada en octubre',
+        initialBalance: 90_000,
+      });
+      const deleted = await seedAccount(user, {
+        name: 'Borrada antes',
+        initialBalance: 70_000,
+      });
+      const accounts = dataSource.getRepository(AccountEntity);
+      await accounts.update({id: created.id}, {createdAt: '2026-09-10T10:00:00.000Z'});
+      await accounts.update({id: future.id}, {createdAt: '2026-10-02T10:00:00.000Z'});
+      await accounts.update(
+        {id: deleted.id},
+        {createdAt: '2026-07-01T10:00:00.000Z', deletedAt: '2026-08-20T10:00:00.000Z'},
+      );
+      await seedMovement(user, created, {
+        type: MovementTypeEnum.EXPENSE.toString(),
+        amount: 5_000,
+        date: '2026-09-15T10:00:00.000Z',
+      });
+
+      const outcome = await service.close(user.publicId, '2026-09');
+
+      expect(outcome.snapshot.accountBalances).toHaveLength(1);
+      expect(outcome.snapshot.accountBalances[0]).toMatchObject({
+        accountPublicId: created.publicId,
+        initialBalance: 25_000,
+        finalBalance: 20_000,
+        totalTransactions: 1,
+      });
+      expect(outcome.snapshot.globalInitialBalance).toBe(25_000);
+      expect(outcome.snapshot.globalFinalBalance).toBe(20_000);
+    });
+
+    it('keeps a same-month deleted account row with its balancing transfer', async () => {
+      const user = await seedUser('delete-in-month@example.com');
+      const destination = await seedAccount(user, {name: 'Destino', initialBalance: 0});
+      const source = await seedAccount(user, {
+        name: 'Creada y borrada en septiembre',
+        initialBalance: 30_000,
+        currentBalance: 30_000,
+      });
+      await dataSource
+        .getRepository(AccountEntity)
+        .update({id: source.id}, {createdAt: '2026-09-10T10:00:00.000Z'});
+
+      const deletion = await new AccountDeletionRepository(
+        dataSource,
+        clockAt('2026-09-20T10:00:00.000Z'),
+      ).deleteWithTransfer(user.id, source.publicId, destination.publicId);
+      expect(deletion.status).toBe(AccountWriteStatusEnum.DELETED.toString());
+      const transfer = await dataSource.getRepository(MovementEntity).findOneOrFail({
+        where: {userId: user.id, type: MovementTypeEnum.TRANSFER.toString()},
+      });
+      expect(transfer.date).toMatch(/^2026-09-/);
+
+      const outcome = await service.close(user.publicId, '2026-09');
+
+      expect(outcome.snapshot.accountBalances).toHaveLength(2);
+      expect(
+        outcome.snapshot.accountBalances.find(
+          (row) => row.accountPublicId === source.publicId,
+        ),
+      ).toMatchObject({
+        initialBalance: 30_000,
+        finalBalance: 0,
+        totalTransactions: 1,
+        totalTransfers: -30_000,
+      });
+      expect(
+        outcome.snapshot.accountBalances.find(
+          (row) => row.accountPublicId === destination.publicId,
+        ),
+      ).toMatchObject({
+        initialBalance: 0,
+        finalBalance: 30_000,
+        totalTransactions: 1,
+        totalTransfers: 30_000,
+      });
+      expect(outcome.snapshot.totalTransactionsCount).toBe(1);
+      expect(outcome.snapshot.totalTransfers).toBe(0);
+    });
+
+    it('excludes a movement soft-deleted before closing', async () => {
+      const user = await seedUser('soft-delete@example.com');
+      const cash = await seedAccount(user, {initialBalance: 10_000, currentBalance: 100_000});
+      const removed = await seedMovement(user, cash, {
+        amount: 40_000,
+        date: '2026-09-05T10:00:00.000Z',
+      });
+      await seedMovement(user, cash, {
+        amount: 5_000,
+        date: '2026-09-12T10:00:00.000Z',
+      });
+
+      const status = await deletions.delete(user.id, removed.publicId);
+      expect(status.status).toBe(MovementWriteStatusEnum.DELETED.toString());
+      const deleted = await dataSource.getRepository(MovementEntity).findOneByOrFail({
+        id: removed.id,
+      });
+      expect(deleted.deletedAt).not.toBeNull();
+
+      const outcome = await service.close(user.publicId, '2026-09');
+
+      expect(outcome.snapshot.totalTransactionsCount).toBe(1);
+      expect(outcome.snapshot.totalInflows).toBe(5_000);
+      expect(outcome.snapshot.globalFinalBalance).toBe(15_000);
+      expect(outcome.snapshot.accountBalances[0]).toMatchObject({
+        initialBalance: 10_000,
+        finalBalance: 15_000,
+        totalTransactions: 1,
+        totalInflows: 5_000,
+      });
+    });
+
+    it('blocks a soft delete after the month is closed', async () => {
+      const user = await seedUser('delete-closed@example.com');
+      const cash = await seedAccount(user, {initialBalance: 10_000, currentBalance: 100_000});
+      const movement = await seedMovement(user, cash, {
+        date: '2026-09-15T10:00:00.000Z',
+      });
+      await service.close(user.publicId, '2026-09');
+
+      const status = await deletions.delete(user.id, movement.publicId);
+
+      expect(status.status).toBe(MovementWriteStatusEnum.PERIOD_CLOSED.toString());
+      const stored = await dataSource.getRepository(MovementEntity).findOneByOrFail({
+        id: movement.id,
+      });
+      expect(stored.deletedAt).toBeNull();
+    });
+
+    it('counts both rows of an in-month reversal with a net-zero impact', async () => {
+      const user = await seedUser('reversal-in-month@example.com');
+      const cash = await seedAccount(user, {initialBalance: 10_000, currentBalance: 100_000});
+      const original = await seedMovement(user, cash, {
+        amount: 50_000,
+        date: '2026-09-10T10:00:00.000Z',
+      });
+
+      const status = await new MovementRevertRepository(
+        dataSource,
+        clockAt('2026-09-25T10:00:00.000Z'),
+      ).revert(user.id, original.publicId);
+      expect(status.status).toBe(MovementWriteStatusEnum.REVERTED.toString());
+      const contra = await dataSource.getRepository(MovementEntity).findOneOrFail({
+        where: {userId: user.id, isReversal: true},
+      });
+      expect(contra.date).toMatch(/^2026-09-/);
+
+      const outcome = await service.close(user.publicId, '2026-09');
+
+      expect(outcome.snapshot.totalTransactionsCount).toBe(2);
+      expect(outcome.snapshot.totalInflows).toBe(50_000);
+      expect(outcome.snapshot.totalOutflows).toBe(50_000);
+      expect(outcome.snapshot.globalInitialBalance).toBe(10_000);
+      expect(outcome.snapshot.globalFinalBalance).toBe(10_000);
+      expect(outcome.snapshot.accountBalances[0]).toMatchObject({
+        finalBalance: 10_000,
+        totalTransactions: 2,
+        totalInflows: 50_000,
+        totalOutflows: 50_000,
+      });
+    });
+
+    it('blocks reversing a closed month and leaves the original untouched', async () => {
+      const user = await seedUser('reversal-closed@example.com');
+      const cash = await seedAccount(user, {initialBalance: 10_000, currentBalance: 100_000});
+      const original = await seedMovement(user, cash, {
+        date: '2026-09-15T10:00:00.000Z',
+      });
+      await service.close(user.publicId, '2026-09');
+
+      const status = await reverts.revert(user.id, original.publicId);
+
+      expect(status.status).toBe(MovementWriteStatusEnum.PERIOD_CLOSED.toString());
+      const stored = await dataSource.getRepository(MovementEntity).findOneByOrFail({
+        id: original.id,
+      });
+      expect(stored.isReversed).toBe(false);
+      expect(await dataSource.getRepository(MovementEntity).countBy({userId: user.id})).toBe(1);
+    });
+
+    it('falls back to the ledger when the previous snapshot lacks an account row', async () => {
+      const user = await seedUser('missing-row@example.com');
+      const cash = await seedAccount(user, {initialBalance: 10_000, currentBalance: 10_000});
+      const savings = await seedAccount(user, {
+        name: 'Ahorro',
+        initialBalance: 20_000,
+        currentBalance: 20_000,
+      });
+      await seedMovement(user, savings, {
+        amount: 5_000,
+        date: '2026-09-20T10:00:00.000Z',
+      });
+      await service.close(user.publicId, '2026-09');
+
+      const september = await dataSource.getRepository(PeriodSnapshotEntity).findOneOrFail({
+        where: {userId: user.id, period: '2026-09'},
+      });
+      await dataSource.getRepository(AccountPeriodBalanceEntity).delete({
+        snapshotId: september.id,
+        accountId: savings.id,
+      });
+      const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+
+      const october = await service.close(user.publicId, '2026-10');
+
+      expect(october.snapshot.accountBalances).toHaveLength(2);
+      expect(
+        october.snapshot.accountBalances.find(
+          (row) => row.accountPublicId === savings.publicId,
+        ),
+      ).toMatchObject({initialBalance: 25_000, finalBalance: 25_000});
+      expect(
+        october.snapshot.accountBalances.find((row) => row.accountPublicId === cash.publicId),
+      ).toMatchObject({initialBalance: 10_000});
+      expect(warn).not.toHaveBeenCalledWith(
+        expect.objectContaining({code: SNAPSHOT_CHAIN_MISMATCH_CODE, period: '2026-10'}),
+      );
+    });
+
+    it('serializes concurrent closes into one insert and one replay', async () => {
+      const user = await seedUser('concurrent-close@example.com');
+      await seedAccount(user, {initialBalance: 10_000});
+      const gate = createGate();
+
+      const first = gate.opened.then(() => service.close(user.publicId, '2026-09'));
+      const second = gate.opened.then(() => service.close(user.publicId, '2026-09'));
+      gate.open();
+      const outcomes = await Promise.all([first, second]);
+
+      expect(outcomes.filter(({created}) => created)).toHaveLength(1);
+      expect(outcomes.filter(({created}) => !created)).toHaveLength(1);
+      expect(outcomes[0].snapshot).toEqual(outcomes[1].snapshot);
+      expect(
+        await dataSource.getRepository(PeriodSnapshotEntity).countBy({userId: user.id}),
+      ).toBe(1);
+      expect(await dataSource.getRepository(AccountPeriodBalanceEntity).count()).toBe(1);
     });
   });
 });

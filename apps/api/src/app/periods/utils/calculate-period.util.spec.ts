@@ -66,6 +66,24 @@ describe('calculatePeriod (11.3/D63)', () => {
     expect(result.globalFinalBalance).toBe(100_000);
   });
 
+  it('nets an in-month reversal pair to zero while counting both rows', () => {
+    const accounts = [account(1, 100_000)];
+    const current = [
+      movement(1, MovementTypeEnum.INCOME.toString(), 50_000, 1),
+      movement(2, MovementTypeEnum.EXPENSE.toString(), 50_000, 1),
+    ];
+
+    const result = calculatePeriod(accounts, [], current);
+
+    expect(result.totalTransactionsCount).toBe(2);
+    expect(result.totalInflows).toBe(50_000);
+    expect(result.totalOutflows).toBe(50_000);
+    expect(result.globalInitialBalance).toBe(100_000);
+    expect(result.globalFinalBalance).toBe(100_000);
+    expect(result.accountBalances[0].totalTransactions).toBe(2);
+    expect(result.accountBalances[0].finalBalance).toBe(100_000);
+  });
+
   it('excludes canceled movements from balances, counters and reports', () => {
     const accounts = [account(1, 100_000)];
     const current = [
