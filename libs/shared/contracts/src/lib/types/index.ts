@@ -20,6 +20,8 @@ export * from './dashboard-report-comparison.type';
 export * from './dashboard-report-response.type';
 export * from './dashboard-report-totals.type';
 export * from './category-apply-type.type';
+export * from './category-distribution-item.type';
+export * from './category-distribution-response.type';
 export * from './cancel-scheduled-occurrence-request.type';
 export * from './cancel-scheduled-occurrence-response.type';
 export * from './category-response.type';

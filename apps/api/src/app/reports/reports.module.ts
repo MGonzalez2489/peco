@@ -8,10 +8,12 @@ import {UsersModule} from '../users/users.module';
 import {ReportsController} from './reports.controller';
 import {AccountProgressionRepository} from './services/account-progression.repository';
 import {AccountProgressionService} from './services/account-progression.service';
+import {CategoryDistributionRepository} from './services/category-distribution.repository';
+import {CategoryDistributionService} from './services/category-distribution.service';
 import {MovementProgressionRepository} from './services/movement-progression.repository';
 import {MovementProgressionService} from './services/movement-progression.service';
 
-/** Owner-scoped read-only reports built on frozen snapshots or the live ledger (US-801/US-802/US-803). */
+/** Owner-scoped read-only reports built on frozen snapshots or the live ledger (US-801–US-804). */
 @Module({
   imports: [AuthModule, DatabaseModule, PeriodsModule, UsersModule],
   controllers: [ReportsController],
@@ -20,6 +22,8 @@ import {MovementProgressionService} from './services/movement-progression.servic
     AccountProgressionService,
     MovementProgressionRepository,
     MovementProgressionService,
+    CategoryDistributionRepository,
+    CategoryDistributionService,
     AccountRepository,
     UtcClock,
   ],

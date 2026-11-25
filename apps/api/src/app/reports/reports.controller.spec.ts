@@ -15,6 +15,7 @@ import {accountNotFoundException} from '../accounts/utils/account-not-found.exce
 import {periodReadException} from '../periods/utils/period-read.exception';
 import {PeriodReportService} from '../periods/services/period-report.service';
 import {AccountProgressionService} from './services/account-progression.service';
+import {CategoryDistributionService} from './services/category-distribution.service';
 import {MovementProgressionService} from './services/movement-progression.service';
 import {ReportsController} from './reports.controller';
 
@@ -62,11 +63,28 @@ const MOVEMENT_PROGRESSION = {
   totals: {totalIncome: 300_000, totalExpenses: 145_000, netBalance: 155_000},
 };
 
-describe('ReportsController (US-801/US-802/US-803)', () => {
+const CATEGORY_DISTRIBUTION = {
+  period: '2026-11',
+  type: 'EXPENSE',
+  total: 145_000,
+  items: [
+    {
+      categoryPublicId: 'food-id',
+      displayName: 'Comida',
+      color: '#F97316',
+      icon: 'utensils',
+      amount: 90_000,
+      percentage: 62,
+    },
+  ],
+};
+
+describe('ReportsController (US-801–US-804)', () => {
   let app: INestApplication;
   let find: jest.Mock;
   let findProgression: jest.Mock;
   let findMovementProgression: jest.Mock;
+  let findCategoryDistribution: jest.Mock;
 
   const authGuard: CanActivate = {
     canActivate: (context: ExecutionContext): boolean => {
@@ -82,6 +100,7 @@ describe('ReportsController (US-801/US-802/US-803)', () => {
     find = jest.fn().mockResolvedValue(REPORT);
     findProgression = jest.fn().mockResolvedValue(PROGRESSION);
     findMovementProgression = jest.fn().mockResolvedValue(MOVEMENT_PROGRESSION);
+    findCategoryDistribution = jest.fn().mockResolvedValue(CATEGORY_DISTRIBUTION);
 
     const moduleRef = await Test.createTestingModule({
       controllers: [ReportsController],
@@ -89,6 +108,7 @@ describe('ReportsController (US-801/US-802/US-803)', () => {
         {provide: PeriodReportService, useValue: {find}},
         {provide: AccountProgressionService, useValue: {find: findProgression}},
         {provide: MovementProgressionService, useValue: {find: findMovementProgression}},
+        {provide: CategoryDistributionService, useValue: {find: findCategoryDistribution}},
       ],
     })
       .overrideGuard(AuthRateLimitGuard)
@@ -246,6 +266,50 @@ describe('ReportsController (US-801/US-802/US-803)', () => {
     });
   });
 
+  it('returns a category distribution in the §8.13 shape and standard envelope', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/reports/categories/distribution?period=2026-11&type=EXPENSE')
+      .expect(200);
+
+    expect(response.body).toEqual({data: CATEGORY_DISTRIBUTION, error: null});
+    expect(findCategoryDistribution).toHaveBeenCalledWith(
+      'user-public-id',
+      '2026-11',
+      'EXPENSE',
+    );
+  });
+
+  it.each([
+    'period=2026-13&type=EXPENSE',
+    'period=2026-11&type=TRANSFER',
+    'period=2026-11',
+    'type=INCOME',
+  ])('rejects the invalid category query %s with 400 VALIDATION_ERROR', async (query) => {
+    const response = await request(app.getHttpServer())
+      .get(`/reports/categories/distribution?${query}`)
+      .expect(400);
+
+    expect(response.body.error).toMatchObject({
+      code: 'VALIDATION_ERROR',
+      message: API_ERROR_MESSAGES.VALIDATION_ERROR,
+      details: {fields: expect.any(Object)},
+    });
+    expect(findCategoryDistribution).not.toHaveBeenCalled();
+  });
+
+  it('renders a missing user for the category distribution as 404', async () => {
+    findCategoryDistribution.mockRejectedValue(periodReadException());
+
+    const response = await request(app.getHttpServer())
+      .get('/reports/categories/distribution?period=2026-11&type=INCOME')
+      .expect(404);
+
+    expect(response.body.error).toMatchObject({
+      code: 'NOT_FOUND',
+      message: API_ERROR_MESSAGES.NOT_FOUND,
+    });
+  });
+
   it('documents all report routes and their schemas in OpenAPI', () => {
     const document = createOpenApiDocument(app);
 
@@ -254,6 +318,7 @@ describe('ReportsController (US-801/US-802/US-803)', () => {
       '/reports/accounts/{publicId}/progression',
     );
     expect(Object.keys(document.paths ?? {})).toContain('/reports/movements/progression');
+    expect(Object.keys(document.paths ?? {})).toContain('/reports/categories/distribution');
     expect(document.components?.schemas?.DashboardReportResponseDto).toMatchObject({
       properties: {
         status: {enum: ['CLOSED', 'CURRENT', 'FUTURE']},
@@ -279,6 +344,21 @@ describe('ReportsController (US-801/US-802/US-803)', () => {
     });
     expect(document.paths?.['/reports/movements/progression']?.get?.parameters).toEqual(
       expect.arrayContaining([expect.objectContaining({name: 'excludeReversals', required: false})]),
+    );
+    expect(document.components?.schemas?.CategoryDistributionResponseDto).toMatchObject({
+      properties: {
+        type: {enum: ['INCOME', 'EXPENSE']},
+        items: {
+          items: {$ref: '#/components/schemas/CategoryDistributionItemDto'},
+          type: 'array',
+        },
+      },
+    });
+    expect(document.paths?.['/reports/categories/distribution']?.get?.parameters).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({name: 'period', required: true}),
+        expect.objectContaining({name: 'type', required: true}),
+      ]),
     );
   });
 });

@@ -17,14 +17,17 @@ import {RateLimited} from '../common/security/decorators/rate-limited.decorator'
 import {PeriodReportService} from '../periods/services/period-report.service';
 import {AccountProgressionQueryDto} from './dto/account-progression-query.dto';
 import {AccountProgressionResponseDto} from './dto/account-progression-response.dto';
+import {CategoryDistributionQueryDto} from './dto/category-distribution-query.dto';
+import {CategoryDistributionResponseDto} from './dto/category-distribution-response.dto';
 import {DashboardReportQueryDto} from './dto/dashboard-report-query.dto';
 import {DashboardReportResponseDto} from './dto/dashboard-report-response.dto';
 import {MovementProgressionQueryDto} from './dto/movement-progression-query.dto';
 import {MovementProgressionResponseDto} from './dto/movement-progression-response.dto';
 import {AccountProgressionService} from './services/account-progression.service';
+import {CategoryDistributionService} from './services/category-distribution.service';
 import {MovementProgressionService} from './services/movement-progression.service';
 
-/** Read-only account, movement and dashboard reports from frozen snapshots or the ledger (US-801/US-802/US-803). */
+/** Read-only dashboard, progression and distribution reports from snapshots or the ledger (US-801–US-804). */
 @ApiTags('reports')
 @Controller('reports')
 @UseGuards(AuthRateLimitGuard)
@@ -33,6 +36,7 @@ export class ReportsController {
     private readonly reports: PeriodReportService,
     private readonly accountProgressionService: AccountProgressionService,
     private readonly movementProgressionService: MovementProgressionService,
+    private readonly categoryDistributionService: CategoryDistributionService,
   ) {}
 
   @Get('dashboard')
@@ -113,6 +117,31 @@ export class ReportsController {
         query.period,
         query.excludeReversals ?? false,
       ),
+    );
+  }
+
+  @Get('categories/distribution')
+  @RateLimited()
+  // The shared guard evaluates every named throttler; only the read policy applies (13.1).
+  @SkipThrottle({ip: true, identity: true, user: true})
+  @Throttle({
+    read: {limit: RATE_LIMITS.read.user.limit, ttl: RATE_LIMITS.read.user.ttl},
+  })
+  @ApiOperation({summary: 'Obtener la distribución por categoría en un mes UTC'})
+  @ApiOkResponse({
+    type: CategoryDistributionResponseDto,
+    description: 'Distribución en el envelope estándar {data, error}.',
+  })
+  @ApiBadRequestResponse({description: 'El período o el tipo de movimiento no son válidos.'})
+  @ApiNotFoundResponse({description: 'El usuario ya no está activo.'})
+  @ApiUnauthorizedResponse({description: 'Falta un token de acceso válido.'})
+  @ApiTooManyRequestsResponse({description: 'Límite de lecturas excedido.'})
+  async categoryDistribution(
+    @CurrentUser() publicId: string,
+    @Query() query: CategoryDistributionQueryDto,
+  ): Promise<CategoryDistributionResponseDto> {
+    return new CategoryDistributionResponseDto(
+      await this.categoryDistributionService.find(publicId, query.period, query.type),
     );
   }
 }
