@@ -60,6 +60,7 @@ export * from './register-request.type';
 export * from './reset-password-request.type';
 export * from './scheduled-account-summary.type';
 export * from './scheduled-category-summary.type';
+export * from './scheduled-commitments-response.type';
 export * from './scheduled-execution-status.type';
 export * from './scheduled-occurrence-response.type';
 export * from './scheduled-transaction-list-meta.type';

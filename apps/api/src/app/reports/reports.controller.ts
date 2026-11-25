@@ -23,11 +23,14 @@ import {DashboardReportQueryDto} from './dto/dashboard-report-query.dto';
 import {DashboardReportResponseDto} from './dto/dashboard-report-response.dto';
 import {MovementProgressionQueryDto} from './dto/movement-progression-query.dto';
 import {MovementProgressionResponseDto} from './dto/movement-progression-response.dto';
+import {ScheduledCommitmentsQueryDto} from './dto/scheduled-commitments-query.dto';
+import {ScheduledCommitmentsResponseDto} from './dto/scheduled-commitments-response.dto';
 import {AccountProgressionService} from './services/account-progression.service';
 import {CategoryDistributionService} from './services/category-distribution.service';
 import {MovementProgressionService} from './services/movement-progression.service';
+import {ScheduledCommitmentsService} from './services/scheduled-commitments.service';
 
-/** Read-only dashboard, progression and distribution reports from snapshots or the ledger (US-801–US-804). */
+/** Read-only dashboard, progression, distribution and commitment reports (US-801–US-805). */
 @ApiTags('reports')
 @Controller('reports')
 @UseGuards(AuthRateLimitGuard)
@@ -37,6 +40,7 @@ export class ReportsController {
     private readonly accountProgressionService: AccountProgressionService,
     private readonly movementProgressionService: MovementProgressionService,
     private readonly categoryDistributionService: CategoryDistributionService,
+    private readonly scheduledCommitmentsService: ScheduledCommitmentsService,
   ) {}
 
   @Get('dashboard')
@@ -142,6 +146,31 @@ export class ReportsController {
   ): Promise<CategoryDistributionResponseDto> {
     return new CategoryDistributionResponseDto(
       await this.categoryDistributionService.find(publicId, query.period, query.type),
+    );
+  }
+
+  @Get('scheduled/commitments')
+  @RateLimited()
+  // The shared guard evaluates every named throttler; only the read policy applies (13.1).
+  @SkipThrottle({ip: true, identity: true, user: true})
+  @Throttle({
+    read: {limit: RATE_LIMITS.read.user.limit, ttl: RATE_LIMITS.read.user.ttl},
+  })
+  @ApiOperation({summary: 'Obtener los compromisos programados de un mes UTC'})
+  @ApiOkResponse({
+    type: ScheduledCommitmentsResponseDto,
+    description: 'Compromisos en el envelope estándar {data, error}.',
+  })
+  @ApiBadRequestResponse({description: 'El período no tiene el formato YYYY-MM.'})
+  @ApiNotFoundResponse({description: 'El usuario ya no está activo.'})
+  @ApiUnauthorizedResponse({description: 'Falta un token de acceso válido.'})
+  @ApiTooManyRequestsResponse({description: 'Límite de lecturas excedido.'})
+  async scheduledCommitments(
+    @CurrentUser() publicId: string,
+    @Query() query: ScheduledCommitmentsQueryDto,
+  ): Promise<ScheduledCommitmentsResponseDto> {
+    return new ScheduledCommitmentsResponseDto(
+      await this.scheduledCommitmentsService.find(publicId, query.period),
     );
   }
 }

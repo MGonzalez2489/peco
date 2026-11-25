@@ -17,6 +17,7 @@ import {PeriodReportService} from '../periods/services/period-report.service';
 import {AccountProgressionService} from './services/account-progression.service';
 import {CategoryDistributionService} from './services/category-distribution.service';
 import {MovementProgressionService} from './services/movement-progression.service';
+import {ScheduledCommitmentsService} from './services/scheduled-commitments.service';
 import {ReportsController} from './reports.controller';
 
 const SILENT_LOGGER: LoggerService = {
@@ -79,12 +80,24 @@ const CATEGORY_DISTRIBUTION = {
   ],
 };
 
-describe('ReportsController (US-801–US-804)', () => {
+const SCHEDULED_COMMITMENTS = {
+  period: '2026-11',
+  monthlyIncome: 500_000,
+  monthlyExpenses: 320_000,
+  netProjectedImpact: 180_000,
+  projectedAvailableBalance: 580_000,
+  incomeCommitmentPercentage: 64,
+  expenseDistribution: [],
+  incomeDistribution: [],
+};
+
+describe('ReportsController (US-801–US-805)', () => {
   let app: INestApplication;
   let find: jest.Mock;
   let findProgression: jest.Mock;
   let findMovementProgression: jest.Mock;
   let findCategoryDistribution: jest.Mock;
+  let findScheduledCommitments: jest.Mock;
 
   const authGuard: CanActivate = {
     canActivate: (context: ExecutionContext): boolean => {
@@ -101,6 +114,7 @@ describe('ReportsController (US-801–US-804)', () => {
     findProgression = jest.fn().mockResolvedValue(PROGRESSION);
     findMovementProgression = jest.fn().mockResolvedValue(MOVEMENT_PROGRESSION);
     findCategoryDistribution = jest.fn().mockResolvedValue(CATEGORY_DISTRIBUTION);
+    findScheduledCommitments = jest.fn().mockResolvedValue(SCHEDULED_COMMITMENTS);
 
     const moduleRef = await Test.createTestingModule({
       controllers: [ReportsController],
@@ -109,6 +123,7 @@ describe('ReportsController (US-801–US-804)', () => {
         {provide: AccountProgressionService, useValue: {find: findProgression}},
         {provide: MovementProgressionService, useValue: {find: findMovementProgression}},
         {provide: CategoryDistributionService, useValue: {find: findCategoryDistribution}},
+        {provide: ScheduledCommitmentsService, useValue: {find: findScheduledCommitments}},
       ],
     })
       .overrideGuard(AuthRateLimitGuard)
@@ -310,6 +325,44 @@ describe('ReportsController (US-801–US-804)', () => {
     });
   });
 
+  it('returns scheduled commitments in the §8.13 shape and standard envelope', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/reports/scheduled/commitments?period=2026-11')
+      .expect(200);
+
+    expect(response.body).toEqual({data: SCHEDULED_COMMITMENTS, error: null});
+    expect(findScheduledCommitments).toHaveBeenCalledWith('user-public-id', '2026-11');
+  });
+
+  it.each(['period=2026-13', 'period=2026-1', ''])(
+    'rejects the invalid commitment query %s with 400 VALIDATION_ERROR',
+    async (query) => {
+      const response = await request(app.getHttpServer())
+        .get(`/reports/scheduled/commitments${query ? `?${query}` : ''}`)
+        .expect(400);
+
+      expect(response.body.error).toMatchObject({
+        code: 'VALIDATION_ERROR',
+        message: API_ERROR_MESSAGES.VALIDATION_ERROR,
+        details: {fields: {period: expect.any(String)}},
+      });
+      expect(findScheduledCommitments).not.toHaveBeenCalled();
+    },
+  );
+
+  it('renders a missing user for the scheduled commitments as 404', async () => {
+    findScheduledCommitments.mockRejectedValue(periodReadException());
+
+    const response = await request(app.getHttpServer())
+      .get('/reports/scheduled/commitments?period=2026-11')
+      .expect(404);
+
+    expect(response.body.error).toMatchObject({
+      code: 'NOT_FOUND',
+      message: API_ERROR_MESSAGES.NOT_FOUND,
+    });
+  });
+
   it('documents all report routes and their schemas in OpenAPI', () => {
     const document = createOpenApiDocument(app);
 
@@ -319,6 +372,7 @@ describe('ReportsController (US-801–US-804)', () => {
     );
     expect(Object.keys(document.paths ?? {})).toContain('/reports/movements/progression');
     expect(Object.keys(document.paths ?? {})).toContain('/reports/categories/distribution');
+    expect(Object.keys(document.paths ?? {})).toContain('/reports/scheduled/commitments');
     expect(document.components?.schemas?.DashboardReportResponseDto).toMatchObject({
       properties: {
         status: {enum: ['CLOSED', 'CURRENT', 'FUTURE']},
@@ -359,6 +413,22 @@ describe('ReportsController (US-801–US-804)', () => {
         expect.objectContaining({name: 'period', required: true}),
         expect.objectContaining({name: 'type', required: true}),
       ]),
+    );
+    expect(document.components?.schemas?.ScheduledCommitmentsResponseDto).toMatchObject({
+      properties: {
+        period: {example: '2026-11'},
+        expenseDistribution: {
+          items: {$ref: '#/components/schemas/CategoryDistributionItemDto'},
+          type: 'array',
+        },
+        incomeDistribution: {
+          items: {$ref: '#/components/schemas/CategoryDistributionItemDto'},
+          type: 'array',
+        },
+      },
+    });
+    expect(document.paths?.['/reports/scheduled/commitments']?.get?.parameters).toEqual(
+      expect.arrayContaining([expect.objectContaining({name: 'period', required: true})]),
     );
   });
 });

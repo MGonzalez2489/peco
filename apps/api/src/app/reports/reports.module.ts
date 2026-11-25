@@ -12,8 +12,10 @@ import {CategoryDistributionRepository} from './services/category-distribution.r
 import {CategoryDistributionService} from './services/category-distribution.service';
 import {MovementProgressionRepository} from './services/movement-progression.repository';
 import {MovementProgressionService} from './services/movement-progression.service';
+import {ScheduledCommitmentsRepository} from './services/scheduled-commitments.repository';
+import {ScheduledCommitmentsService} from './services/scheduled-commitments.service';
 
-/** Owner-scoped read-only reports built on frozen snapshots or the live ledger (US-801–US-804). */
+/** Owner-scoped read-only reports built on snapshots, the ledger and schedule grids (US-801–US-805). */
 @Module({
   imports: [AuthModule, DatabaseModule, PeriodsModule, UsersModule],
   controllers: [ReportsController],
@@ -24,6 +26,8 @@ import {MovementProgressionService} from './services/movement-progression.servic
     MovementProgressionService,
     CategoryDistributionRepository,
     CategoryDistributionService,
+    ScheduledCommitmentsRepository,
+    ScheduledCommitmentsService,
     AccountRepository,
     UtcClock,
   ],
