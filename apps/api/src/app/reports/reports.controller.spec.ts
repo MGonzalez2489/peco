@@ -15,6 +15,7 @@ import {accountNotFoundException} from '../accounts/utils/account-not-found.exce
 import {periodReadException} from '../periods/utils/period-read.exception';
 import {PeriodReportService} from '../periods/services/period-report.service';
 import {AccountProgressionService} from './services/account-progression.service';
+import {MovementProgressionService} from './services/movement-progression.service';
 import {ReportsController} from './reports.controller';
 
 const SILENT_LOGGER: LoggerService = {
@@ -52,10 +53,20 @@ const PROGRESSION = {
   ],
 };
 
-describe('ReportsController (US-801/US-802)', () => {
+const MOVEMENT_PROGRESSION = {
+  period: '2026-11',
+  points: [
+    {date: '2026-11-01', net: 0},
+    {date: '2026-11-12', net: 155_000},
+  ],
+  totals: {totalIncome: 300_000, totalExpenses: 145_000, netBalance: 155_000},
+};
+
+describe('ReportsController (US-801/US-802/US-803)', () => {
   let app: INestApplication;
   let find: jest.Mock;
   let findProgression: jest.Mock;
+  let findMovementProgression: jest.Mock;
 
   const authGuard: CanActivate = {
     canActivate: (context: ExecutionContext): boolean => {
@@ -70,12 +81,14 @@ describe('ReportsController (US-801/US-802)', () => {
   beforeEach(async () => {
     find = jest.fn().mockResolvedValue(REPORT);
     findProgression = jest.fn().mockResolvedValue(PROGRESSION);
+    findMovementProgression = jest.fn().mockResolvedValue(MOVEMENT_PROGRESSION);
 
     const moduleRef = await Test.createTestingModule({
       controllers: [ReportsController],
       providers: [
         {provide: PeriodReportService, useValue: {find}},
         {provide: AccountProgressionService, useValue: {find: findProgression}},
+        {provide: MovementProgressionService, useValue: {find: findMovementProgression}},
       ],
     })
       .overrideGuard(AuthRateLimitGuard)
@@ -179,13 +192,68 @@ describe('ReportsController (US-801/US-802)', () => {
     });
   });
 
-  it('documents both report routes and their schemas in OpenAPI', () => {
+  it('returns a movement progression in the §8.13 shape and standard envelope', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/reports/movements/progression?period=2026-11')
+      .expect(200);
+
+    expect(response.body).toEqual({data: MOVEMENT_PROGRESSION, error: null});
+    expect(findMovementProgression).toHaveBeenCalledWith(
+      'user-public-id',
+      '2026-11',
+      false,
+    );
+  });
+
+  it('forwards the excludeReversals query parameter to the service', async () => {
+    await request(app.getHttpServer())
+      .get('/reports/movements/progression?period=2026-11&excludeReversals=true')
+      .expect(200);
+
+    expect(findMovementProgression).toHaveBeenCalledWith(
+      'user-public-id',
+      '2026-11',
+      true,
+    );
+  });
+
+  it.each([
+    'period=2026-13',
+    'period=2026-11&excludeReversals=maybe',
+  ])('rejects the invalid movement query %s with 400 VALIDATION_ERROR', async (query) => {
+    const response = await request(app.getHttpServer())
+      .get(`/reports/movements/progression?${query}`)
+      .expect(400);
+
+    expect(response.body.error).toMatchObject({
+      code: 'VALIDATION_ERROR',
+      message: API_ERROR_MESSAGES.VALIDATION_ERROR,
+      details: {fields: expect.any(Object)},
+    });
+    expect(findMovementProgression).not.toHaveBeenCalled();
+  });
+
+  it('renders a missing user for the movement progression as 404', async () => {
+    findMovementProgression.mockRejectedValue(periodReadException());
+
+    const response = await request(app.getHttpServer())
+      .get('/reports/movements/progression?period=2026-11')
+      .expect(404);
+
+    expect(response.body.error).toMatchObject({
+      code: 'NOT_FOUND',
+      message: API_ERROR_MESSAGES.NOT_FOUND,
+    });
+  });
+
+  it('documents all report routes and their schemas in OpenAPI', () => {
     const document = createOpenApiDocument(app);
 
     expect(Object.keys(document.paths ?? {})).toContain('/reports/dashboard');
     expect(Object.keys(document.paths ?? {})).toContain(
       '/reports/accounts/{publicId}/progression',
     );
+    expect(Object.keys(document.paths ?? {})).toContain('/reports/movements/progression');
     expect(document.components?.schemas?.DashboardReportResponseDto).toMatchObject({
       properties: {
         status: {enum: ['CLOSED', 'CURRENT', 'FUTURE']},
@@ -200,5 +268,17 @@ describe('ReportsController (US-801/US-802)', () => {
         },
       },
     });
+    expect(document.components?.schemas?.MovementProgressionResponseDto).toMatchObject({
+      properties: {
+        points: {
+          items: {$ref: '#/components/schemas/MovementProgressionPointDto'},
+          type: 'array',
+        },
+        totals: {$ref: '#/components/schemas/MovementProgressionTotalsDto'},
+      },
+    });
+    expect(document.paths?.['/reports/movements/progression']?.get?.parameters).toEqual(
+      expect.arrayContaining([expect.objectContaining({name: 'excludeReversals', required: false})]),
+    );
   });
 });
