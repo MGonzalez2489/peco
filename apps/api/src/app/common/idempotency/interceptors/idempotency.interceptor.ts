@@ -3,7 +3,6 @@ import {Reflector} from '@nestjs/core';
 import type {Response} from 'express';
 import {Observable, from, lastValueFrom} from 'rxjs';
 import {defaultIfEmpty} from 'rxjs/operators';
-import {unauthorizedException} from '../../../auth/utils/unauthorized.exception';
 import type {AuthenticatedRequest} from '../../types/authenticated-request.type';
 import {IDEMPOTENCY_KEY_HEADER} from '../constants/idempotency-key-header.constant';
 import {IDEMPOTENCY_LIMITS} from '../constants/idempotency-limits.constant';
@@ -33,8 +32,11 @@ export class IdempotencyInterceptor implements NestInterceptor {
     const request = http.getRequest<AuthenticatedRequest>();
     const response = http.getResponse<Response>();
     const publicId = request.auth?.publicId;
+    // Anonymous requests are either public routes (health/auth) or are already
+    // rejected by the global access guard. Idempotency keys are user-scoped, so
+    // there is nothing to store or replay for them (8.5/D108).
     if (!publicId) {
-      throw unauthorizedException();
+      return (await this.invoke(next, response)).value;
     }
 
     const required = this.reflector.getAllAndOverride<boolean>(

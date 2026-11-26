@@ -125,6 +125,36 @@ describe('idempotency keys (MySQL 8, US-509, D108)', () => {
     expect(stored[0].responseStatus).toBe(201);
   });
 
+  it('does not hold a user row lock while the handler opens its own transaction', async () => {
+    const user = await seedUser('nested-transaction@example.com');
+    const run = jest.fn(async (): Promise<{statusCode: number; value: {ok: boolean}}> => {
+      await dataSource.transaction('READ COMMITTED', async (manager) => {
+        const locked = await manager.findOne(UserEntity, {
+          where: {id: user.id},
+          lock: {mode: 'pessimistic_write'},
+        });
+        if (!locked) {
+          throw new Error('Missing user inside the handler transaction');
+        }
+      });
+      return {statusCode: 201, value: {ok: true}};
+    });
+
+    const outcome = await service.execute(
+      {
+        userPublicId: user.publicId,
+        key: KEY,
+        endpoint: ENDPOINT,
+        requestHash: fingerprint({amount: 1000}),
+        correlationId: 'nested-transaction',
+      },
+      run,
+    );
+
+    expect(outcome.kind).toBe('success');
+    expect(run).toHaveBeenCalledTimes(1);
+  });
+
   it('rejects a key reused with a different body without executing the handler', async () => {
     const user = await seedUser('reused@example.com');
     const run = jest.fn().mockResolvedValue({statusCode: 201, value: {ok: true}});

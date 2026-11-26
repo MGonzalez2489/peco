@@ -58,6 +58,32 @@
         "commands": ["tsc -p tsconfig.app.json --noEmit", "tsc -p tsconfig.spec.json --noEmit"],
         "parallel": false
       }
+    },
+    "test": {
+      "cache": true,
+      "executor": "nx:run-commands",
+      "inputs": ["default", "^production"],
+      "outputs": ["{workspaceRoot}/coverage/apps/api"],
+      "options": {
+        "cwd": "apps/api",
+        "env": {
+          "TS_NODE_COMPILER_OPTIONS": "{\"moduleResolution\":\"node10\",\"module\":\"commonjs\",\"customConditions\":null}"
+        },
+        "command": "jest --testPathIgnorePatterns=e2e\\.spec\\.ts$"
+      }
+    },
+    "test-e2e": {
+      "cache": true,
+      "executor": "nx:run-commands",
+      "inputs": ["default", "^production"],
+      "outputs": ["{workspaceRoot}/coverage/apps/api"],
+      "options": {
+        "cwd": "apps/api",
+        "env": {
+          "TS_NODE_COMPILER_OPTIONS": "{\"moduleResolution\":\"node10\",\"module\":\"commonjs\",\"customConditions\":null}"
+        },
+        "command": "jest --runInBand --testPathPatterns=e2e\\.spec\\.ts$"
+      }
     }
   }
 }

@@ -11,9 +11,11 @@ export class IdempotencyKeyRepository {
   constructor(private readonly dataSource: DataSource) {}
 
   /**
-   * Serializes the whole check-then-insert sequence. `FOR UPDATE` alone cannot
-   * block two first-time inserts of the same key under READ COMMITTED, so a
-   * connection-scoped MySQL advisory lock covers that race too (D108).
+   * Serializes the whole check-then-insert sequence with a connection-scoped
+   * MySQL advisory lock. `FOR UPDATE` alone cannot block two first-time inserts
+   * of the same key under READ COMMITTED (D108). The advisory lock is the only
+   * lock held across `work`: slot writes commit immediately so they never hold a
+   * user FK lock while the mutation handler opens its own ledger transaction.
    */
   async withLock<T>(
     userId: number,
@@ -31,15 +33,7 @@ export class IdempotencyKeyRepository {
         throw new Error(`Could not acquire the idempotency lock: ${String(result)}`);
       }
 
-      await queryRunner.startTransaction('READ COMMITTED');
-      try {
-        const value = await work(queryRunner.manager);
-        await queryRunner.commitTransaction();
-        return value;
-      } catch (error: unknown) {
-        await queryRunner.rollbackTransaction();
-        throw error;
-      }
+      return await work(queryRunner.manager);
     } finally {
       await queryRunner.query('SELECT RELEASE_LOCK(?)', [lockName]);
       await queryRunner.release();
@@ -51,16 +45,17 @@ export class IdempotencyKeyRepository {
     return `peco:idem:${digest}`;
   }
 
-  /** Serializes concurrent retries on the same key without locking the user row (D108). */
+  /**
+   * Reads the slot owned by the advisory lock from `withLock` (D108). A row lock
+   * would add no protection here and would require a transaction spanning the
+   * mutation handler, which conflicts with the ledger's own user-row lock.
+   */
   findForUpdate(
     manager: EntityManager,
     userId: number,
     key: string,
   ): Promise<IdempotencyKeyEntity | null> {
-    return manager.findOne(IdempotencyKeyEntity, {
-      where: {userId, key},
-      lock: {mode: 'pessimistic_write'},
-    });
+    return manager.findOne(IdempotencyKeyEntity, {where: {userId, key}});
   }
 
   async savePending(

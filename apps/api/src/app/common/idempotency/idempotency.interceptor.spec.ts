@@ -182,4 +182,29 @@ describe('IdempotencyInterceptor (US-509, D108)', () => {
       details: {expectedVersion: 0, currentVersion: 2},
     });
   });
+
+  it('passes anonymous public routes through without creating a user-scoped key', async () => {
+    const anonymousExecute = jest.fn();
+    const anonymousInterceptor = new IdempotencyInterceptor(
+      {execute: anonymousExecute} as unknown as IdempotencyService,
+      new Reflector(),
+    );
+    const anonymousModule = await Test.createTestingModule({
+      controllers: [IdempotencyTestController],
+    }).compile();
+    const anonymousApp = anonymousModule.createNestApplication({bodyParser: false});
+    configureHttp(anonymousApp, {logger: SILENT_LOGGER, idempotency: anonymousInterceptor});
+    await anonymousApp.init();
+
+    try {
+      const response = await request(anonymousApp.getHttpServer())
+        .post('/idem-test/optional')
+        .expect(201);
+
+      expect(response.body).toEqual({data: {ok: true}, error: null});
+      expect(anonymousExecute).not.toHaveBeenCalled();
+    } finally {
+      await anonymousApp.close();
+    }
+  });
 });

@@ -52,4 +52,5 @@ jobs:
       - uses: nrwl/nx-set-shas@v4
 
       - run: npx nx affected -t lint typecheck test build --base=origin/main
+      - run: npm run test:e2e
       - run: npx nx format:check --base=origin/main

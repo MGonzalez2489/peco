@@ -87,14 +87,41 @@ export class IdempotencyService {
         return {kind: 'failure', exception: error} satisfies IdempotencyOutcome<T>;
       }
 
+      // The global envelope interceptor may already have rendered the handler
+      // result into `{data, meta?, error: null}`; persist only its payload so a
+      // replay returns the same single envelope instead of nesting it twice.
+      const rendered = this.renderedEnvelope(handled.value);
       const stored: StoredIdempotencyBody =
         handled.value instanceof EnvelopeResult
           ? {kind: 'success', data: handled.value.data, meta: handled.value.meta}
-          : {kind: 'success', data: handled.value ?? null};
+          : rendered !== null
+            ? {kind: 'success', data: rendered.data, ...(rendered.meta ? {meta: rendered.meta} : {})}
+            : {kind: 'success', data: handled.value ?? null};
 
       await this.repository.complete(manager, pending, handled.statusCode, stored);
       return {kind: 'success', value: handled.value} satisfies IdempotencyOutcome<T>;
     });
+  }
+
+  /** Recognizes the plain object emitted by `ResponseEnvelopeInterceptor`. */
+  private renderedEnvelope(
+    value: unknown,
+  ): {data: unknown; meta?: Record<string, unknown>} | null {
+    if (typeof value !== 'object' || value === null) {
+      return null;
+    }
+
+    const candidate = value as {data?: unknown; meta?: unknown; error?: unknown};
+    if (!('data' in candidate) || !('error' in candidate) || candidate.error !== null) {
+      return null;
+    }
+
+    return {
+      data: candidate.data,
+      ...(typeof candidate.meta === 'object' && candidate.meta !== null
+        ? {meta: candidate.meta as Record<string, unknown>}
+        : {}),
+    };
   }
 
   private replay<T>(

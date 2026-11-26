@@ -89,6 +89,21 @@ describe('IdempotencyService (US-509, D108)', () => {
     expect(run).toHaveBeenCalledTimes(1);
   });
 
+  it('unwraps a rendered response envelope before storing the replay payload', async () => {
+    const run = jest.fn().mockResolvedValue({
+      statusCode: 201,
+      value: {data: {movement: 'fresh'}, meta: {total: 1}, error: null},
+    });
+
+    await service.execute(request(), run);
+
+    expect(repository.complete).toHaveBeenCalledWith({}, expect.anything(), 201, {
+      kind: 'success',
+      data: {movement: 'fresh'},
+      meta: {total: 1},
+    });
+  });
+
   it('replays a stored success with the current correlation id', async () => {
     repository.findForUpdate.mockResolvedValue(row());
     const run = jest.fn();
