@@ -1,7 +1,12 @@
-const SENSITIVE_KEY_PATTERN = /(password|token|secret|authorization|cookie|credential|apikey)/i;
+const SENSITIVE_KEY_PATTERN =
+  /(password|token|secret|authorization|cookie|credential|apikey|userid|publicid|email|stack)/i;
+const SENSITIVE_EXACT_KEYS = new Set(['ip', 'ipAddress', 'to', 'from']);
 const REDACTED = '[REDACTED]';
 
-/** Removes credentials and secrets from structured log payloads. */
+const isSensitiveKey = (key: string): boolean =>
+  SENSITIVE_KEY_PATTERN.test(key) || SENSITIVE_EXACT_KEYS.has(key);
+
+/** Removes credentials, secrets and direct identifiers from structured log payloads. */
 export function redactSensitiveFields(value: unknown, seen = new WeakSet<object>()): unknown {
   if (value === null || typeof value !== 'object') {
     return value;
@@ -22,7 +27,7 @@ export function redactSensitiveFields(value: unknown, seen = new WeakSet<object>
   const redacted = Object.fromEntries(
     Object.entries(value).map(([key, nested]) => [
       key,
-      SENSITIVE_KEY_PATTERN.test(key) ? REDACTED : redactSensitiveFields(nested, seen),
+      isSensitiveKey(key) ? REDACTED : redactSensitiveFields(nested, seen),
     ]),
   );
   seen.delete(value);

@@ -2,11 +2,17 @@ import {describe, expect, it} from 'vitest';
 import {
   AccountTypeEnum,
   AccountWriteStatusEnum,
+  AlertRuleEnum,
+  AlertSeverityEnum,
   ApiErrorCodeEnum,
   AppThemeEnum,
   AuditActionEnum,
   AuditEntityEnum,
   CategoryApplyTypeEnum,
+  JobKeyEnum,
+  JobStatusEnum,
+  MetricNameEnum,
+  MetricTypeEnum,
   MovementTypeEnum,
   MovementWriteStatusEnum,
   RecurrenceFrequencyEnum,
@@ -59,6 +65,44 @@ describe('shared enums', () => {
     expect(MovementWriteStatusEnum.CONFLICT.toString()).toBe('conflict');
     expect(AuditActionEnum.RECONCILE_MISMATCH.toString()).toBe('RECONCILE_MISMATCH');
     expect(AuditEntityEnum.ACCOUNTS.toString()).toBe('accounts');
+    expect(JobKeyEnum.CLEANUP.toString()).toBe('CLEANUP');
+    expect(JobStatusEnum.SUCCESS.toString()).toBe('SUCCESS');
+    expect(AlertRuleEnum.RECONCILIATION_DRIFT.toString()).toBe('RECONCILIATION_DRIFT');
+    expect(AlertSeverityEnum.PAGE.toString()).toBe('PAGE');
+    expect(MetricNameEnum.JOB_RUN_DURATION_SECONDS.toString()).toBe('job_run_duration_seconds');
+    expect(MetricTypeEnum.HISTOGRAM.toString()).toBe('histogram');
+  });
+
+  it('keeps every operational enum in a single registry', () => {
+    expect(Object.values(JobKeyEnum).map((jobKey) => jobKey.toString())).toEqual([
+      'AUTO_APPLY',
+      'PERIOD_CLOSE',
+      'RECONCILIATION',
+      'CLEANUP',
+    ]);
+    expect(Object.values(JobStatusEnum).map((status) => status.toString())).toEqual([
+      'SUCCESS',
+      'SKIPPED',
+      'FAILED',
+    ]);
+    expect(Object.values(AlertRuleEnum).map((rule) => rule.toString())).toEqual([
+      'RECONCILIATION_DRIFT',
+      'SNAPSHOT_CHAIN_MISMATCH',
+      'JOB_STALE',
+      'HTTP_5XX_RATE',
+      'HTTP_P95',
+      'DB_POOL_SATURATION',
+    ]);
+    expect(Object.values(AlertSeverityEnum).map((severity) => severity.toString())).toEqual([
+      'PAGE',
+      'WARN',
+      'INFO',
+    ]);
+    expect(Object.values(MetricTypeEnum).map((type) => type.toString())).toEqual([
+      'counter',
+      'gauge',
+      'histogram',
+    ]);
   });
 
   it('keeps every account write status in a single registry', () => {

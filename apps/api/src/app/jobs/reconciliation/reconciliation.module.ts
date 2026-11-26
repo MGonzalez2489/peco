@@ -1,4 +1,5 @@
 import {Module} from '@nestjs/common';
+import {JobLocksModule} from '../../common/job-locks/job-locks.module';
 import {UtcClock} from '../../database/clock/utc-clock';
 import {DatabaseModule} from '../../database/database.module';
 import {ReconciliationAlertService} from './services/reconciliation-alert.service';
@@ -9,7 +10,7 @@ import {ReconciliationService} from './services/reconciliation.service';
 
 /** Nightly read-only ledger reconciliation (US-510/D50). */
 @Module({
-  imports: [DatabaseModule],
+  imports: [DatabaseModule, JobLocksModule],
   providers: [
     UtcClock,
     ReconciliationRepository,

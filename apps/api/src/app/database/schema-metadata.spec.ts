@@ -9,6 +9,7 @@ const EXPECTED_TABLES = [
   'auditLogs',
   'categories',
   'idempotencyKeys',
+  'jobLocks',
   'movements',
   'passwordResetTokens',
   'periodSnapshots',
@@ -28,7 +29,12 @@ const SOFT_DELETABLE_TABLES = [
   'users',
 ] as const;
 
-const TIMESTAMPED_TABLES = ['idempotencyKeys', 'passwordResetTokens', 'refreshTokens'] as const;
+const TIMESTAMPED_TABLES = [
+  'idempotencyKeys',
+  'jobLocks',
+  'passwordResetTokens',
+  'refreshTokens',
+] as const;
 
 const CREATED_ONLY_TABLES = ['auditLogs', 'periodSnapshots', 'scheduledExecutions'] as const;
 
@@ -65,6 +71,9 @@ const UTC_TIMESTAMP_COLUMNS: ReadonlyArray<readonly [string, string]> = [
   ['idempotencyKeys', 'createdAt'],
   ['idempotencyKeys', 'updatedAt'],
   ['idempotencyKeys', 'expiresAt'],
+  ['jobLocks', 'createdAt'],
+  ['jobLocks', 'updatedAt'],
+  ['jobLocks', 'expiresAt'],
   ['accounts', 'createdAt'],
   ['accounts', 'updatedAt'],
   ['accounts', 'deletedAt'],
@@ -156,6 +165,10 @@ const EXPECTED_INDICES: Readonly<
     ['UQIdempotencyKeysUserIdKey', ['userId', 'key']],
     ['IDXIdempotencyKeysExpiresAt', ['expiresAt']],
   ],
+  jobLocks: [
+    ['UQJobLocksPublicId', ['publicId']],
+    ['UQJobLocksJobKey', ['jobKey']],
+  ],
 };
 
 const EXPECTED_FOREIGN_KEYS: Readonly<
@@ -241,7 +254,7 @@ describe('database schema metadata (US-103)', () => {
     return found;
   };
 
-  it('declares exactly the 13 tables of plan 7.3', () => {
+  it('declares exactly the 14 tables of plan 7.3 and US-1001', () => {
     expect(metadata.map((item) => item.tableName).sort()).toEqual([...EXPECTED_TABLES].sort());
   });
 

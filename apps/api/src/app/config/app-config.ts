@@ -29,12 +29,16 @@ interface OperationalLimits {
   inactiveGraceDays: number;
   maxBackfillMonths: number;
   catchupBatchSize: number;
+  cleanupBatchSize: number;
+  auditLogRetentionDays: number;
 }
 
 interface JobSchedules {
   autoApplyCron: string;
   periodCloseCron: string;
   reconciliationCron: string;
+  cleanupCron: string;
+  jobLockTtlSeconds: number;
 }
 
 /** Fully validated, immutable configuration produced once at boot (US-102). */
@@ -47,6 +51,7 @@ export interface AppConfig {
   readonly operational: OperationalLimits;
   readonly jobs: JobSchedules;
   readonly corsOrigins: readonly string[];
+  readonly metricsToken?: string;
   readonly logLevel: LogLevel;
   readonly mailTransport: MailTransport;
   readonly rateLimitEnabled: boolean;

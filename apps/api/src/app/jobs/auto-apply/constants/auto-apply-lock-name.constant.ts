@@ -1,2 +1,6 @@
-/** MySQL advisory lock that serializes the nightly auto-apply run across instances (12). */
-export const AUTO_APPLY_LOCK_NAME = 'peco:auto-apply';
+import {JobKeyEnum} from '@peco/enums';
+
+/** Connection-scoped advisory lock kept alongside the durable jobLocks row (D109/US-1001). */
+export const AUTO_APPLY_LOCK_NAME = `peco:${JobKeyEnum.AUTO_APPLY.toString()
+  .toLowerCase()
+  .replaceAll('_', '-')}`;

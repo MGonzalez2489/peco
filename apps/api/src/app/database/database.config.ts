@@ -6,6 +6,7 @@ import {
   AuditLogEntity,
   CategoryEntity,
   IdempotencyKeyEntity,
+  JobLockEntity,
   MovementEntity,
   PasswordResetTokenEntity,
   PeriodSnapshotEntity,
@@ -15,7 +16,7 @@ import {
   UserEntity,
   UserPreferencesEntity,
 } from './entities';
-import {InitialSchema1794873600000} from './migrations';
+import {InitialSchema1794873600000, JobLocks1795564800000} from './migrations';
 import {CamelCaseNamingStrategy} from './naming.strategy';
 import {BaseEntitySubscriber} from './subscribers/base-entity.subscriber';
 
@@ -34,8 +35,9 @@ export const TYPEORM_ENTITIES = [
   UserPreferencesEntity,
   AuditLogEntity,
   IdempotencyKeyEntity,
+  JobLockEntity,
 ];
-export const TYPEORM_MIGRATIONS = [InitialSchema1794873600000];
+export const TYPEORM_MIGRATIONS = [InitialSchema1794873600000, JobLocks1795564800000];
 
 export const createTypeOrmOptions = (database: AppConfig['database']): TypeOrmModuleOptions => ({
   type: 'mysql',

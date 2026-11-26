@@ -1,4 +1,5 @@
 import {Module} from '@nestjs/common';
+import {JobLocksModule} from '../../common/job-locks/job-locks.module';
 import {UtcClock} from '../../database/clock/utc-clock';
 import {DatabaseModule} from '../../database/database.module';
 import {PeriodsModule} from '../../periods/periods.module';
@@ -9,7 +10,7 @@ import {PeriodCloseScheduler} from './services/period-close.scheduler';
 
 /** Daily `00:10` UTC close and idempotent startup sweep (US-704/D59). */
 @Module({
-  imports: [DatabaseModule, PeriodsModule, AutoApplyModule],
+  imports: [DatabaseModule, JobLocksModule, PeriodsModule, AutoApplyModule],
   providers: [UtcClock, PeriodCloseRepository, PeriodCloseJobService, PeriodCloseScheduler],
   exports: [PeriodCloseJobService],
 })

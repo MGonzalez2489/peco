@@ -104,6 +104,8 @@ describe('parseConfig', () => {
         inactiveGraceDays: 7,
         maxBackfillMonths: 120,
         catchupBatchSize: 500,
+        cleanupBatchSize: 1000,
+        auditLogRetentionDays: 730,
       });
     });
 
@@ -115,6 +117,14 @@ describe('parseConfig', () => {
     it('rejects a negative INACTIVE_USER_DAYS and names it', () => {
       expect(() => parse({INACTIVE_USER_DAYS: '-1'})).toThrow(/INACTIVE_USER_DAYS/);
     });
+
+    it('enforces the documented cleanup bounds', () => {
+      expect(() => parse({CLEANUP_BATCH_SIZE: '0'})).toThrow(/CLEANUP_BATCH_SIZE/);
+      expect(() => parse({AUDIT_LOG_RETENTION_DAYS: '729'})).toThrow(/AUDIT_LOG_RETENTION_DAYS/);
+      expect(parse({AUDIT_LOG_RETENTION_DAYS: '1095'}).operational.auditLogRetentionDays).toBe(
+        1095,
+      );
+    });
   });
 
   describe('job schedules', () => {
@@ -123,6 +133,8 @@ describe('parseConfig', () => {
         autoApplyCron: '5 0 * * *',
         periodCloseCron: '10 0 * * *',
         reconciliationCron: '0 3 * * *',
+        cleanupCron: '0 4 * * *',
+        jobLockTtlSeconds: 300,
       });
     });
 
@@ -139,6 +151,11 @@ describe('parseConfig', () => {
 
       expect(minuteOf(jobs.autoApplyCron)).toBeLessThan(minuteOf(jobs.periodCloseCron));
       expect(minuteOf(jobs.periodCloseCron)).toBeLessThan(minuteOf(jobs.reconciliationCron));
+      expect(minuteOf(jobs.reconciliationCron)).toBeLessThan(minuteOf(jobs.cleanupCron));
+    });
+
+    it('rejects an invalid JOB_LOCK_TTL_SECONDS and names it', () => {
+      expect(() => parse({JOB_LOCK_TTL_SECONDS: '0'})).toThrow(/JOB_LOCK_TTL_SECONDS/);
     });
   });
 
@@ -147,6 +164,7 @@ describe('parseConfig', () => {
       const config = parse();
 
       expect(config.corsOrigins).toEqual([]);
+      expect(config.metricsToken).toBeUndefined();
       expect(config.logLevel).toBe('info');
       expect(config.mailTransport).toBe('capture');
       expect(config.rateLimitEnabled).toBe(true);
@@ -157,6 +175,13 @@ describe('parseConfig', () => {
         'https://a.test',
         'https://b.test',
       ]);
+    });
+
+    it('parses a strong metrics token and rejects a weak one', () => {
+      expect(parse({METRICS_TOKEN: 'a-very-private-token'}).metricsToken).toBe(
+        'a-very-private-token',
+      );
+      expect(() => parse({METRICS_TOKEN: 'short'})).toThrow(/METRICS_TOKEN/);
     });
 
     it('rejects an invalid LOG_LEVEL and names it', () => {

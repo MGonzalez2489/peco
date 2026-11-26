@@ -1,6 +1,7 @@
 import {ConsoleLogger, type LogLevel} from '@nestjs/common';
 import type {AppConfig} from '../../config/app-config';
 import {getCorrelationId} from '../middleware/correlation-id.context';
+import {getJobKey} from '../observability/job-context';
 import {redactSensitiveFields} from './redact-sensitive-fields';
 
 type ConfiguredLogLevel = AppConfig['logLevel'];
@@ -19,6 +20,15 @@ interface JsonLogOptions {
   errorStack?: unknown;
 }
 
+interface JsonLogObject extends Record<string, unknown> {
+  level: LogLevel;
+  pid: number;
+  timestamp: number;
+  message: unknown;
+  context?: string;
+  stack?: unknown;
+}
+
 /**
  * One structured JSON line per log entry. The correlation id is taken from the
  * request's async context when one is active, and every payload is redacted
@@ -35,16 +45,18 @@ export class JsonLogger extends ConsoleLogger {
     this.environment = config.env;
   }
 
-  protected override getJsonLogObject(message: unknown, options: JsonLogOptions) {
-    const base = super.getJsonLogObject(message, options);
+  protected override getJsonLogObject(message: unknown, options: JsonLogOptions): JsonLogObject {
+    const base = super.getJsonLogObject(message, options) as JsonLogObject;
     const correlationId = getCorrelationId();
+    const jobKey = getJobKey();
+    const redacted = redactSensitiveFields(base) as JsonLogObject;
 
     return {
-      ...base,
+      ...redacted,
       service: 'peco-api',
       environment: this.environment,
       ...(correlationId ? {correlationId} : {}),
-      message: redactSensitiveFields(base.message),
+      ...(jobKey ? {jobKey} : {}),
     };
   }
 }

@@ -1,5 +1,5 @@
-import {Injectable, Logger} from '@nestjs/common';
-import {ApiErrorCodeEnum} from '@peco/enums';
+import {Injectable, Logger, Optional} from '@nestjs/common';
+import {AlertRuleEnum, AlertSeverityEnum, ApiErrorCodeEnum} from '@peco/enums';
 import {
   Between,
   DataSource,
@@ -10,6 +10,8 @@ import {
   Or,
   type EntityManager,
 } from 'typeorm';
+import {AlertService} from '../../common/observability/alert.service';
+import {MetricsService} from '../../common/observability/metrics.service';
 import {
   AccountEntity,
   AccountPeriodBalanceEntity,
@@ -35,7 +37,11 @@ import {previousPeriod} from '../utils/previous-period.util';
 export class PeriodClosingRepository {
   private readonly logger = new Logger(PeriodClosingRepository.name);
 
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    private readonly dataSource: DataSource,
+    @Optional() private readonly alerts?: AlertService,
+    @Optional() private readonly metrics?: MetricsService,
+  ) {}
 
   /** Earliest user-registration or non-deleted-movement month (11.4), or null when foreign. */
   async findFirstActivityPeriod(userId: number): Promise<string | null> {
@@ -244,13 +250,22 @@ export class PeriodClosingRepository {
     for (const row of rows) {
       const frozen = previousBalances.find((balance) => balance.accountId === row.account.id);
       if (frozen && frozen.finalBalance !== row.openingBalance) {
-        this.logger.warn({
+        const dimensions = {
           code: SNAPSHOT_CHAIN_MISMATCH_CODE,
           period,
-          accountPublicId: row.account.publicId,
           snapshotBalance: frozen.finalBalance,
           ledgerBalance: row.openingBalance,
-        });
+        } as const;
+        this.metrics?.addSnapshotChainMismatch();
+        if (this.alerts) {
+          this.alerts.raise(
+            AlertRuleEnum.SNAPSHOT_CHAIN_MISMATCH.toString(),
+            AlertSeverityEnum.PAGE.toString(),
+            dimensions,
+          );
+          continue;
+        }
+        this.logger.warn({event: 'ALERT', ...dimensions, autoCorrected: false});
       }
     }
   }

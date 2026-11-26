@@ -20,10 +20,7 @@ const config = new ConfigService({
 const setup = (options: {completed?: boolean; capped?: string[]} = {}) => {
   const repository = {
     withLock: jest.fn(async (work: () => Promise<unknown>) => work()),
-    findActiveUserPublicIds: jest.fn(async () => [
-      {publicId: 'active-1'},
-      {publicId: 'active-2'},
-    ]),
+    findActiveUserPublicIds: jest.fn(async () => [{publicId: 'active-1'}, {publicId: 'active-2'}]),
   };
   const closing = {backfill: jest.fn(async () => TOTALS)};
   const autoApply = {
@@ -92,9 +89,7 @@ describe('PeriodCloseJobService (US-704)', () => {
 
   it('postpones a capped user for exactly one run', async () => {
     const {closing, autoApply, service} = setup({capped: ['active-1']});
-    autoApply.takeCappedUserPublicIds
-      .mockReturnValueOnce(['active-1'])
-      .mockReturnValueOnce([]);
+    autoApply.takeCappedUserPublicIds.mockReturnValueOnce(['active-1']).mockReturnValueOnce([]);
 
     const first = await service.run('cron');
     const second = await service.run('cron');
@@ -105,7 +100,6 @@ describe('PeriodCloseJobService (US-704)', () => {
     expect(second).toMatchObject({postponed: 0, usersProcessed: 2});
     expect(warn).toHaveBeenCalledWith({
       code: AUTO_APPLY_CAP_POSTPONED_CODE,
-      userPublicId: 'active-1',
       asOf: '2026-11-24',
       batchSize: 500,
     });

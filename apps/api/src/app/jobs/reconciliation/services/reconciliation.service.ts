@@ -1,4 +1,6 @@
-import {Injectable} from '@nestjs/common';
+import {Injectable, Optional} from '@nestjs/common';
+import {JobKeyEnum, JobStatusEnum, type StringEnumValues} from '@peco/enums';
+import {MetricsService} from '../../../common/observability/metrics.service';
 import {ConfigService} from '../../../config/config.service';
 import {UtcClock} from '../../../database/clock/utc-clock';
 import {RECONCILIATION_ACCOUNT_BATCH_SIZE} from '../constants/reconciliation-account-batch-size.constant';
@@ -9,6 +11,11 @@ import {ReconciliationAlertService} from './reconciliation-alert.service';
 import {ReconciliationMetricsService} from './reconciliation-metrics.service';
 import {ReconciliationRepository} from './reconciliation.repository';
 
+type JobStatus = StringEnumValues<typeof JobStatusEnum>;
+
+const elapsedMs = (startedAt: bigint): number =>
+  Number(process.hrtime.bigint() - startedAt) / 1_000_000;
+
 /** Recomputes each active account's balance from the ledger and reports drift (9.9). */
 @Injectable()
 export class ReconciliationService {
@@ -18,9 +25,15 @@ export class ReconciliationService {
     private readonly repository: ReconciliationRepository,
     private readonly metrics: ReconciliationMetricsService,
     private readonly alerts: ReconciliationAlertService,
+    @Optional() private readonly jobMetrics?: MetricsService,
   ) {}
 
   async reconcile(): Promise<ReconciliationResult> {
+    const startedAt = process.hrtime.bigint();
+    const jobKey = JobKeyEnum.RECONCILIATION.toString();
+    const finish = (status: JobStatus): void => {
+      this.jobMetrics?.recordJobRun(jobKey, status, elapsedMs(startedAt));
+    };
     const now = this.clock.now();
     const inactiveDays = this.configService.config.operational.inactiveUserDays;
     const activeSince = new Date(Date.parse(now) - inactiveDays * 24 * 60 * 60 * 1000).toISOString();
@@ -66,13 +79,20 @@ export class ReconciliationService {
     });
 
     if (run === null) {
+      finish(JobStatusEnum.SKIPPED.toString());
       return {acquired: false, scannedAccounts: 0, mismatches: 0};
     }
 
     for (const drift of run.drifts) {
       this.metrics.incrementDrift();
+      this.jobMetrics?.addReconciliationDrift();
       this.alerts.drift(drift);
     }
+    finish(
+      run.drifts.length > 0
+        ? JobStatusEnum.FAILED.toString()
+        : JobStatusEnum.SUCCESS.toString(),
+    );
 
     return {
       acquired: true,

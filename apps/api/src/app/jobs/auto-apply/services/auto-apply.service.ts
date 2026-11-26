@@ -1,4 +1,6 @@
-import {Injectable, Logger} from '@nestjs/common';
+import {Injectable, Logger, Optional} from '@nestjs/common';
+import {JobKeyEnum, JobStatusEnum, type StringEnumValues} from '@peco/enums';
+import {MetricsService} from '../../../common/observability/metrics.service';
 import {ConfigService} from '../../../config/config.service';
 import {UtcClock} from '../../../database/clock/utc-clock';
 import {ScheduledTransactionsService} from '../../../scheduled-transactions/scheduled-transactions.service';
@@ -6,6 +8,11 @@ import type {AutoApplyResult} from '../types/auto-apply-result.type';
 import {AutoApplyRepository} from './auto-apply.repository';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+type JobStatus = StringEnumValues<typeof JobStatusEnum>;
+
+const elapsedMs = (startedAt: bigint): number =>
+  Number(process.hrtime.bigint() - startedAt) / 1_000_000;
 
 /** Nightly catch-up for active users, reusing the idempotent on-demand executor (12/D54/D57/D58). */
 @Injectable()
@@ -19,6 +26,7 @@ export class AutoApplyService {
     private readonly clock: UtcClock,
     private readonly repository: AutoApplyRepository,
     private readonly schedules: ScheduledTransactionsService,
+    @Optional() private readonly metrics?: MetricsService,
   ) {}
 
   /** True only after an acquired run finished for the requested UTC date (11.7). */
@@ -32,6 +40,11 @@ export class AutoApplyService {
   }
 
   async run(): Promise<AutoApplyResult> {
+    const startedAt = process.hrtime.bigint();
+    const jobKey = JobKeyEnum.AUTO_APPLY.toString();
+    const finish = (status: JobStatus): void => {
+      this.metrics?.recordJobRun(jobKey, status, elapsedMs(startedAt));
+    };
     const now = this.clock.now();
     const asOf = now.slice(0, 10);
     const inactiveDays = this.configService.config.operational.inactiveUserDays;
@@ -53,10 +66,10 @@ export class AutoApplyService {
         try {
           const result = await this.schedules.applyDue(publicId, {asOf}, null, {
             autoApply: true,
-            onScheduleError: (schedulePublicId: string, error: unknown) => {
+            onScheduleError: (_schedulePublicId: string, error: unknown) => {
               errors += 1;
               this.logger.error(
-                `Auto-apply failed for schedule ${schedulePublicId}`,
+                'Auto-apply failed for a schedule',
                 error instanceof Error ? error.stack : String(error),
               );
             },
@@ -72,13 +85,13 @@ export class AutoApplyService {
               this.cappedUserPublicIds.push(publicId);
             }
             this.logger.warn(
-              `Auto-apply hit the ${batchSize}-occurrence cap for user ${publicId}; closing waits for the next run`,
+              `Auto-apply hit the ${batchSize}-occurrence cap for one user; closing waits for the next run`,
             );
           }
         } catch (error: unknown) {
           errors += 1;
           this.logger.error(
-            `Auto-apply failed for user ${publicId}`,
+            'Auto-apply failed while processing a user',
             error instanceof Error ? error.stack : String(error),
           );
         }
@@ -89,6 +102,7 @@ export class AutoApplyService {
 
     const cappedUserPublicIds = [...this.cappedUserPublicIds];
     if (run === null) {
+      finish(JobStatusEnum.SKIPPED.toString());
       return {
         acquired: false,
         usersProcessed: 0,
@@ -102,6 +116,11 @@ export class AutoApplyService {
     }
 
     this.lastCompletedAsOf = asOf;
+    finish(errors > 0 ? JobStatusEnum.FAILED.toString() : JobStatusEnum.SUCCESS.toString());
+    this.metrics?.addProcessedUsers(jobKey, run.usersProcessed);
+    this.metrics?.addOccurrencesApplied(run.applied);
+    this.metrics?.addOccurrencesSkipped(run.skipped);
+    this.metrics?.addOccurrencesFailed(run.failed + errors);
     return {acquired: true, ...run, errors, cappedUserPublicIds};
   }
 }

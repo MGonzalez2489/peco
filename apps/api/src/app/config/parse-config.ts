@@ -33,6 +33,18 @@ const readString = (env: Env, name: string, fallback?: string): string => {
   return value;
 };
 
+const readOptionalToken = (env: Env, name: string): string | undefined => {
+  const value = env[name];
+  if (value === undefined || value.trim() === '') {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  if (trimmed.length < 16) {
+    return invalid(name, 'must be at least 16 characters');
+  }
+  return trimmed;
+};
+
 const readInteger = (
   env: Env,
   name: string,
@@ -196,13 +208,18 @@ export const parseConfig = (env: Env = process.env): AppConfig => {
       inactiveGraceDays: readInteger(env, 'INACTIVE_GRACE_DAYS', 7, 1),
       maxBackfillMonths: readInteger(env, 'MAX_BACKFILL_MONTHS', 120, 1),
       catchupBatchSize: readInteger(env, 'CATCHUP_BATCH_SIZE', 500, 1),
+      cleanupBatchSize: readInteger(env, 'CLEANUP_BATCH_SIZE', 1000, 1, 100_000),
+      auditLogRetentionDays: readInteger(env, 'AUDIT_LOG_RETENTION_DAYS', 730, 730),
     },
     jobs: {
       autoApplyCron: readCron(env, 'AUTO_APPLY_CRON', '5 0 * * *'),
       periodCloseCron: readCron(env, 'PERIOD_CLOSE_CRON', '10 0 * * *'),
       reconciliationCron: readCron(env, 'RECONCILIATION_CRON', '0 3 * * *'),
+      cleanupCron: readCron(env, 'CLEANUP_CRON', '0 4 * * *'),
+      jobLockTtlSeconds: readInteger(env, 'JOB_LOCK_TTL_SECONDS', 300, 1, 3600),
     },
     corsOrigins: readCorsOrigins(env),
+    metricsToken: readOptionalToken(env, 'METRICS_TOKEN'),
     logLevel,
     mailTransport: readEnum(env, 'MAIL_TRANSPORT', MAIL_TRANSPORTS, 'capture'),
     rateLimitEnabled,

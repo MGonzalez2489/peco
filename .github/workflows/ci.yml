@@ -47,6 +47,7 @@ jobs:
           cache: npm
 
       - run: npm ci
+      - run: npm audit --audit-level=critical
 
       - uses: nrwl/nx-set-shas@v4
 

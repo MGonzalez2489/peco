@@ -1,15 +1,27 @@
-import {Injectable} from '@nestjs/common';
+import {Injectable, Optional} from '@nestjs/common';
+import {JobKeyEnum} from '@peco/enums';
 import {DataSource} from 'typeorm';
+import {JobLockService} from '../../../common/job-locks/job-lock.service';
 import {UserEntity} from '../../../database/entities';
 import {PERIOD_CLOSE_LOCK_NAME} from '../constants/period-close-lock-name.constant';
 
 /** Run lock and D58-filtered user queue for the period-close job (12/D58). */
 @Injectable()
 export class PeriodCloseRepository {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    private readonly dataSource: DataSource,
+    @Optional() private readonly jobLocks?: JobLockService,
+  ) {}
 
-  /** Returns `null` when another API instance already holds the run lock. */
+  /** Durable lock first, then the advisory lock that existing integration tests assert. */
   async withLock<T>(work: () => Promise<T>): Promise<T | null> {
+    const withAdvisoryLock = async (): Promise<T | null> => this.withAdvisoryLock(work);
+    return this.jobLocks
+      ? this.jobLocks.withLock(JobKeyEnum.PERIOD_CLOSE.toString(), withAdvisoryLock)
+      : withAdvisoryLock();
+  }
+
+  private async withAdvisoryLock<T>(work: () => Promise<T>): Promise<T | null> {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
 

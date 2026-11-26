@@ -1,6 +1,7 @@
 import {MySqlContainer, StartedMySqlContainer} from '@testcontainers/mysql';
 import {DataSource, DataSourceOptions} from 'typeorm';
 import {createTypeOrmOptions} from '../database.config';
+import {InitialSchema1794873600000} from './1794873600000-initial-schema';
 
 jest.setTimeout(180_000);
 
@@ -400,7 +401,10 @@ describe('initial schema migration (MySQL 8)', () => {
       healthPingTimeoutMs: 1_000,
     });
 
-    dataSource = new DataSource(options as DataSourceOptions);
+    dataSource = new DataSource({
+      ...(options as DataSourceOptions),
+      migrations: [InitialSchema1794873600000],
+    });
     await dataSource.initialize();
     await dataSource.runMigrations();
   });

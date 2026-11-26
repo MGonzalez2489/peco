@@ -1,4 +1,6 @@
-import {Injectable, Logger} from '@nestjs/common';
+import {Injectable, Logger, Optional} from '@nestjs/common';
+import {JobKeyEnum, JobStatusEnum, type StringEnumValues} from '@peco/enums';
+import {MetricsService} from '../../../common/observability/metrics.service';
 import {ConfigService} from '../../../config/config.service';
 import {UtcClock} from '../../../database/clock/utc-clock';
 import {PeriodClosingService} from '../../../periods/services/period-closing.service';
@@ -10,6 +12,11 @@ import type {PeriodCloseTrigger} from '../types/period-close-trigger.type';
 import {PeriodCloseRepository} from './period-close.repository';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+type JobStatus = StringEnumValues<typeof JobStatusEnum>;
+
+const elapsedMs = (startedAt: bigint): number =>
+  Number(process.hrtime.bigint() - startedAt) / 1_000_000;
 
 const emptyResult = (trigger: PeriodCloseTrigger, deferred: boolean): PeriodCloseJobResult => ({
   acquired: false,
@@ -34,9 +41,15 @@ export class PeriodCloseJobService {
     private readonly autoApply: AutoApplyService,
     private readonly clock: UtcClock,
     private readonly configService: ConfigService,
+    @Optional() private readonly metrics?: MetricsService,
   ) {}
 
   async run(trigger: PeriodCloseTrigger = 'cron'): Promise<PeriodCloseJobResult> {
+    const startedAt = process.hrtime.bigint();
+    const jobKey = JobKeyEnum.PERIOD_CLOSE.toString();
+    const finish = (status: JobStatus): void => {
+      this.metrics?.recordJobRun(jobKey, status, elapsedMs(startedAt));
+    };
     const now = this.clock.now();
     const asOf = now.slice(0, 10);
 
@@ -46,6 +59,7 @@ export class PeriodCloseJobService {
         asOf,
         requiredBefore: 'auto-apply',
       });
+      finish(JobStatusEnum.SKIPPED.toString());
       return emptyResult(trigger, true);
     }
 
@@ -61,10 +75,9 @@ export class PeriodCloseJobService {
       const cappedSet = new Set(capped);
       const batchSize = this.configService.config.operational.catchupBatchSize;
 
-      for (const publicId of capped) {
+      for (let count = 0; count < capped.length; count += 1) {
         this.logger.warn({
           code: AUTO_APPLY_CAP_POSTPONED_CODE,
-          userPublicId: publicId,
           asOf,
           batchSize,
         });
@@ -83,9 +96,13 @@ export class PeriodCloseJobService {
     });
 
     if (run === null) {
+      finish(JobStatusEnum.SKIPPED.toString());
       return emptyResult(trigger, false);
     }
 
+    finish(run.errors > 0 ? JobStatusEnum.FAILED.toString() : JobStatusEnum.SUCCESS.toString());
+    this.metrics?.addProcessedUsers(jobKey, run.usersProcessed);
+    this.metrics?.addPeriodsClosed(run.closed);
     return {acquired: true, deferred: false, trigger, ...run};
   }
 }

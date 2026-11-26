@@ -2,7 +2,14 @@ import type {INestApplication, LoggerService, NestInterceptor} from '@nestjs/com
 import {ApiErrorCodeEnum} from '@peco/enums';
 import {json, type ErrorRequestHandler} from 'express';
 import {MAX_JSON_BODY_SIZE} from '../constants/max-json-body-size.constant';
+import {METRICS_PATH} from '../constants/metrics-path.constant';
 import {createRequestLogger} from '../logging/request-logger.middleware';
+import {createHttpMetricsMiddleware} from '../observability/http-metrics.middleware';
+import {createMetricsEndpoint} from '../observability/metrics-endpoint.middleware';
+import type {MetricsService} from '../observability/metrics.service';
+import type {AppConfig} from '../../config/app-config';
+import {createSecurityHeaders} from './security-headers.middleware';
+import {createStrictCors} from './strict-cors.middleware';
 import {correlationIdMiddleware} from '../middleware/correlation-id.middleware';
 import type {CorrelatedRequest} from '../types/correlated-request.type';
 import {createValidationPipe} from '../validation/validation.pipe';
@@ -43,11 +50,29 @@ const bodyLimitErrorHandler: ErrorRequestHandler = (error, request, response, ne
  */
 export function configureHttp(
   app: INestApplication,
-  options: {logger: LoggerService; idempotency?: NestInterceptor},
+  options: {
+    logger: LoggerService;
+    idempotency?: NestInterceptor;
+    config?: Pick<AppConfig, 'env' | 'corsOrigins' | 'metricsToken'>;
+    metrics?: MetricsService;
+  },
 ): void {
   app.use(correlationIdMiddleware);
+  if (options.config) {
+    app.use(createSecurityHeaders(options.config.env === 'production'));
+    app.use(createStrictCors(options.config.corsOrigins));
+    if (options.metrics) {
+      app.use(
+        METRICS_PATH,
+        createMetricsEndpoint({metrics: options.metrics, token: options.config.metricsToken}),
+      );
+    }
+  }
   app.use(json({limit: MAX_JSON_BODY_SIZE}));
   app.use(bodyLimitErrorHandler);
+  if (options.metrics) {
+    app.use(createHttpMetricsMiddleware(options.metrics));
+  }
   app.use(createRequestLogger(options.logger));
   app.useGlobalPipes(createValidationPipe());
   app.useGlobalFilters(new AllExceptionsFilter());

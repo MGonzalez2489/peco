@@ -1,5 +1,7 @@
-import {Injectable} from '@nestjs/common';
+import {Injectable, Optional} from '@nestjs/common';
+import {JobKeyEnum} from '@peco/enums';
 import {DataSource, In, IsNull, MoreThanOrEqual, type EntityManager} from 'typeorm';
+import {JobLockService} from '../../../common/job-locks/job-lock.service';
 import {AccountEntity, AuditLogEntity, MovementEntity} from '../../../database/entities';
 import {movementBalanceImpact} from '../../../movements/utils/movement-balance-impact.util';
 import {RECONCILIATION_AUDIT_ENTITY} from '../constants/reconciliation-audit-entity.constant';
@@ -14,10 +16,20 @@ import type {ReconciliationDrift} from '../types/reconciliation-drift.type';
  */
 @Injectable()
 export class ReconciliationRepository {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    private readonly dataSource: DataSource,
+    @Optional() private readonly jobLocks?: JobLockService,
+  ) {}
 
-  /** Returns `null` when another instance already holds the run lock. */
+  /** Durable lock first, then the advisory lock that existing integration tests assert. */
   async withLock<T>(work: (manager: EntityManager) => Promise<T>): Promise<T | null> {
+    const withAdvisoryLock = async (): Promise<T | null> => this.withAdvisoryLock(work);
+    return this.jobLocks
+      ? this.jobLocks.withLock(JobKeyEnum.RECONCILIATION.toString(), withAdvisoryLock)
+      : withAdvisoryLock();
+  }
+
+  private async withAdvisoryLock<T>(work: (manager: EntityManager) => Promise<T>): Promise<T | null> {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
 
