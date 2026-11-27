@@ -47,6 +47,8 @@ export * from './next-execution-date.util';
 export * from './pick-random.util';
 export * from './period-range.util';
 export * from './read-storage-array.util';
+export * from './auth-control-error.util';
+export * from './passwords-match-validator.util';
 export * from './recurrence-label.util';
 export * from './reversal-impact.util';
 export * from './resolve-default-category-id.util';

@@ -612,11 +612,23 @@ Settings must replace local-only actions with:
 
 ## 7. Store-by-store migration
 
+### Migration semantics (applies to every phase)
+
+"Replace" always refers to the **data source**, never to the store itself. The
+existing `@ngrx/signals` stores stay in place and remain the single in-memory
+source of truth consumed by components. Each store injects the typed API
+services created in Phase 0, loads its state from them and commits their
+responses into its own signals. Do not delete a store, call an API service
+directly from a component instead of going through its store, or introduce a
+second state holder. Local storage services are retired only as data sources;
+local domain rules are removed only when the backend owns them.
+
 ### 7.1 Persistence services
 
-Replace or retire the local storage services:
+Retire the local storage services as data sources. The API services below are
+injected into the existing stores; they do not replace those stores.
 
-| Current service area           | Replacement                                                       |
+| Current service area           | API service injected into the store                               |
 | ------------------------------ | ----------------------------------------------------------------- |
 | Accounts storage               | `AccountsApiService` using `/accounts`                            |
 | Movements storage              | `MovementsApiService` using `/movements`                          |
@@ -629,8 +641,10 @@ Replace or retire the local storage services:
 
 ### 7.2 Signal stores
 
-Keep the existing `@ngrx/signals` store shape where possible, but change the
-source of truth:
+Keep the existing `@ngrx/signals` store shape and keep every store as the single
+source of truth for its feature. Only the data source changes: each store
+injects the matching API service, loads from it and commits the normalized
+response into its own signals:
 
 - `AccountsStore`: load from `GET /accounts`; mutations call the API then replace
   affected entries from the response, including refreshed balances and
@@ -878,6 +892,11 @@ Never compare raw code strings in production code.
 Progress legend: `[x]` = done, `[ ]` = pending. A step is marked done after it is
 implemented and verified, and before the user reviews, accepts, commits and pushes it.
 
+Phase 2 onward follows the migration semantics in section 7: steps described as
+"Replace" mean replacing the local **data source**. Stores are never replaced or
+bypassed; they inject the API services and keep all domain state in their
+signals.
+
 ### Phase 0 — Shared contract and HTTP foundation
 
 - [x] done — Add `API_BASE_URL` and runtime configuration provider.
@@ -885,11 +904,11 @@ implemented and verified, and before the user reviews, accepts, commits and push
 - [x] done — Add auth, envelope/error, correlation and idempotency interceptors.
 - [x] done — Add typed UI error model and Spanish error presentation component/service.
 - [x] done — Replace domain magic strings with `@peco/enums` imports.
-- [ ] Verify `nx build web` and `nx test web` remain green before feature changes.
+- [x] done — Verify `nx build web` and `nx test web` remain green before feature changes.
 
 ### Phase 1 — Authentication and shell
 
-- [ ] Implement auth routes and forms with reactive forms.
+- [x] done — Implement auth routes and forms with reactive forms.
 - [ ] Implement session service and refresh flow.
 - [ ] Add route guards and authenticated shell.
 - [ ] Wire logout, profile, password change, delete and export.
@@ -899,31 +918,37 @@ implemented and verified, and before the user reviews, accepts, commits and push
 
 ### Phase 2 — Core catalogs and accounts
 
-- [ ] Replace `CatalogStore` with API-backed category reads/writes.
-- [ ] Replace `AccountsStore` with API-backed reads/writes, pin and delete-transfer.
-- [ ] Update account forms for integer cents and server version handling.
+- [ ] Wire `CatalogStore` to `CategoriesApiService` for category reads/writes and
+      keep all category state in that store.
+- [ ] Wire `AccountsStore` to `AccountsApiService` for reads/writes, pin and
+      delete-transfer, committing responses into that store.
+- [ ] Update account forms for integer cents and server version handling; submit
+      through the store, not directly through the API service.
 - [ ] Remove local seed constants once the server seeds the catalog and root account.
 
 ### Phase 3 — Ledger
 
-- [ ] Replace movement list/detail/create/edit/delete with API calls.
-- [ ] Replace local reversal with `POST /movements/:publicId/revert`.
-- [ ] Use server-returned balances and hydrated rows.
+- [ ] Wire movement list/detail/create/edit/delete through `MovementsApiService`
+      into `MovementsStore`; keep movement state in that store.
+- [ ] Route reversal through `POST /movements/:publicId/revert` from `MovementsStore`.
+- [ ] Commit server-returned balances and hydrated rows into the store.
 - [ ] Disable mutations for closed periods.
 
 ### Phase 4 — Schedules and periods
 
-- [ ] Replace schedule list/detail/create/edit/pause/resume/delete with API calls.
-- [ ] Replace local due projection with `GET /scheduled-transactions/due`.
-- [ ] Wire execute, cancel occurrence and apply-due.
-- [ ] Replace local snapshots with `/periods` reads and disable closed-period writes.
+- [ ] Wire schedule list/detail/create/edit/pause/resume/delete through
+      `ScheduledTransactionsApiService` into `ScheduledTransactionsStore`.
+- [ ] Feed the store's due projection from `GET /scheduled-transactions/due`.
+- [ ] Wire execute, cancel occurrence and apply-due through the store.
+- [ ] Feed `PeriodSnapshotsStore` from `/periods` reads and disable closed-period writes.
 
 ### Phase 5 — Reports and preferences
 
-- [ ] Replace dashboard and chart aggregation with `/reports/*` calls.
+- [ ] Feed dashboard and chart state from `/reports/*` calls through their
+      existing stores/selectors, without bypassing them from components.
 - [ ] Send period/range query parameters from `GlobalPeriodStore`.
-- [ ] Finish `UserPreferencesStore` binding to `/preferences`, including
-      `movements.hideReversal`.
+- [ ] Finish `UserPreferencesStore` binding to `/preferences` through
+      `PreferencesApiService`, including `movements.hideReversal`.
 - [ ] Remove preference storage from `localStorage`.
 
 ### Phase 6 — Cleanup and verification

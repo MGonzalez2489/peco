@@ -1,7 +1,9 @@
 import {Routes} from '@angular/router';
+import {authRoutes} from './features/auth/auth.routes';
 
 export const routes: Routes = [
   {path: '', redirectTo: 'dashboard', pathMatch: 'full'},
+  ...authRoutes,
   {
     path: 'dashboard',
     title: 'Resumen',
