@@ -4,12 +4,14 @@ import {provideRouter} from '@angular/router';
 
 import {routes} from './app.routes';
 import {provideServiceWorker} from '@angular/service-worker';
+import {provideApiConfiguration} from './core/api/api-config.provider';
 import {provideAppIcons} from './core/icons/app-icons.provider';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideHttpClient(),
+    provideApiConfiguration(),
     provideRouter(routes),
     provideServiceWorker('ngsw-worker.js', {
       enabled: !isDevMode(),

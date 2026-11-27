@@ -875,60 +875,63 @@ Never compare raw code strings in production code.
 
 ## 10. Implementation phases
 
+Progress legend: `[x]` = done, `[ ]` = pending. A step is marked done after it is
+implemented and verified, and before the user reviews, accepts, commits and pushes it.
+
 ### Phase 0 — Shared contract and HTTP foundation
 
-1. Add `API_BASE_URL` and runtime configuration provider.
-2. Add typed API services under `core/api/`.
-3. Add auth, envelope/error, correlation and idempotency interceptors.
-4. Add typed UI error model and Spanish error presentation component/service.
-5. Replace domain magic strings with `@peco/enums` imports.
-6. Verify `nx build web` and `nx test web` remain green before feature changes.
+- [x] done — Add `API_BASE_URL` and runtime configuration provider.
+- [ ] Add typed API services under `core/api/`.
+- [ ] Add auth, envelope/error, correlation and idempotency interceptors.
+- [ ] Add typed UI error model and Spanish error presentation component/service.
+- [ ] Replace domain magic strings with `@peco/enums` imports.
+- [ ] Verify `nx build web` and `nx test web` remain green before feature changes.
 
 ### Phase 1 — Authentication and shell
 
-1. Implement auth routes and forms with reactive forms.
-2. Implement session service and refresh flow.
-3. Add route guards and authenticated shell.
-4. Wire logout, profile, password change, delete and export.
-5. Hydrate `/preferences` immediately after login so theme, privacy and PWA
-   banner behavior work before feature stores load.
-6. Clear caches on session changes.
+- [ ] Implement auth routes and forms with reactive forms.
+- [ ] Implement session service and refresh flow.
+- [ ] Add route guards and authenticated shell.
+- [ ] Wire logout, profile, password change, delete and export.
+- [ ] Hydrate `/preferences` immediately after login so theme, privacy and PWA
+      banner behavior work before feature stores load.
+- [ ] Clear caches on session changes.
 
 ### Phase 2 — Core catalogs and accounts
 
-1. Replace `CatalogStore` with API-backed category reads/writes.
-2. Replace `AccountsStore` with API-backed reads/writes, pin and delete-transfer.
-3. Update account forms for integer cents and server version handling.
-4. Remove local seed constants once the server seeds the catalog and root account.
+- [ ] Replace `CatalogStore` with API-backed category reads/writes.
+- [ ] Replace `AccountsStore` with API-backed reads/writes, pin and delete-transfer.
+- [ ] Update account forms for integer cents and server version handling.
+- [ ] Remove local seed constants once the server seeds the catalog and root account.
 
 ### Phase 3 — Ledger
 
-1. Replace movement list/detail/create/edit/delete with API calls.
-2. Replace local reversal with `POST /movements/:publicId/revert`.
-3. Use server-returned balances and hydrated rows.
-4. Disable mutations for closed periods.
+- [ ] Replace movement list/detail/create/edit/delete with API calls.
+- [ ] Replace local reversal with `POST /movements/:publicId/revert`.
+- [ ] Use server-returned balances and hydrated rows.
+- [ ] Disable mutations for closed periods.
 
 ### Phase 4 — Schedules and periods
 
-1. Replace schedule list/detail/create/edit/pause/resume/delete with API calls.
-2. Replace local due projection with `GET /scheduled-transactions/due`.
-3. Wire execute, cancel occurrence and apply-due.
-4. Replace local snapshots with `/periods` reads and disable closed-period writes.
+- [ ] Replace schedule list/detail/create/edit/pause/resume/delete with API calls.
+- [ ] Replace local due projection with `GET /scheduled-transactions/due`.
+- [ ] Wire execute, cancel occurrence and apply-due.
+- [ ] Replace local snapshots with `/periods` reads and disable closed-period writes.
 
 ### Phase 5 — Reports and preferences
 
-1. Replace dashboard and chart aggregation with `/reports/*` calls.
-2. Send period/range query parameters from `GlobalPeriodStore`.
-3. Finish `UserPreferencesStore` binding to `/preferences`, including
-   `movements.hideReversal`.
-4. Remove preference storage from `localStorage`.
+- [ ] Replace dashboard and chart aggregation with `/reports/*` calls.
+- [ ] Send period/range query parameters from `GlobalPeriodStore`.
+- [ ] Finish `UserPreferencesStore` binding to `/preferences`, including
+      `movements.hideReversal`.
+- [ ] Remove preference storage from `localStorage`.
 
 ### Phase 6 — Cleanup and verification
 
-1. Delete obsolete storage services, seed constants and local domain utilities.
-2. Remove backup/import/reset UI.
-3. Ensure no `peco.*` business key is read or written.
-4. Run the verification matrix in section 11.
+- [ ] Delete obsolete storage services, seed constants and local domain utilities.
+- [ ] Remove backup/import/reset UI.
+- [ ] Ensure no `peco.*` business key is read or written.
+- [ ] Run the verification matrix in section 11.
 
 ## 11. Verification matrix
 

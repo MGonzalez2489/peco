@@ -1,6 +1,7 @@
 export * from './account-color.type';
 export * from './account-type.type';
 export * from './account-type-filter.type';
+export * from './api-runtime-config.type';
 export * from './app-theme.type';
 export * from './backup-import-selection.type';
 export * from './balance-operation.type';
