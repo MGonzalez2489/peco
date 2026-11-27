@@ -71,7 +71,8 @@ export type IconName =
   | 'utensils'
   | 'lock'
   | 'scale'
-  | 'pin';
+  | 'pin'
+  | 'triangle-alert';
 
 @Component({
   selector: 'app-icon',

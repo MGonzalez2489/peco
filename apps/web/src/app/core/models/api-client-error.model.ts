@@ -8,6 +8,7 @@ export class ApiClientError extends Error {
     message: string,
     readonly correlationId: string,
     readonly details?: unknown,
+    readonly retryAfterSeconds?: number,
   ) {
     super(message);
     this.name = 'ApiClientError';

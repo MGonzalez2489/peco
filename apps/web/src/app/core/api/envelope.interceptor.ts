@@ -9,6 +9,7 @@ import type {ApiErrorCode} from '@peco/contracts';
 import {ApiErrorCodeEnum} from '@peco/enums';
 import {catchError, map, throwError} from 'rxjs';
 import {CORRELATION_ID_HEADER} from '../constants/correlation-id-header.constant';
+import {RETRY_AFTER_HEADER} from '../constants/retry-after-header.constant';
 import {CORRELATION_ID} from './contexts/correlation-id.context';
 import {RAW_RESPONSE} from './contexts/raw-response.context';
 import {ApiClientError} from '../models/api-client-error.model';
@@ -21,6 +22,15 @@ const readErrorObject = (value: unknown): Record<string, unknown> | null => {
   const record = asRecord(value);
   if (!record) return null;
   return 'error' in record ? asRecord(record['error']) : record;
+};
+
+/** Accepts the delta-seconds form used by the API's rate-limit guard. */
+const readRetryAfterSeconds = (headers: HttpHeaders): number | undefined => {
+  const raw = headers.get(RETRY_AFTER_HEADER);
+  if (!raw) return undefined;
+
+  const seconds = Number(raw);
+  return Number.isFinite(seconds) && seconds >= 0 ? Math.ceil(seconds) : undefined;
 };
 
 const FALLBACK_CODES: Readonly<Record<number, ApiErrorCode>> = {
@@ -53,6 +63,7 @@ const toClientError = (
       : 'No se pudo completar la solicitud.',
     correlationId,
     apiError?.['details'],
+    readRetryAfterSeconds(headers),
   );
 };
 

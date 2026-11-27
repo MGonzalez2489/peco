@@ -23,4 +23,5 @@ export * from './scheduled-transaction-type.model';
 export * from './scheduled-transaction.model';
 export * from './select-option.model';
 export * from './settings-section.model';
+export * from './ui-error.model';
 export * from './user-preferences.model';

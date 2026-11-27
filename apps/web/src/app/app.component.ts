@@ -2,6 +2,7 @@ import {Component, computed, inject, signal} from '@angular/core';
 import {RouterOutlet} from '@angular/router';
 import {PeriodSnapshotsStore} from '@core/stores/period-snapshots.store';
 import {GlobalPeriodStore} from '@core/stores/global-period.store';
+import {ApiErrorAlertComponent} from '@core/components/api-error-alert/api-error-alert.component';
 import {PwaInstallBannerComponent} from '@core/components/pwa-install-banner/pwa-install-banner.component';
 import {UpdateBannerComponent} from '@core/components/update-banner/update-banner.component';
 import {MovementFormModalComponent} from '@features/movements/components';
@@ -17,6 +18,7 @@ import {NavIconComponent, NavbarComponent, SidebarComponent} from '@shared/compo
     MovementFormModalComponent,
     PwaInstallBannerComponent,
     UpdateBannerComponent,
+    ApiErrorAlertComponent,
   ],
   template: `
     <div
@@ -63,6 +65,7 @@ import {NavIconComponent, NavbarComponent, SidebarComponent} from '@shared/compo
       </button>
     </div>
 
+    <app-api-error-alert />
     <app-pwa-install-banner />
     <app-update-banner />
 

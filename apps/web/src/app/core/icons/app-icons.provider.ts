@@ -71,6 +71,7 @@ import {
   Utensils,
   Scale,
   Pin,
+  TriangleAlert,
 } from 'lucide-angular';
 
 export const ALLOWED_ICONS = {
@@ -144,6 +145,7 @@ export const ALLOWED_ICONS = {
   Utensils,
   Scale,
   Pin,
+  TriangleAlert,
 };
 
 export function provideAppIcons(): Provider {

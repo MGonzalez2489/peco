@@ -93,4 +93,24 @@ describe('envelopeInterceptor', () => {
     expect(clientError.message).toBe('Datos no válidos.');
     expect(clientError.correlationId).toBe('cid-123');
   });
+
+  it('captures Retry-After as seconds on rate-limit errors', () => {
+    let error: unknown;
+
+    client.get('/api/accounts').subscribe({error: (value) => (error = value)});
+    httpTesting.expectOne('/api/accounts').flush(
+      {
+        data: null,
+        error: {
+          statusCode: 429,
+          code: 'RATE_LIMITED',
+          message: 'Demasiadas solicitudes.',
+          correlationId: 'cid-429',
+        },
+      },
+      {status: 429, statusText: 'Too Many Requests', headers: {'Retry-After': '12'}},
+    );
+
+    expect((error as ApiClientError).retryAfterSeconds).toBe(12);
+  });
 });
