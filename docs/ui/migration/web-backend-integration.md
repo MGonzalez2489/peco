@@ -881,7 +881,7 @@ implemented and verified, and before the user reviews, accepts, commits and push
 ### Phase 0 — Shared contract and HTTP foundation
 
 - [x] done — Add `API_BASE_URL` and runtime configuration provider.
-- [ ] Add typed API services under `core/api/`.
+- [x] done — Add typed API services under `core/api/`.
 - [ ] Add auth, envelope/error, correlation and idempotency interceptors.
 - [ ] Add typed UI error model and Spanish error presentation component/service.
 - [ ] Replace domain magic strings with `@peco/enums` imports.
