@@ -3,6 +3,8 @@ export * from './account-preferences.model';
 export * from './account-type-definition.model';
 export * from './account-type-summary.model';
 export * from './account.model';
+export * from './api-client-error.model';
+export * from './auth-token-state.model';
 export * from './backup-data.model';
 export * from './category.model';
 export * from './changelog.model';

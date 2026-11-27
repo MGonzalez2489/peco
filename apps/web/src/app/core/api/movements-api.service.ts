@@ -14,6 +14,7 @@ import {Observable} from 'rxjs';
 import {DEFAULT_API_LIST_LIMIT} from '../constants/default-api-list-limit.constant';
 import {ApiListResult} from '../types/api-list-result.type';
 import {ApiClientService} from './api-client.service';
+import {idempotentRequestContext} from './contexts/idempotent-request-context.util';
 
 @Injectable({providedIn: 'root'})
 export class MovementsApiService {
@@ -33,11 +34,15 @@ export class MovementsApiService {
   }
 
   create(body: CreateMovementRequest): Observable<CreateMovementResponse> {
-    return this.api.post('movements', body);
+    return this.api.post('movements', body, idempotentRequestContext());
   }
 
   update(publicId: string, body: UpdateMovementRequest): Observable<UpdateMovementResponse> {
-    return this.api.patch(`movements/${encodeURIComponent(publicId)}`, body);
+    return this.api.patch(
+      `movements/${encodeURIComponent(publicId)}`,
+      body,
+      idempotentRequestContext(),
+    );
   }
 
   delete(publicId: string): Observable<DeleteMovementResult> {
@@ -45,6 +50,10 @@ export class MovementsApiService {
   }
 
   revert(publicId: string): Observable<RevertMovementResponse> {
-    return this.api.post(`movements/${encodeURIComponent(publicId)}/revert`);
+    return this.api.post(
+      `movements/${encodeURIComponent(publicId)}/revert`,
+      undefined,
+      idempotentRequestContext(),
+    );
   }
 }

@@ -1,8 +1,7 @@
-import {provideHttpClient} from '@angular/common/http';
-import {HttpTestingController, provideHttpClientTesting} from '@angular/common/http/testing';
+import {HttpTestingController} from '@angular/common/http/testing';
 import {TestBed} from '@angular/core/testing';
-import {API_BASE_URL} from '../tokens/api-base-url.token';
 import {MovementsApiService} from './movements-api.service';
+import {provideApiTesting} from './api-testing.providers';
 
 const BASE_URL = 'https://api.example.com/api';
 
@@ -12,11 +11,7 @@ describe('MovementsApiService', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [
-        provideHttpClient(),
-        provideHttpClientTesting(),
-        {provide: API_BASE_URL, useValue: BASE_URL},
-      ],
+      providers: [provideApiTesting()],
     });
     service = TestBed.inject(MovementsApiService);
     httpTesting = TestBed.inject(HttpTestingController);
@@ -33,9 +28,7 @@ describe('MovementsApiService', () => {
         cursor: 'next-cursor',
       })
       .subscribe();
-    const request = httpTesting.expectOne(
-      (candidate) => candidate.url === `${BASE_URL}/movements`,
-    );
+    const request = httpTesting.expectOne((candidate) => candidate.url === `${BASE_URL}/movements`);
 
     expect(request.request.params.get('limit')).toBe('20');
     expect(request.request.params.get('period')).toBe('2026-11');
@@ -48,9 +41,7 @@ describe('MovementsApiService', () => {
 
   it('does not clamp an explicitly requested limit', () => {
     service.list({limit: 500}).subscribe();
-    const request = httpTesting.expectOne(
-      (candidate) => candidate.url === `${BASE_URL}/movements`,
-    );
+    const request = httpTesting.expectOne((candidate) => candidate.url === `${BASE_URL}/movements`);
     expect(request.request.params.get('limit')).toBe('500');
     request.flush({data: [], meta: {correlationId: 'cid'}, error: null});
   });

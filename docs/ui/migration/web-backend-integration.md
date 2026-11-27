@@ -882,7 +882,7 @@ implemented and verified, and before the user reviews, accepts, commits and push
 
 - [x] done — Add `API_BASE_URL` and runtime configuration provider.
 - [x] done — Add typed API services under `core/api/`.
-- [ ] Add auth, envelope/error, correlation and idempotency interceptors.
+- [x] done — Add auth, envelope/error, correlation and idempotency interceptors.
 - [ ] Add typed UI error model and Spanish error presentation component/service.
 - [ ] Replace domain magic strings with `@peco/enums` imports.
 - [ ] Verify `nx build web` and `nx test web` remain green before feature changes.

@@ -6,6 +6,7 @@ import type {
 } from '@peco/contracts';
 import {Observable} from 'rxjs';
 import {ApiClientService} from './api-client.service';
+import {idempotentRequestContext} from './contexts/idempotent-request-context.util';
 
 @Injectable({providedIn: 'root'})
 export class PeriodsApiService {
@@ -21,6 +22,10 @@ export class PeriodsApiService {
   }
 
   close(period: string): Observable<PeriodSnapshotResponse> {
-    return this.api.post(`periods/${encodeURIComponent(period)}/close`);
+    return this.api.post(
+      `periods/${encodeURIComponent(period)}/close`,
+      undefined,
+      idempotentRequestContext(),
+    );
   }
 }

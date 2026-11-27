@@ -1,8 +1,7 @@
-import {provideHttpClient} from '@angular/common/http';
-import {HttpTestingController, provideHttpClientTesting} from '@angular/common/http/testing';
+import {HttpTestingController} from '@angular/common/http/testing';
 import {TestBed} from '@angular/core/testing';
-import {API_BASE_URL} from '../tokens/api-base-url.token';
 import {PreferencesApiService} from './preferences-api.service';
+import {provideApiTesting} from './api-testing.providers';
 
 const BASE_URL = 'https://api.example.com/api';
 
@@ -12,11 +11,7 @@ describe('PreferencesApiService', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [
-        provideHttpClient(),
-        provideHttpClientTesting(),
-        {provide: API_BASE_URL, useValue: BASE_URL},
-      ],
+      providers: [provideApiTesting()],
     });
     service = TestBed.inject(PreferencesApiService);
     httpTesting = TestBed.inject(HttpTestingController);

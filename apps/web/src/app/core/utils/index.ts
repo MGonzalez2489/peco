@@ -1,6 +1,7 @@
 export * from './account-color.util';
 export * from './matches-note-query.util';
 export * from './calculate-net-liquid-balance.util';
+export * from './create-uuid.util';
 export * from './calculate-total-liabilities.util';
 export * from './get-outstanding-debt.util';
 export * from './resolve-account-color.util';

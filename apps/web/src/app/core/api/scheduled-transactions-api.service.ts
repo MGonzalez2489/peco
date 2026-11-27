@@ -18,6 +18,7 @@ import {Observable} from 'rxjs';
 import {DEFAULT_API_LIST_LIMIT} from '../constants/default-api-list-limit.constant';
 import {ApiListResult} from '../types/api-list-result.type';
 import {ApiClientService} from './api-client.service';
+import {idempotentRequestContext} from './contexts/idempotent-request-context.util';
 
 interface DueListMeta {
   pendingOccurrences: number;
@@ -47,7 +48,7 @@ export class ScheduledTransactionsApiService {
   }
 
   applyDue(body: ApplyDueRequest = {}): Observable<ApplyDueResponse> {
-    return this.api.post('scheduled-transactions/apply-due', body);
+    return this.api.post('scheduled-transactions/apply-due', body, idempotentRequestContext());
   }
 
   getByPublicId(publicId: string): Observable<ScheduledTransactionResponse> {
@@ -62,7 +63,11 @@ export class ScheduledTransactionsApiService {
     publicId: string,
     body: UpdateScheduledTransactionRequest,
   ): Observable<ScheduledTransactionResponse> {
-    return this.api.patch(`scheduled-transactions/${encodeURIComponent(publicId)}`, body);
+    return this.api.patch(
+      `scheduled-transactions/${encodeURIComponent(publicId)}`,
+      body,
+      idempotentRequestContext(),
+    );
   }
 
   toggle(
@@ -76,7 +81,11 @@ export class ScheduledTransactionsApiService {
     publicId: string,
     body: ExecuteScheduledTransactionRequest = {},
   ): Observable<ExecuteScheduledTransactionResponse> {
-    return this.api.post(`scheduled-transactions/${encodeURIComponent(publicId)}/execute`, body);
+    return this.api.post(
+      `scheduled-transactions/${encodeURIComponent(publicId)}/execute`,
+      body,
+      idempotentRequestContext(),
+    );
   }
 
   cancelOccurrence(
@@ -86,6 +95,7 @@ export class ScheduledTransactionsApiService {
     return this.api.post(
       `scheduled-transactions/${encodeURIComponent(publicId)}/cancel-occurrence`,
       body,
+      idempotentRequestContext(),
     );
   }
 
