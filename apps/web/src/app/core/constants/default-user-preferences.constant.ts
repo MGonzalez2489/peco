@@ -1,7 +1,8 @@
 import {UserPreferences} from '../models/user-preferences.model';
+import {AppThemeEnum} from '@peco/enums';
 
 export const DEFAULT_USER_PREFERENCES: UserPreferences = {
-  theme: 'light',
+  theme: AppThemeEnum.LIGHT.toString(),
   pwaBannerDismissedAt: null,
   accounts: {
     hideBalance: false,

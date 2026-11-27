@@ -7,6 +7,7 @@ import {AccountFormModalComponent} from './components/account-form-modal.compone
 import {AccountListComponent} from './components/account-list/account-list.component';
 import {AccountTypeDistributionComponent} from './components/account-type-distribution/account-type-distribution.component';
 import {AccountTypeDistributionMobileComponent} from './components/account-type-distribution-mobile/account-type-distribution-mobile.component';
+import {MovementTypeEnum} from '@peco/enums';
 
 @Component({
   selector: 'app-accounts',
@@ -31,6 +32,7 @@ export class AccountsComponent {
   readonly createModalOpen = signal(false);
 
   readonly transferModalOpen = signal(false);
+  protected readonly transferType = MovementTypeEnum.TRANSFER.toString();
 
   readonly editingAccount = signal<Account | null>(null);
 

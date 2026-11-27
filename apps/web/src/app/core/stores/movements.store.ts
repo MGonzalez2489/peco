@@ -25,6 +25,7 @@ import {movementEditBlockMessage} from '../utils/movement-edit-block-message.uti
 import {AccountsStore} from './accounts.store';
 import {CatalogStore} from './catalog.store';
 import {UserPreferencesStore} from './user-preferences.store';
+import {MovementTypeEnum} from '@peco/enums';
 
 interface MovementsState {
   movements: Movement[];
@@ -143,10 +144,11 @@ export const MovementsStore = signalStore(
     };
 
     const applyBalanceImpact = (movement: Movement): void => {
-      const sourceOperation: BalanceOperation = movement.type === 'INCOME' ? 'ADD' : 'SUBTRACT';
+      const sourceOperation: BalanceOperation =
+        movement.type === MovementTypeEnum.INCOME.toString() ? 'ADD' : 'SUBTRACT';
       accountsStore.updateBalance(movement.accountId, movement.amount, sourceOperation);
 
-      if (movement.type === 'TRANSFER' && movement.targetAccountId) {
+      if (movement.type === MovementTypeEnum.TRANSFER.toString() && movement.targetAccountId) {
         accountsStore.updateBalance(movement.targetAccountId, movement.amount, 'ADD');
       }
     };
@@ -257,7 +259,7 @@ export const MovementsStore = signalStore(
           return false;
         }
 
-        if (original.type === 'TRANSFER') {
+        if (original.type === MovementTypeEnum.TRANSFER.toString()) {
           if (!accountExists(dto.targetAccountId) || dto.targetAccountId === dto.accountId) {
             patchState(store, setError(new Error('Selecciona una cuenta destino válida.')));
             return false;
@@ -271,7 +273,10 @@ export const MovementsStore = signalStore(
             categoryId: dto.categoryId,
             amount: dto.amount,
             note: dto.note,
-            targetAccountId: original.type === 'TRANSFER' ? dto.targetAccountId : undefined,
+            targetAccountId:
+              original.type === MovementTypeEnum.TRANSFER.toString()
+                ? dto.targetAccountId
+                : undefined,
             updatedAt: new Date().toISOString(),
           };
 
@@ -284,7 +289,7 @@ export const MovementsStore = signalStore(
 
           // Revert the original impact, then apply the edited one.
           accumulate(original.accountId, -movementBalanceImpact(original, original.accountId));
-          if (original.type === 'TRANSFER' && original.targetAccountId) {
+          if (original.type === MovementTypeEnum.TRANSFER.toString() && original.targetAccountId) {
             accumulate(
               original.targetAccountId,
               -movementBalanceImpact(original, original.targetAccountId),
@@ -292,7 +297,7 @@ export const MovementsStore = signalStore(
           }
 
           accumulate(updated.accountId, movementBalanceImpact(updated, updated.accountId));
-          if (updated.type === 'TRANSFER' && updated.targetAccountId) {
+          if (updated.type === MovementTypeEnum.TRANSFER.toString() && updated.targetAccountId) {
             accumulate(
               updated.targetAccountId,
               movementBalanceImpact(updated, updated.targetAccountId),
@@ -340,8 +345,8 @@ export const MovementsStore = signalStore(
         if (account.currentBalance !== 0 && targetAccountId && targetAccountId !== id) {
           registerMovement({
             accountId: id,
-            categoryId: catalogStore.defaultCategoryIdFor('TRANSFER'),
-            type: 'TRANSFER',
+            categoryId: catalogStore.defaultCategoryIdFor(MovementTypeEnum.TRANSFER.toString()),
+            type: MovementTypeEnum.TRANSFER.toString(),
             amount: account.currentBalance,
             targetAccountId,
             note: `Eliminación de cuenta ${account.name} traspaso ${formatCentsToCurrency(account.currentBalance)}`,

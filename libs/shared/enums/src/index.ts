@@ -18,6 +18,7 @@ export * from './lib/refresh-rotation-status.enum';
 export * from './lib/report-period-status.enum';
 export * from './lib/scheduled-execution-reason.enum';
 export * from './lib/scheduled-execution-status.enum';
+export * from './lib/scheduled-transaction-stop-condition.enum';
 export * from './lib/scheduled-transaction-type.enum';
 export * from './lib/string-enum-value';
 export * from './lib/string-enum-value.type';

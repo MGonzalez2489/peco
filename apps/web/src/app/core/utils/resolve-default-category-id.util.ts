@@ -1,12 +1,13 @@
 import {MovementType} from '../types/movement-type.type';
+import {MovementTypeEnum} from '@peco/enums';
 
 export const resolveDefaultCategoryId = (type: MovementType): string => {
   switch (type) {
-    case 'INCOME':
+    case MovementTypeEnum.INCOME.toString():
       return 'payroll';
-    case 'EXPENSE':
+    case MovementTypeEnum.EXPENSE.toString():
       return 'services';
-    case 'TRANSFER':
+    case MovementTypeEnum.TRANSFER.toString():
       return 'transfer';
   }
 };

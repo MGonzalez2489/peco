@@ -14,6 +14,7 @@ import {MovementType} from '../types/movement-type.type';
 import {toCategorySlug} from '../utils/to-category-slug.util';
 import {MovementsStore} from './movements.store';
 import {ScheduledTransactionsStore} from './scheduled-transactions.store';
+import {CategoryApplyTypeEnum} from '@peco/enums';
 
 interface CatalogState {
   categories: Category[];
@@ -35,18 +36,22 @@ export const CatalogStore = signalStore(
       categories().filter(
         (category) =>
           category.isSystem !== true &&
-          (category.applyType === 'INCOME' || category.applyType === 'BOTH'),
+          (category.applyType === CategoryApplyTypeEnum.INCOME.toString() ||
+            category.applyType === CategoryApplyTypeEnum.BOTH.toString()),
       ),
     ),
     expenseCategories: computed(() =>
       categories().filter(
         (category) =>
           category.isSystem !== true &&
-          (category.applyType === 'EXPENSE' || category.applyType === 'BOTH'),
+          (category.applyType === CategoryApplyTypeEnum.EXPENSE.toString() ||
+            category.applyType === CategoryApplyTypeEnum.BOTH.toString()),
       ),
     ),
     transferCategory: computed(() =>
-      categories().find((category) => category.applyType === 'TRANSFER'),
+      categories().find(
+        (category) => category.applyType === CategoryApplyTypeEnum.TRANSFER.toString(),
+      ),
     ),
     filterableCategories: computed(() =>
       categories().filter((category) => category.isSystem !== true),
@@ -63,11 +68,11 @@ export const CatalogStore = signalStore(
 
     const categoriesForType = (type: MovementType): Category[] => {
       switch (type) {
-        case 'INCOME':
+        case CategoryApplyTypeEnum.INCOME.toString():
           return store.incomeCategories();
-        case 'EXPENSE':
+        case CategoryApplyTypeEnum.EXPENSE.toString():
           return store.expenseCategories();
-        case 'TRANSFER': {
+        case CategoryApplyTypeEnum.TRANSFER.toString(): {
           const transfer = store.transferCategory();
           return transfer ? [transfer] : [];
         }

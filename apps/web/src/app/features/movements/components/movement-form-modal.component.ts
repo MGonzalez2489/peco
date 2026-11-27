@@ -19,6 +19,7 @@ import {MovementType} from '@core/types';
 import {fromCents, toAccountOption, toCategoryOption, toCents} from '@core/utils';
 import {AppSelectComponent, ModalComponent} from '@shared/components';
 import {CurrencyInputDirective} from '@shared/directives';
+import {MovementTypeEnum} from '@peco/enums';
 
 const TYPE_BUTTON_BASE_CLASS =
   'flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-bold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus-visible:ring-offset-slate-900';
@@ -37,7 +38,7 @@ const AMOUNT_INPUT_BASE_CLASS =
 })
 export class MovementFormModalComponent {
   readonly isOpen = input(false);
-  readonly presetType = input<MovementType>('EXPENSE');
+  readonly presetType = input<MovementType>(MovementTypeEnum.EXPENSE.toString());
   /** When present the modal edits this movement instead of creating a new one. */
   readonly editMovement = input<Movement | null>(null);
 
@@ -59,14 +60,15 @@ export class MovementFormModalComponent {
     amount: this.fb.control<number>(0, {
       validators: [Validators.required, Validators.min(0.01)],
     }),
-    type: this.fb.control<MovementType>('EXPENSE', Validators.required),
+    type: this.fb.control<MovementType>(MovementTypeEnum.EXPENSE.toString(), Validators.required),
     accountId: this.fb.control<string>('', Validators.required),
     categoryId: this.fb.control<string>('', Validators.required),
     targetAccountId: this.fb.control<string | null>(null),
     note: this.fb.control<string>(''),
   });
 
-  readonly selectedType = signal<MovementType>('EXPENSE');
+  readonly selectedType = signal<MovementType>(MovementTypeEnum.EXPENSE.toString());
+  protected readonly transferType = MovementTypeEnum.TRANSFER.toString();
   readonly sourceAccountId = signal('');
 
   readonly availableCategories = computed<Category[]>(() =>
@@ -118,14 +120,18 @@ export class MovementFormModalComponent {
     const categoryControl = this.form.controls.categoryId;
 
     typeControl.valueChanges.pipe(takeUntilDestroyed()).subscribe((type) => {
-      const value = type ?? 'EXPENSE';
+      const value = type ?? MovementTypeEnum.EXPENSE.toString();
       this.selectedType.set(value);
       this.syncDestination(value);
     });
 
     sourceControl.valueChanges.pipe(takeUntilDestroyed()).subscribe((source) => {
       this.sourceAccountId.set(source ?? '');
-      if (typeControl.value === 'TRANSFER' && source && destinationControl.value === source) {
+      if (
+        typeControl.value === MovementTypeEnum.TRANSFER.toString() &&
+        source &&
+        destinationControl.value === source
+      ) {
         destinationControl.setValue(this.accounts().find((a) => a.id !== source)?.id ?? '');
       }
     });
@@ -182,7 +188,7 @@ export class MovementFormModalComponent {
       const type = this.selectedType();
       const list = this.availableCategories();
 
-      if (type === 'TRANSFER') {
+      if (type === MovementTypeEnum.TRANSFER.toString()) {
         const transferCategory = this.catalogStore.transferCategory() ?? list[0];
         if (transferCategory) categoryControl.setValue(transferCategory.id);
         return;
@@ -205,8 +211,14 @@ export class MovementFormModalComponent {
     const editing = this.editMovement();
 
     if (editing) {
-      const destinationId = editing.type === 'TRANSFER' ? (raw.targetAccountId ?? null) : undefined;
-      if (editing.type === 'TRANSFER' && (!destinationId || destinationId === raw.accountId)) {
+      const destinationId =
+        editing.type === MovementTypeEnum.TRANSFER.toString()
+          ? (raw.targetAccountId ?? null)
+          : undefined;
+      if (
+        editing.type === MovementTypeEnum.TRANSFER.toString() &&
+        (!destinationId || destinationId === raw.accountId)
+      ) {
         this.saveError.set('Selecciona una cuenta destino válida.');
         return;
       }
@@ -231,13 +243,18 @@ export class MovementFormModalComponent {
       return;
     }
 
-    const destinationId = raw.type === 'TRANSFER' ? (raw.targetAccountId ?? null) : undefined;
-    if (raw.type === 'TRANSFER' && (!destinationId || destinationId === raw.accountId)) return;
+    const destinationId =
+      raw.type === MovementTypeEnum.TRANSFER.toString() ? (raw.targetAccountId ?? null) : undefined;
+    if (
+      raw.type === MovementTypeEnum.TRANSFER.toString() &&
+      (!destinationId || destinationId === raw.accountId)
+    )
+      return;
 
     this.movementsStore.registerMovement({
       accountId: raw.accountId ?? '',
       categoryId: raw.categoryId ?? '',
-      type: raw.type ?? 'EXPENSE',
+      type: raw.type ?? MovementTypeEnum.EXPENSE.toString(),
       // The input works in decimal dollars; movements persist integer cents.
       amount: toCents(raw.amount ?? 0),
       note: raw.note?.trim() || undefined,
@@ -275,7 +292,7 @@ export class MovementFormModalComponent {
 
   private syncDestination(type: MovementType): void {
     const destination = this.form.controls.targetAccountId;
-    if (type === 'TRANSFER') {
+    if (type === MovementTypeEnum.TRANSFER.toString()) {
       destination.enable();
       destination.setValidators(Validators.required);
     } else {

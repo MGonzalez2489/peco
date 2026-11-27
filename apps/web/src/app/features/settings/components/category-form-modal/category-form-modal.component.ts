@@ -28,6 +28,7 @@ import {
   IconSelectComponent,
   ModalComponent,
 } from '@shared/components';
+import {CategoryApplyTypeEnum} from '@peco/enums';
 
 @Component({
   selector: 'app-category-form-modal',
@@ -56,11 +57,11 @@ export class CategoryFormModalComponent {
   protected readonly colorPalette = CATEGORY_COLOR_PALETTE;
   protected readonly iconOptions = CATEGORY_ICON_OPTIONS;
   protected readonly toSoftCategoryColor = toSoftCategoryColor;
-  // 'TRANSFER' is reserved for the system transfer category and must not be selectable by users.
+  // Transfer is reserved for the system transfer category and must not be selectable by users.
   protected readonly applyTypeOptions: SelectOption[] = (
     Object.entries(CATEGORY_APPLY_TYPE_LABEL) as ReadonlyArray<[CategoryApplyType, string]>
   )
-    .filter(([applyType]) => applyType !== 'TRANSFER')
+    .filter(([applyType]) => applyType !== CategoryApplyTypeEnum.TRANSFER.toString())
     .map(([applyType, label]) => ({
       value: applyType,
       label,
@@ -72,7 +73,9 @@ export class CategoryFormModalComponent {
       nonNullable: true,
       validators: [Validators.required],
     }),
-    applyType: this.fb.control<CategoryApplyType>('EXPENSE', {nonNullable: true}),
+    applyType: this.fb.control<CategoryApplyType>(CategoryApplyTypeEnum.EXPENSE.toString(), {
+      nonNullable: true,
+    }),
     color: this.fb.control<string>(
       pickRandom(CATEGORY_COLOR_PALETTE)?.hex ?? DEFAULT_CATEGORY_COLOR,
       {
@@ -105,7 +108,7 @@ export class CategoryFormModalComponent {
       displayName: displayName.length > 0 ? displayName : 'Nueva categoría',
       icon: value.icon ?? 'tag',
       color: value.color || DEFAULT_CATEGORY_COLOR,
-      applyType: value.applyType ?? 'EXPENSE',
+      applyType: value.applyType ?? CategoryApplyTypeEnum.EXPENSE.toString(),
     };
   });
 
@@ -130,7 +133,7 @@ export class CategoryFormModalComponent {
           }
         : {
             displayName: '',
-            applyType: 'EXPENSE',
+            applyType: CategoryApplyTypeEnum.EXPENSE.toString(),
             color: pickRandom(CATEGORY_COLOR_PALETTE)?.hex ?? DEFAULT_CATEGORY_COLOR,
             icon: pickRandom(CATEGORY_ICON_OPTIONS)?.name ?? 'tag',
           },

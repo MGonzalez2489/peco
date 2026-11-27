@@ -48,7 +48,7 @@
                   <div class="flex flex-wrap items-center gap-2">
                     <span class="truncate text-sm font-semibold text-slate-900 dark:text-white">
                       {{ accountName(movement.accountId) }}
-                      @if (movement.type === 'TRANSFER' && movement.targetAccountId) {
+                      @if (movement.type === transferType && movement.targetAccountId) {
                         → {{ accountName(movement.targetAccountId) }}
                       }
                     </span>

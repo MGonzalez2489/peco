@@ -1,6 +1,7 @@
 import {Injectable, computed, inject, signal} from '@angular/core';
 import {UserPreferencesStore} from '../stores/user-preferences.store';
 import {AppTheme} from '../types/app-theme.type';
+import {AppThemeEnum} from '@peco/enums';
 
 @Injectable({providedIn: 'root'})
 export class ThemeService {
@@ -14,9 +15,9 @@ export class ThemeService {
 
   readonly isDark = computed(() => {
     switch (this.themeMode()) {
-      case 'light':
+      case AppThemeEnum.LIGHT.toString():
         return false;
-      case 'dark':
+      case AppThemeEnum.DARK.toString():
         return true;
       default:
         return this.systemDark();

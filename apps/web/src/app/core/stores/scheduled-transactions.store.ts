@@ -27,10 +27,10 @@ import {todayIsoDate} from '../utils/today-iso-date.util';
 import {toIsoDate} from '../utils/to-iso-date.util';
 import {toMovementType} from '../utils/to-movement-type.util';
 import {MovementFilterType} from '../types/movement-filter-type.type';
-import {ScheduledTransactionTypeKey} from '../types/scheduled-transaction-type-key.enum';
 import {AccountsStore} from './accounts.store';
 import {CatalogStore} from './catalog.store';
 import {MovementsStore} from './movements.store';
+import {ScheduledTransactionTypeEnum} from '@peco/enums';
 
 export interface CategoryDistributionItem {
   categoryId: string;
@@ -85,7 +85,7 @@ export const ScheduledTransactionsStore = signalStore(
       const monthlyCommitmentsSummary = computed<MonthlyCommitmentsSummary>(() =>
         activeSchedules().reduce<MonthlyCommitmentsSummary>(
           (accumulator, item) => {
-            if (item.type.key === ScheduledTransactionTypeKey.TRANSFER) {
+            if (item.type.key === ScheduledTransactionTypeEnum.TRANSFER.toString()) {
               return accumulator;
             }
 
@@ -218,13 +218,13 @@ export const ScheduledTransactionsStore = signalStore(
         expenseFilteredCount: computed(
           () =>
             baseFilteredSchedules().filter(
-              (item) => item.type.key === ScheduledTransactionTypeKey.EXPENSE,
+              (item) => item.type.key === ScheduledTransactionTypeEnum.EXPENSE.toString(),
             ).length,
         ),
         categoryDistributionSummary: computed(() =>
           buildCategoryDistribution(
             monthlyCommitmentsSummary().totalExpenses,
-            (item) => item.type.key === ScheduledTransactionTypeKey.EXPENSE,
+            (item) => item.type.key === ScheduledTransactionTypeEnum.EXPENSE.toString(),
           ),
         ),
         incomeCategoryDistributionSummary: computed(() =>

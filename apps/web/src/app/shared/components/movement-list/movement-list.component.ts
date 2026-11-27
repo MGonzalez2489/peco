@@ -13,6 +13,7 @@ import {AccountsStore} from '@core/stores/accounts.store';
 import {CatalogStore} from '@core/stores/catalog.store';
 import {MovementsStore} from '@core/stores/movements.store';
 import {MovementType} from '@core/types';
+import {MovementTypeEnum} from '@peco/enums';
 import {
   accountColor,
   formatLocalTime,
@@ -49,6 +50,7 @@ export class MovementListComponent {
   readonly movementsStore = inject(MovementsStore);
 
   readonly movementToRevert = signal<Movement | null>(null);
+  protected readonly transferType = MovementTypeEnum.TRANSFER.toString();
 
   private readonly accountsById = computed(
     () => new Map(this.accountsStore.accounts().map((account) => [account.id, account])),

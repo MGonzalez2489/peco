@@ -18,6 +18,7 @@ import {UserPreferencesStore} from '@core/stores/user-preferences.store';
 import {AccountTypeFilter, MovementFilterType} from '@core/types';
 import {toAccountOption, toCategoryOption} from '@core/utils';
 import {AppSelectComponent, ModalComponent} from '@shared/components';
+import {MovementTypeEnum} from '@peco/enums';
 
 @Component({
   selector: 'app-filtro-movimientos-modal',
@@ -70,9 +71,9 @@ export class FiltroMovimientosModalComponent {
 
   readonly typeOptions: Array<{value: MovementFilterType; label: string}> = [
     {value: 'ALL', label: 'Todos'},
-    {value: 'INCOME', label: MOVEMENT_TYPE_LABEL.INCOME},
-    {value: 'EXPENSE', label: MOVEMENT_TYPE_LABEL.EXPENSE},
-    {value: 'TRANSFER', label: MOVEMENT_TYPE_LABEL.TRANSFER},
+    {value: MovementTypeEnum.INCOME.toString(), label: MOVEMENT_TYPE_LABEL.INCOME},
+    {value: MovementTypeEnum.EXPENSE.toString(), label: MOVEMENT_TYPE_LABEL.EXPENSE},
+    {value: MovementTypeEnum.TRANSFER.toString(), label: MOVEMENT_TYPE_LABEL.TRANSFER},
   ];
 
   readonly accountTypeOptions: SelectOption[] = [...ACCOUNT_TYPE_FILTER_OPTIONS];

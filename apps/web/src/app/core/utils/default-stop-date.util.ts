@@ -1,5 +1,6 @@
 import {RecurrenceFrequency} from '../types/recurrence-frequency.type';
 import {toIsoDate} from './to-iso-date.util';
+import {RecurrenceFrequencyEnum} from '@peco/enums';
 
 const parseIsoDate = (isoDate: string): Date => {
   const [year, month, day] = isoDate.split('-').map(Number);
@@ -28,15 +29,15 @@ export const defaultStopDate = (
   const step = Math.max(1, Math.floor(interval || 1));
 
   switch (frequency) {
-    case 'DAILY':
+    case RecurrenceFrequencyEnum.DAILY.toString():
       return toIsoDate(addDays(current, step));
-    case 'WEEKLY':
+    case RecurrenceFrequencyEnum.WEEKLY.toString():
       return toIsoDate(addDays(current, 7 * step + 1));
-    case 'FORTNIGHTLY':
+    case RecurrenceFrequencyEnum.FORTNIGHTLY.toString():
       return toIsoDate(addDays(current, 14 * step + 1));
-    case 'MONTHLY':
+    case RecurrenceFrequencyEnum.MONTHLY.toString():
       return toIsoDate(addDays(shiftMonths(current, step), 1));
-    case 'YEARLY':
+    case RecurrenceFrequencyEnum.YEARLY.toString():
       return toIsoDate(addDays(shiftMonths(current, 12 * step), 1));
     default:
       return toIsoDate(addDays(shiftMonths(current, step), 1));

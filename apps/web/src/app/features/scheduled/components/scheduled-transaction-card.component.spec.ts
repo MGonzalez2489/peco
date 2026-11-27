@@ -8,6 +8,7 @@ import {MovementsStore} from '@core/stores/movements.store';
 import {ScheduledTransactionsStore} from '@core/stores/scheduled-transactions.store';
 import {ScheduledTransactionTypeKey} from '@core/types';
 import {ScheduledTransactionCardComponent} from './scheduled-transaction-card.component';
+import {ScheduledTransactionTypeEnum} from '@peco/enums';
 
 const isoFromToday = (offsetDays: number): string => {
   const date = new Date(Date.now() + offsetDays * 86_400_000);
@@ -22,7 +23,7 @@ describe('ScheduledTransactionCardComponent', () => {
     id: 'sched-1',
     name: 'Alquiler',
     estimatedAmount: 500,
-    type: SCHEDULED_TRANSACTION_TYPE_MAP[ScheduledTransactionTypeKey.EXPENSE],
+    type: SCHEDULED_TRANSACTION_TYPE_MAP[ScheduledTransactionTypeEnum.EXPENSE.toString()],
     categoryId: 'services',
     sourceAccountId: 'c-cash',
     frequency: 'MONTHLY',

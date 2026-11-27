@@ -4,6 +4,7 @@ import {formatShortDate} from './format-short-date.util';
 import {isSameMonthAndYear} from './is-same-month-and-year.util';
 import {toIsoDate} from './to-iso-date.util';
 import {toLocalIsoDay} from './to-local-iso-day.util';
+import {MovementTypeEnum} from '@peco/enums';
 
 export function calculateMovementProgression(
   movements: Movement[],
@@ -14,10 +15,15 @@ export function calculateMovementProgression(
 
   for (const movement of movements) {
     if (movement.isCanceled) continue;
-    if (movement.type !== 'INCOME' && movement.type !== 'EXPENSE') continue;
+    if (
+      movement.type !== MovementTypeEnum.INCOME.toString() &&
+      movement.type !== MovementTypeEnum.EXPENSE.toString()
+    )
+      continue;
     if (!isSameMonthAndYear(movement.date, {month: selectedMonth, year: selectedYear})) continue;
 
-    const impact = movement.type === 'INCOME' ? movement.amount : -movement.amount;
+    const impact =
+      movement.type === MovementTypeEnum.INCOME.toString() ? movement.amount : -movement.amount;
     const day = toLocalIsoDay(movement.date);
     dailyNet.set(day, (dailyNet.get(day) ?? 0) + impact);
   }

@@ -1,5 +1,6 @@
 import {Category} from '../models/category.model';
 import {ROOT_CATEGORY_ID} from './root-category-id.constant';
+import {CategoryApplyTypeEnum} from '@peco/enums';
 
 export const SEED_CATEGORIES: Category[] = [
   {
@@ -8,7 +9,7 @@ export const SEED_CATEGORIES: Category[] = [
     displayName: 'Otros',
     icon: 'folder-open',
     color: '#6B7280',
-    applyType: 'BOTH',
+    applyType: CategoryApplyTypeEnum.BOTH.toString(),
     isRoot: true,
   },
   {
@@ -17,7 +18,7 @@ export const SEED_CATEGORIES: Category[] = [
     displayName: 'Nómina',
     icon: 'banknote',
     color: '#10B981',
-    applyType: 'INCOME',
+    applyType: CategoryApplyTypeEnum.INCOME.toString(),
   },
   {
     id: 'services',
@@ -25,7 +26,7 @@ export const SEED_CATEGORIES: Category[] = [
     displayName: 'Servicios',
     icon: 'zap',
     color: '#F59E0B',
-    applyType: 'EXPENSE',
+    applyType: CategoryApplyTypeEnum.EXPENSE.toString(),
   },
   {
     id: 'car',
@@ -33,7 +34,7 @@ export const SEED_CATEGORIES: Category[] = [
     displayName: 'Auto',
     icon: 'car',
     color: '#3B82F6',
-    applyType: 'EXPENSE',
+    applyType: CategoryApplyTypeEnum.EXPENSE.toString(),
   },
   {
     id: 'kids',
@@ -41,7 +42,7 @@ export const SEED_CATEGORIES: Category[] = [
     displayName: 'Hijos',
     icon: 'baby',
     color: '#EC4899',
-    applyType: 'EXPENSE',
+    applyType: CategoryApplyTypeEnum.EXPENSE.toString(),
   },
   {
     id: 'debts',
@@ -49,7 +50,7 @@ export const SEED_CATEGORIES: Category[] = [
     displayName: 'Deudas',
     icon: 'credit-card',
     color: '#EF4444',
-    applyType: 'EXPENSE',
+    applyType: CategoryApplyTypeEnum.EXPENSE.toString(),
   },
   {
     id: 'gifts',
@@ -57,7 +58,7 @@ export const SEED_CATEGORIES: Category[] = [
     displayName: 'Regalos',
     icon: 'gift',
     color: '#8B5CF6',
-    applyType: 'BOTH',
+    applyType: CategoryApplyTypeEnum.BOTH.toString(),
   },
   {
     id: 'donations',
@@ -65,7 +66,7 @@ export const SEED_CATEGORIES: Category[] = [
     displayName: 'Donaciones',
     icon: 'heart-handshake',
     color: '#14B8A6',
-    applyType: 'BOTH',
+    applyType: CategoryApplyTypeEnum.BOTH.toString(),
   },
   {
     id: 'transfer',
@@ -73,7 +74,7 @@ export const SEED_CATEGORIES: Category[] = [
     displayName: 'Transferencia',
     icon: 'arrow-left-right',
     color: '#6366F1',
-    applyType: 'TRANSFER',
+    applyType: CategoryApplyTypeEnum.TRANSFER.toString(),
     isSystem: true,
   },
   {
@@ -82,7 +83,7 @@ export const SEED_CATEGORIES: Category[] = [
     displayName: 'Ajuste de Saldo',
     icon: 'scale',
     color: '#64748B',
-    applyType: 'BOTH',
+    applyType: CategoryApplyTypeEnum.BOTH.toString(),
     isSystem: true,
   },
 ];

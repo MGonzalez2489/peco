@@ -16,6 +16,7 @@ import {ScheduledTransactionsStore} from '@core/stores/scheduled-transactions.st
 import {MovementFilterType} from '@core/types';
 import {toCategoryOption} from '@core/utils';
 import {AppSelectComponent, ModalComponent} from '@shared/components';
+import {ScheduledTransactionTypeEnum} from '@peco/enums';
 
 @Component({
   selector: 'app-scheduled-filtros-modal',
@@ -60,9 +61,9 @@ export class ScheduledFiltrosModalComponent {
 
   readonly typeOptions: Array<{value: MovementFilterType; label: string}> = [
     {value: 'ALL', label: 'Todos'},
-    {value: 'INCOME', label: 'Ingresos'},
-    {value: 'EXPENSE', label: 'Egresos'},
-    {value: 'TRANSFER', label: MOVEMENT_TYPE_LABEL.TRANSFER},
+    {value: ScheduledTransactionTypeEnum.INCOME.toString(), label: 'Ingresos'},
+    {value: ScheduledTransactionTypeEnum.EXPENSE.toString(), label: 'Egresos'},
+    {value: ScheduledTransactionTypeEnum.TRANSFER.toString(), label: MOVEMENT_TYPE_LABEL.TRANSFER},
   ];
 
   readonly type = signal<MovementFilterType>('ALL');

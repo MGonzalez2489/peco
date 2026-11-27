@@ -2,12 +2,13 @@ import {TestBed} from '@angular/core/testing';
 import {LOCAL_STORAGE_KEYS} from '../constants/local-storage-keys.constant';
 import {SCHEDULED_TRANSACTION_TYPE_MAP} from '../constants/scheduled-transaction-type-map.constant';
 import {CreateScheduledTransactionDto} from '../dtos/create-scheduled-transaction.dto';
-import {ScheduledTransactionTypeKey} from '../types/scheduled-transaction-type-key.enum';
 import {todayIsoDate} from '../utils/today-iso-date.util';
 import {AccountsStore} from './accounts.store';
 import {CatalogStore} from './catalog.store';
 import {MovementsStore} from './movements.store';
 import {ScheduledTransactionsStore} from './scheduled-transactions.store';
+import {ScheduledTransactionTypeEnum} from '@peco/enums';
+import type {ScheduledTransactionTypeKey} from '../types/scheduled-transaction-type-key.type';
 
 const typeOf = (key: ScheduledTransactionTypeKey) => SCHEDULED_TRANSACTION_TYPE_MAP[key];
 
@@ -38,7 +39,7 @@ describe('ScheduledTransactionsStore', () => {
     return {
       name: 'Alquiler',
       estimatedAmount: 500,
-      type: typeOf(ScheduledTransactionTypeKey.EXPENSE),
+      type: typeOf(ScheduledTransactionTypeEnum.EXPENSE.toString()),
       categoryId: 'services',
       sourceAccountId: account.id,
       frequency: 'MONTHLY',
@@ -127,14 +128,14 @@ describe('ScheduledTransactionsStore', () => {
   it('projects the available balance using the monthly net impact', () => {
     store.createScheduledTransaction(
       create({
-        type: typeOf(ScheduledTransactionTypeKey.INCOME),
+        type: typeOf(ScheduledTransactionTypeEnum.INCOME.toString()),
         estimatedAmount: 1000,
         frequency: 'MONTHLY',
       }),
     );
     store.createScheduledTransaction(
       create({
-        type: typeOf(ScheduledTransactionTypeKey.EXPENSE),
+        type: typeOf(ScheduledTransactionTypeEnum.EXPENSE.toString()),
         estimatedAmount: 200,
         frequency: 'MONTHLY',
       }),
@@ -196,7 +197,7 @@ describe('ScheduledTransactionsStore', () => {
     const loaded = store.scheduleById('legacy-1');
     expect(loaded?.frequency).toBe('MONTHLY');
     expect(loaded?.interval).toBe(1);
-    expect(loaded?.type.key).toBe(ScheduledTransactionTypeKey.EXPENSE);
+    expect(loaded?.type.key).toBe(ScheduledTransactionTypeEnum.EXPENSE.toString());
     expect(store.monthlyCommitmentsSummary().totalExpenses).toBe(200);
   });
 
@@ -219,7 +220,7 @@ describe('ScheduledTransactionsStore', () => {
     store.createScheduledTransaction(
       create({
         name: 'Nómina',
-        type: typeOf(ScheduledTransactionTypeKey.INCOME),
+        type: typeOf(ScheduledTransactionTypeEnum.INCOME.toString()),
         categoryId: 'payroll',
         estimatedAmount: 1000,
       }),
@@ -255,7 +256,7 @@ describe('ScheduledTransactionsStore', () => {
     store.createScheduledTransaction(
       create({
         name: 'Ahorro',
-        type: typeOf(ScheduledTransactionTypeKey.TRANSFER),
+        type: typeOf(ScheduledTransactionTypeEnum.TRANSFER.toString()),
         categoryId: 'transfer',
         destinationAccountId: destination.id,
       }),
@@ -265,7 +266,7 @@ describe('ScheduledTransactionsStore', () => {
 
     const filtered = store.filteredSchedules();
     expect(filtered.length).toBe(1);
-    expect(filtered[0].type.key).toBe(ScheduledTransactionTypeKey.TRANSFER);
+    expect(filtered[0].type.key).toBe(ScheduledTransactionTypeEnum.TRANSFER.toString());
 
     store.setTypeFilter('ALL');
     expect(store.filteredSchedules().length).toBe(2);
@@ -275,7 +276,7 @@ describe('ScheduledTransactionsStore', () => {
     store.createScheduledTransaction(
       create({
         name: 'Nómina',
-        type: typeOf(ScheduledTransactionTypeKey.INCOME),
+        type: typeOf(ScheduledTransactionTypeEnum.INCOME.toString()),
         categoryId: 'payroll',
         estimatedAmount: 1000,
       }),
@@ -283,7 +284,7 @@ describe('ScheduledTransactionsStore', () => {
     store.createScheduledTransaction(
       create({
         name: 'Freelance',
-        type: typeOf(ScheduledTransactionTypeKey.INCOME),
+        type: typeOf(ScheduledTransactionTypeEnum.INCOME.toString()),
         categoryId: 'payroll',
         estimatedAmount: 500,
       }),
@@ -394,7 +395,7 @@ describe('ScheduledTransactionsStore', () => {
       id,
       name,
       estimatedAmount: 500,
-      type: typeOf(ScheduledTransactionTypeKey.EXPENSE),
+      type: typeOf(ScheduledTransactionTypeEnum.EXPENSE.toString()),
       categoryId: 'services',
       sourceAccountId: accountId,
       frequency: 'MONTHLY',

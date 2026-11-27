@@ -5,6 +5,7 @@ import {PeriodSnapshot} from '../models/period-snapshot.model';
 import {movementBalanceImpact} from './movement-balance-impact.util';
 import {periodRange} from './period-range.util';
 import {toPeriod} from './to-period.util';
+import {MovementTypeEnum} from '@peco/enums';
 
 interface BuildPeriodSnapshotParams {
   accounts: readonly Account[];
@@ -73,15 +74,18 @@ const buildAccountPeriodBalance = (
     totalTransactions += 1;
     periodImpact += impact;
 
-    if (movement.type === 'INCOME' && movement.accountId === account.id) {
+    if (movement.type === MovementTypeEnum.INCOME.toString() && movement.accountId === account.id) {
       totalInflows += movement.amount;
     }
 
-    if (movement.type === 'EXPENSE' && movement.accountId === account.id) {
+    if (
+      movement.type === MovementTypeEnum.EXPENSE.toString() &&
+      movement.accountId === account.id
+    ) {
       totalOutflows += movement.amount;
     }
 
-    if (movement.type === 'TRANSFER') {
+    if (movement.type === MovementTypeEnum.TRANSFER.toString()) {
       totalTransfers += impact;
     }
   }

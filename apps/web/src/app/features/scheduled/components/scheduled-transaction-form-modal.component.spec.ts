@@ -6,6 +6,7 @@ import {ScheduledTransactionsStore} from '@core/stores/scheduled-transactions.st
 import {ScheduledTransactionTypeKey} from '@core/types';
 import {defaultStopDate, todayIsoDate, tomorrowIsoDate} from '@core/utils';
 import {ScheduledTransactionFormModalComponent} from './scheduled-transaction-form-modal.component';
+import {ScheduledTransactionTypeEnum} from '@peco/enums';
 
 describe('ScheduledTransactionFormModalComponent', () => {
   let fixture: ComponentFixture<ScheduledTransactionFormModalComponent>;
@@ -95,7 +96,7 @@ describe('ScheduledTransactionFormModalComponent', () => {
     const created = scheduledStore.createScheduledTransaction({
       name: 'Alquiler',
       estimatedAmount: 500,
-      type: SCHEDULED_TRANSACTION_TYPE_MAP[ScheduledTransactionTypeKey.EXPENSE],
+      type: SCHEDULED_TRANSACTION_TYPE_MAP[ScheduledTransactionTypeEnum.EXPENSE.toString()],
       categoryId: 'services',
       sourceAccountId: account.id,
       frequency: 'MONTHLY',
@@ -252,7 +253,7 @@ describe('ScheduledTransactionFormModalComponent', () => {
     const created = scheduledStore.createScheduledTransaction({
       name: 'Alquiler',
       estimatedAmount: 500,
-      type: SCHEDULED_TRANSACTION_TYPE_MAP[ScheduledTransactionTypeKey.EXPENSE],
+      type: SCHEDULED_TRANSACTION_TYPE_MAP[ScheduledTransactionTypeEnum.EXPENSE.toString()],
       categoryId: 'services',
       sourceAccountId: account.id,
       frequency: 'WEEKLY',

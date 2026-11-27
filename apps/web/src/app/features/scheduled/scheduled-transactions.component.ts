@@ -13,8 +13,11 @@ import {ScheduledFiltrosModalComponent} from './components/scheduled-filtros-mod
 import {ScheduledTransactionCardComponent} from './components/scheduled-transaction-card.component';
 import {ScheduledTransactionFormModalComponent} from './components/scheduled-transaction-form-modal.component';
 import {PrivacyCurrencyPipe} from '@shared/pipes/privacy-currency.pipe';
+import {ScheduledTransactionTypeEnum, type StringEnumValue} from '@peco/enums';
 
-type DistributionType = 'EXPENSE' | 'INCOME';
+type DistributionType =
+  | StringEnumValue<typeof ScheduledTransactionTypeEnum.EXPENSE>
+  | StringEnumValue<typeof ScheduledTransactionTypeEnum.INCOME>;
 type MobileSection = 'summary' | 'transactions';
 
 @Component({
@@ -96,16 +99,24 @@ export class ScheduledTransactionsComponent {
     });
   });
 
-  readonly distributionType = signal<DistributionType>('EXPENSE');
+  readonly distributionType = signal<DistributionType>(
+    ScheduledTransactionTypeEnum.EXPENSE.toString(),
+  );
+  protected readonly distributionTypes = {
+    EXPENSE: ScheduledTransactionTypeEnum.EXPENSE.toString(),
+    INCOME: ScheduledTransactionTypeEnum.INCOME.toString(),
+  };
 
   readonly distributionItems = computed(() =>
-    this.distributionType() === 'INCOME'
+    this.distributionType() === ScheduledTransactionTypeEnum.INCOME.toString()
       ? this.scheduledStore.incomeCategoryDistributionSummary()
       : this.scheduledStore.categoryDistributionSummary(),
   );
 
   readonly chartType = computed<'expense' | 'income'>(() =>
-    this.distributionType() === 'INCOME' ? 'income' : 'expense',
+    this.distributionType() === ScheduledTransactionTypeEnum.INCOME.toString()
+      ? 'income'
+      : 'expense',
   );
 
   readonly chartDistributionData = computed<DistributionChartItem[]>(() =>
@@ -119,13 +130,13 @@ export class ScheduledTransactionsComponent {
   );
 
   readonly chartTotalAmount = computed(() =>
-    this.distributionType() === 'INCOME'
+    this.distributionType() === ScheduledTransactionTypeEnum.INCOME.toString()
       ? this.summary().totalIncome
       : this.summary().totalExpenses,
   );
 
   readonly chartAvailableAmount = computed(() =>
-    this.distributionType() === 'INCOME'
+    this.distributionType() === ScheduledTransactionTypeEnum.INCOME.toString()
       ? 0
       : this.summary().totalIncome - this.summary().totalExpenses,
   );

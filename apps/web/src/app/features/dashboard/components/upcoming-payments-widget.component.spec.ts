@@ -11,6 +11,7 @@ import {ScheduledTransactionsStore} from '@core/stores/scheduled-transactions.st
 import {ScheduledTransactionTypeKey} from '@core/types';
 import {shiftPeriod} from '@core/utils';
 import {UpcomingPaymentsWidgetComponent} from './upcoming-payments-widget.component';
+import {ScheduledTransactionTypeEnum} from '@peco/enums';
 
 const MAX_ITEMS = 5;
 
@@ -30,7 +31,7 @@ describe('UpcomingPaymentsWidgetComponent', () => {
     scheduledStore.createScheduledTransaction({
       name: 'Pago',
       estimatedAmount: 100,
-      type: SCHEDULED_TRANSACTION_TYPE_MAP[ScheduledTransactionTypeKey.EXPENSE],
+      type: SCHEDULED_TRANSACTION_TYPE_MAP[ScheduledTransactionTypeEnum.EXPENSE.toString()],
       categoryId: 'services',
       sourceAccountId: accountsStore.accounts()[0].id,
       frequency: 'MONTHLY',

@@ -14,6 +14,7 @@ import {MovementPreferences} from '../models/movement-preferences.model';
 import {UserPreferences} from '../models/user-preferences.model';
 import {UserPreferencesStorageService} from '../services/user-preferences-storage.service';
 import {AppTheme} from '../types/app-theme.type';
+import {AppThemeEnum} from '@peco/enums';
 
 interface UserPreferencesState {
   preferences: UserPreferences;
@@ -30,8 +31,10 @@ const SYSTEM_DARK_MEDIA_QUERY = '(prefers-color-scheme: dark)';
 const isSystemDark = (): boolean => window.matchMedia(SYSTEM_DARK_MEDIA_QUERY).matches;
 
 const applyThemeToDocument = (theme: AppTheme): void => {
-  const isDark = theme === 'dark' || (theme === 'system' && isSystemDark());
-  document.documentElement.classList.toggle('dark', isDark);
+  const isDark =
+    theme === AppThemeEnum.DARK.toString() ||
+    (theme === AppThemeEnum.SYSTEM.toString() && isSystemDark());
+  document.documentElement.classList.toggle(AppThemeEnum.DARK.toString(), isDark);
 };
 
 export const UserPreferencesStore = signalStore(

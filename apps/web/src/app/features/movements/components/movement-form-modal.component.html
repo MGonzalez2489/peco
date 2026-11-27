@@ -74,7 +74,7 @@
         }
       </div>
 
-      @if (selectedType() !== 'TRANSFER') {
+      @if (selectedType() !== transferType) {
         <div>
           <label
             for="mov-category"
@@ -101,12 +101,12 @@
           for="mov-account"
           class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
         >
-          Cuenta {{ selectedType() === 'TRANSFER' ? 'origen' : '' }}
+          Cuenta {{ selectedType() === transferType ? 'origen' : '' }}
         </label>
         <app-select
           formControlName="accountId"
           controlId="mov-account"
-          [ariaLabel]="selectedType() === 'TRANSFER' ? 'Cuenta origen' : 'Cuenta'"
+          [ariaLabel]="selectedType() === transferType ? 'Cuenta origen' : 'Cuenta'"
           placeholder="Selecciona una cuenta"
           [options]="accountOptions()"
           [invalid]="form.controls.accountId.touched && form.controls.accountId.invalid"
@@ -116,7 +116,7 @@
         }
       </div>
 
-      @if (selectedType() === 'TRANSFER') {
+      @if (selectedType() === transferType) {
         <div>
           <label
             for="mov-destino"

@@ -2,6 +2,7 @@ import {Category} from '../models/category.model';
 import {ADJUSTMENT_CATEGORY_ID} from '../constants/adjustment-category-id.constant';
 import {DEFAULT_CATEGORY_COLOR} from '../constants/default-category-color.constant';
 import {ROOT_CATEGORY_ID} from '../constants/root-category-id.constant';
+import {CategoryApplyTypeEnum} from '@peco/enums';
 
 const FALLBACK_ROOT_ICON: Category['icon'] = 'folder-open';
 
@@ -17,7 +18,7 @@ const seedRoot = (): Category => ({
   displayName: 'Otros',
   icon: FALLBACK_ROOT_ICON,
   color: DEFAULT_CATEGORY_COLOR,
-  applyType: 'BOTH',
+  applyType: CategoryApplyTypeEnum.BOTH.toString(),
   isRoot: true,
 });
 
@@ -27,14 +28,14 @@ const seedAdjustment = (): Category => ({
   displayName: 'Ajuste de Saldo',
   icon: 'scale',
   color: SYSTEM_ADJUSTMENT_COLOR,
-  applyType: 'BOTH',
+  applyType: CategoryApplyTypeEnum.BOTH.toString(),
   isSystem: true,
 });
 
 const isTransferCategory = (category: Category): boolean =>
   category.id === SYSTEM_TRANSFER_ID ||
   category.name === SYSTEM_TRANSFER_NAME ||
-  (category.isSystem === true && category.applyType === 'TRANSFER');
+  (category.isSystem === true && category.applyType === CategoryApplyTypeEnum.TRANSFER.toString());
 
 const ensureSystemFlags = (categories: Category[]): Category[] => {
   return categories.map((category) => {
@@ -44,7 +45,7 @@ const ensureSystemFlags = (categories: Category[]): Category[] => {
         id: SYSTEM_TRANSFER_ID,
         name: SYSTEM_TRANSFER_NAME,
         displayName: category.displayName || 'Transferencia',
-        applyType: 'TRANSFER' as const,
+        applyType: CategoryApplyTypeEnum.TRANSFER.toString(),
         isSystem: true,
         isRoot: false,
       };

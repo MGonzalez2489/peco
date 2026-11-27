@@ -19,6 +19,7 @@ import {
 import {ExecuteScheduleModalComponent} from '@features/scheduled/components';
 import {AppIconComponent, MovementListComponent} from '@shared/components';
 import {PrivacyCurrencyPipe} from '@shared/pipes/privacy-currency.pipe';
+import {ScheduledTransactionTypeEnum} from '@peco/enums';
 
 const MAX_UPCOMING_ITEMS = 5;
 const FALLBACK_CATEGORY_COLOR = '#94a3b8';
@@ -165,7 +166,7 @@ export class UpcomingPaymentsWidgetComponent {
 
   protected readonly nextDueAmount = computed(() =>
     this.upcoming().reduce((total, schedule) => {
-      if (schedule.type.key === ScheduledTransactionTypeKey.INCOME) return total;
+      if (schedule.type.key === ScheduledTransactionTypeEnum.INCOME.toString()) return total;
       return total + schedule.estimatedAmount;
     }, 0),
   );

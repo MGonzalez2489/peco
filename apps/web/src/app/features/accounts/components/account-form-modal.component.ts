@@ -25,6 +25,7 @@ import {AccountType} from '@core/types';
 import {fromCents, toAccountTypeOption, toCents} from '@core/utils';
 import {AppSelectComponent, ModalComponent} from '@shared/components';
 import {CurrencyInputDirective} from '@shared/directives';
+import {AccountTypeEnum, MovementTypeEnum} from '@peco/enums';
 
 const ADJUSTMENT_NOTE = 'Ajuste manual de saldo';
 
@@ -53,10 +54,11 @@ export class AccountFormModalComponent {
   private readonly nameInput = viewChild<ElementRef<HTMLInputElement>>('nameInput');
 
   protected readonly accountTypeOptions: SelectOption[] = ACCOUNT_TYPES.map(toAccountTypeOption);
+  protected readonly creditType = AccountTypeEnum.CREDIT.toString();
 
   protected readonly form = this.fb.group({
     name: this.fb.control<string>('', Validators.required),
-    type: this.fb.control<AccountType>('CASH', Validators.required),
+    type: this.fb.control<AccountType>(AccountTypeEnum.CASH.toString(), Validators.required),
     initialBalance: this.fb.control<number | null>(0, {
       validators: [Validators.required, negativeBalanceForbidden],
     }),
@@ -108,10 +110,10 @@ export class AccountFormModalComponent {
         note: editing.note ?? '',
       });
     } else {
-      this.applyTypeValidators('CASH');
+      this.applyTypeValidators(AccountTypeEnum.CASH.toString());
       this.form.reset({
         name: '',
-        type: 'CASH',
+        type: AccountTypeEnum.CASH.toString(),
         initialBalance: 0,
         targetGoal: null,
         creditLimit: null,
@@ -129,7 +131,7 @@ export class AccountFormModalComponent {
 
   private applyBalanceValidators(type: AccountType): void {
     const balance = this.form.controls.initialBalance;
-    if (type === 'CREDIT') {
+    if (type === AccountTypeEnum.CREDIT.toString()) {
       balance.setValidators([Validators.required]);
     } else {
       balance.setValidators([Validators.required, negativeBalanceForbidden]);
@@ -141,7 +143,7 @@ export class AccountFormModalComponent {
     const creditLimit = this.form.controls.creditLimit;
     const targetGoal = this.form.controls.targetGoal;
 
-    if (type === 'CREDIT') {
+    if (type === AccountTypeEnum.CREDIT.toString()) {
       targetGoal.setValue(null);
       targetGoal.clearValidators();
 
@@ -173,7 +175,7 @@ export class AccountFormModalComponent {
 
     const raw = this.form.getRawValue();
     const editing = this.account();
-    const isCredit = raw.type === 'CREDIT';
+    const isCredit = raw.type === AccountTypeEnum.CREDIT.toString();
     const targetGoal = isCredit || raw.targetGoal == null ? undefined : toCents(raw.targetGoal);
     const creditLimit = !isCredit || raw.creditLimit == null ? undefined : toCents(raw.creditLimit);
     // The form works in decimal dollars; the store and models persist cents.
@@ -186,7 +188,8 @@ export class AccountFormModalComponent {
         this.movementsStore.registerMovement({
           accountId: editing.id,
           categoryId: ADJUSTMENT_CATEGORY_ID,
-          type: delta > 0 ? 'INCOME' : 'EXPENSE',
+          type:
+            delta > 0 ? MovementTypeEnum.INCOME.toString() : MovementTypeEnum.EXPENSE.toString(),
           amount: Math.abs(delta),
           note: ADJUSTMENT_NOTE,
         });
@@ -206,7 +209,7 @@ export class AccountFormModalComponent {
       this.accountsStore.createAccount({
         name: raw.name?.trim() ?? '',
         initialBalance: newBalanceInCents,
-        type: raw.type ?? 'CASH',
+        type: raw.type ?? AccountTypeEnum.CASH.toString(),
         targetGoal,
         creditLimit,
         includeInTotal: raw.includeInTotal ?? true,

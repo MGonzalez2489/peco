@@ -50,6 +50,11 @@ import {
   ModalComponent,
 } from '@shared/components';
 import {CurrencyInputDirective} from '@shared/directives';
+import {
+  RecurrenceFrequencyEnum,
+  ScheduledTransactionStopConditionEnum,
+  ScheduledTransactionTypeEnum,
+} from '@peco/enums';
 
 const futureDateValidator = (control: AbstractControl): ValidationErrors | null => {
   const value = control.value as string | null;
@@ -90,13 +95,13 @@ export class ScheduledTransactionFormModalComponent {
     name: this.fb.control<string>('', Validators.required),
     estimatedAmount: this.fb.control<number>(0, [Validators.required, Validators.min(0.01)]),
     type: this.fb.control<ScheduledTransactionTypeKey>(
-      ScheduledTransactionTypeKey.EXPENSE,
+      ScheduledTransactionTypeEnum.EXPENSE.toString(),
       Validators.required,
     ),
     categoryId: this.fb.control<string>('', Validators.required),
     sourceAccountId: this.fb.control<string>('', Validators.required),
     destinationAccountId: this.fb.control<string>('', Validators.required),
-    frequency: this.fb.control<RecurrenceFrequency>('MONTHLY'),
+    frequency: this.fb.control<RecurrenceFrequency>(RecurrenceFrequencyEnum.MONTHLY.toString()),
     interval: this.fb.control<number>(1, [
       Validators.required,
       Validators.min(1),
@@ -104,16 +109,32 @@ export class ScheduledTransactionFormModalComponent {
     ]),
     nextExecutionDate: this.fb.control<string>('', [Validators.required, futureDateValidator]),
     autoApply: this.fb.control<boolean>(false),
-    stopCondition: this.fb.control<ScheduledTransactionStopCondition>('NEVER'),
+    stopCondition: this.fb.control<ScheduledTransactionStopCondition>(
+      ScheduledTransactionStopConditionEnum.NEVER.toString(),
+    ),
     totalOccurrences: this.fb.control<number | null>(null),
     endDate: this.fb.control<string | null>(null),
   });
 
-  readonly selectedType = signal<ScheduledTransactionTypeKey>(ScheduledTransactionTypeKey.EXPENSE);
+  readonly selectedType = signal<ScheduledTransactionTypeKey>(
+    ScheduledTransactionTypeEnum.EXPENSE.toString(),
+  );
   readonly sourceAccountId = signal('');
-  readonly stopCondition = signal<ScheduledTransactionStopCondition>('NEVER');
+  readonly stopCondition = signal<ScheduledTransactionStopCondition>(
+    ScheduledTransactionStopConditionEnum.NEVER.toString(),
+  );
 
-  protected readonly typeKeys = ScheduledTransactionTypeKey;
+  protected readonly typeKeys = {
+    INCOME: ScheduledTransactionTypeEnum.INCOME.toString(),
+    EXPENSE: ScheduledTransactionTypeEnum.EXPENSE.toString(),
+    TRANSFER: ScheduledTransactionTypeEnum.TRANSFER.toString(),
+  };
+
+  protected readonly stopConditions = {
+    NEVER: ScheduledTransactionStopConditionEnum.NEVER.toString(),
+    OCCURRENCES: ScheduledTransactionStopConditionEnum.OCCURRENCES.toString(),
+    DATE: ScheduledTransactionStopConditionEnum.DATE.toString(),
+  };
 
   protected readonly title = computed(() =>
     this.schedule() ? 'Editar programado' : 'Nuevo programado',
@@ -168,7 +189,7 @@ export class ScheduledTransactionFormModalComponent {
     const destinationControl = this.form.controls.destinationAccountId;
 
     typeControl.valueChanges.pipe(takeUntilDestroyed()).subscribe((type) => {
-      const value = type ?? ScheduledTransactionTypeKey.EXPENSE;
+      const value = type ?? ScheduledTransactionTypeEnum.EXPENSE.toString();
       this.selectedType.set(value);
       this.syncValidators(value);
     });
@@ -181,7 +202,7 @@ export class ScheduledTransactionFormModalComponent {
     });
 
     this.form.controls.stopCondition.valueChanges.pipe(takeUntilDestroyed()).subscribe((value) => {
-      const condition = value ?? 'NEVER';
+      const condition = value ?? ScheduledTransactionStopConditionEnum.NEVER.toString();
       this.stopCondition.set(condition);
       this.syncStopCondition(condition);
     });
@@ -207,8 +228,10 @@ export class ScheduledTransactionFormModalComponent {
 
       const current = this.schedule();
       const accounts = untracked(() => this.accounts());
-      const type = current?.type.key ?? ScheduledTransactionTypeKey.EXPENSE;
-      const stopCondition = current ? this.resolveStopCondition(current) : 'NEVER';
+      const type = current?.type.key ?? ScheduledTransactionTypeEnum.EXPENSE.toString();
+      const stopCondition = current
+        ? this.resolveStopCondition(current)
+        : ScheduledTransactionStopConditionEnum.NEVER.toString();
 
       this.form.reset({
         name: current?.name ?? '',
@@ -217,7 +240,7 @@ export class ScheduledTransactionFormModalComponent {
         categoryId: current?.categoryId ?? '',
         sourceAccountId: current?.sourceAccountId ?? accounts[0]?.id ?? '',
         destinationAccountId: current?.destinationAccountId ?? '',
-        frequency: current?.frequency ?? 'MONTHLY',
+        frequency: current?.frequency ?? RecurrenceFrequencyEnum.MONTHLY.toString(),
         interval: current?.interval ?? 1,
         nextExecutionDate: current?.nextExecutionDate ?? tomorrowIsoDate(),
         autoApply: current?.autoApply ?? false,
@@ -248,7 +271,7 @@ export class ScheduledTransactionFormModalComponent {
       const type = this.selectedType();
       const list = this.availableCategories();
 
-      if (type === ScheduledTransactionTypeKey.TRANSFER) {
+      if (type === ScheduledTransactionTypeEnum.TRANSFER.toString()) {
         const transferCategory = this.catalogStore.transferCategory() ?? list[0];
         if (transferCategory) categoryControl.setValue(transferCategory.id);
         return;
@@ -273,11 +296,12 @@ export class ScheduledTransactionFormModalComponent {
     const name = raw.name?.trim() ?? '';
     if (!name) return;
 
-    const isTransfer = raw.type === ScheduledTransactionTypeKey.TRANSFER;
+    const isTransfer = raw.type === ScheduledTransactionTypeEnum.TRANSFER.toString();
     const destinationId = isTransfer ? (raw.destinationAccountId ?? '') : '';
     if (isTransfer && (!destinationId || destinationId === raw.sourceAccountId)) return;
 
-    const stopCondition = raw.stopCondition ?? 'NEVER';
+    const stopCondition =
+      raw.stopCondition ?? ScheduledTransactionStopConditionEnum.NEVER.toString();
     const base = {
       name,
       // The input works in decimal dollars; schedules persist integer cents.
@@ -286,14 +310,20 @@ export class ScheduledTransactionFormModalComponent {
       categoryId: raw.categoryId ?? '',
       sourceAccountId: raw.sourceAccountId ?? '',
       destinationAccountId: isTransfer ? destinationId : undefined,
-      frequency: raw.frequency ?? ('MONTHLY' as RecurrenceFrequency),
+      frequency:
+        raw.frequency ?? (RecurrenceFrequencyEnum.MONTHLY.toString() as RecurrenceFrequency),
       interval: raw.interval ?? 1,
       nextExecutionDate: raw.nextExecutionDate ?? tomorrowIsoDate(),
       autoApply: raw.autoApply ?? false,
       active: this.schedule()?.active ?? true,
       totalOccurrences:
-        stopCondition === 'OCCURRENCES' ? (raw.totalOccurrences ?? undefined) : undefined,
-      endDate: stopCondition === 'DATE' ? (raw.endDate ?? undefined) : undefined,
+        stopCondition === ScheduledTransactionStopConditionEnum.OCCURRENCES.toString()
+          ? (raw.totalOccurrences ?? undefined)
+          : undefined,
+      endDate:
+        stopCondition === ScheduledTransactionStopConditionEnum.DATE.toString()
+          ? (raw.endDate ?? undefined)
+          : undefined,
     };
 
     const existing = this.schedule();
@@ -326,15 +356,16 @@ export class ScheduledTransactionFormModalComponent {
   }
 
   private resolveStopCondition(item: ScheduledTransaction): ScheduledTransactionStopCondition {
-    if (item.totalOccurrences !== undefined) return 'OCCURRENCES';
-    if (item.endDate !== undefined) return 'DATE';
-    return 'NEVER';
+    if (item.totalOccurrences !== undefined)
+      return ScheduledTransactionStopConditionEnum.OCCURRENCES.toString();
+    if (item.endDate !== undefined) return ScheduledTransactionStopConditionEnum.DATE.toString();
+    return ScheduledTransactionStopConditionEnum.NEVER.toString();
   }
 
   private syncValidators(type: ScheduledTransactionTypeKey): void {
     const destination = this.form.controls.destinationAccountId;
 
-    if (type === ScheduledTransactionTypeKey.TRANSFER) {
+    if (type === ScheduledTransactionTypeEnum.TRANSFER.toString()) {
       destination.enable();
       destination.setValidators(Validators.required);
     } else {
@@ -350,14 +381,14 @@ export class ScheduledTransactionFormModalComponent {
     const occurrences = this.form.controls.totalOccurrences;
     const endDate = this.form.controls.endDate;
 
-    if (condition === 'OCCURRENCES') {
+    if (condition === ScheduledTransactionStopConditionEnum.OCCURRENCES.toString()) {
       occurrences.enable();
       occurrences.setValidators([Validators.required, Validators.min(1)]);
       if (!occurrences.value) occurrences.setValue(1, {emitEvent: false});
       endDate.disable();
       endDate.setValue(null, {emitEvent: false});
       endDate.clearValidators();
-    } else if (condition === 'DATE') {
+    } else if (condition === ScheduledTransactionStopConditionEnum.DATE.toString()) {
       endDate.enable();
       endDate.setValidators(Validators.required);
       occurrences.disable();
@@ -383,7 +414,8 @@ export class ScheduledTransactionFormModalComponent {
   }
 
   private resolveDefaultEndDate(): string {
-    const frequency = this.form.controls.frequency.value ?? 'MONTHLY';
+    const frequency =
+      this.form.controls.frequency.value ?? RecurrenceFrequencyEnum.MONTHLY.toString();
     const interval = this.form.controls.interval.value ?? 1;
     const nextExecutionDate = this.form.controls.nextExecutionDate.value || tomorrowIsoDate();
 
@@ -391,7 +423,11 @@ export class ScheduledTransactionFormModalComponent {
   }
 
   private refreshDefaultEndDate(): void {
-    if (this.stopCondition() !== 'DATE' || !this.endDateIsDefault) return;
+    if (
+      this.stopCondition() !== ScheduledTransactionStopConditionEnum.DATE.toString() ||
+      !this.endDateIsDefault
+    )
+      return;
 
     this.form.controls.endDate.setValue(this.resolveDefaultEndDate(), {emitEvent: false});
   }

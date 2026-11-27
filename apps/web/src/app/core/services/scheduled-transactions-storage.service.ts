@@ -5,6 +5,7 @@ import {migrateAmountsToCents} from '../utils/migrate-amounts-to-cents.util';
 import {readStorageArray} from '../utils/read-storage-array.util';
 import {resolveScheduledTransactionType} from '../utils/resolve-scheduled-transaction-type.util';
 import {writeStorageArray} from '../utils/write-storage-array.util';
+import {RecurrenceFrequencyEnum} from '@peco/enums';
 
 @Injectable({providedIn: 'root'})
 export class ScheduledTransactionsStorageService {
@@ -55,7 +56,7 @@ export class ScheduledTransactionsStorageService {
     return {
       ...item,
       type: resolveScheduledTransactionType(item.type),
-      frequency: item.frequency ?? 'MONTHLY',
+      frequency: item.frequency ?? RecurrenceFrequencyEnum.MONTHLY.toString(),
       interval,
     };
   }

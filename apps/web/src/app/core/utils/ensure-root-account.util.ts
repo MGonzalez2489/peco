@@ -1,6 +1,7 @@
 import {ACCOUNT_TYPE_MAP} from '../constants/account-type-map.constant';
 import {Account} from '../models/account.model';
 import {AccountType} from '../types/account-type.type';
+import {AccountTypeEnum} from '@peco/enums';
 
 const withIncludeInTotal = (account: Account): Account => ({
   ...account,
@@ -16,14 +17,14 @@ const isAccountType = (value: unknown): value is AccountType =>
   typeof value === 'string' && Object.hasOwn(ACCOUNT_TYPE_MAP, value);
 
 // Accounts persisted before the semantic type refactor stored the type as an
-// object (e.g. `{key: 'CASH', color: 'emerald'}`). Normalize both legacy shapes
+// object (e.g. `{key: cash, color: 'emerald'}`). Normalize both legacy shapes
 // into the canonical account type key used across the application.
 const withType = (account: Account): Account => {
   const current: unknown = (account as {type?: unknown}).type;
   if (isAccountType(current)) return account;
 
   const legacyKey = (current as {key?: unknown} | null | undefined)?.key;
-  return {...account, type: isAccountType(legacyKey) ? legacyKey : 'CASH'};
+  return {...account, type: isAccountType(legacyKey) ? legacyKey : AccountTypeEnum.CASH.toString()};
 };
 
 export const ensureRootAccount = (accounts: Account[]): Account[] => {

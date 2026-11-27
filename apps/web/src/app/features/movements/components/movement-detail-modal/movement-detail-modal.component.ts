@@ -33,6 +33,7 @@ import {
   toSoftCategoryColor,
 } from '@core/utils';
 import {AppIconComponent, IconName} from '@shared/components';
+import {MovementTypeEnum} from '@peco/enums';
 
 const FALLBACK_CATEGORY_COLOR = '#94a3b8';
 const FALLBACK_CATEGORY_ICON: IconName = 'folder-open';
@@ -215,9 +216,15 @@ export class MovementDetailModalComponent {
     () => new Map(MOVEMENT_TYPES.map((type) => [type.key, type])),
   );
 
-  readonly isIncome = computed(() => this.displayedMovement()?.type === 'INCOME');
-  readonly isExpense = computed(() => this.displayedMovement()?.type === 'EXPENSE');
-  readonly isTransfer = computed(() => this.displayedMovement()?.type === 'TRANSFER');
+  readonly isIncome = computed(
+    () => this.displayedMovement()?.type === MovementTypeEnum.INCOME.toString(),
+  );
+  readonly isExpense = computed(
+    () => this.displayedMovement()?.type === MovementTypeEnum.EXPENSE.toString(),
+  );
+  readonly isTransfer = computed(
+    () => this.displayedMovement()?.type === MovementTypeEnum.TRANSFER.toString(),
+  );
 
   readonly palette = computed(() => MOVEMENT_TYPE_PALETTE[this.currentType()]);
 
@@ -241,9 +248,9 @@ export class MovementDetailModalComponent {
 
   readonly typeBadge = computed(() => {
     switch (this.currentType()) {
-      case 'INCOME':
+      case MovementTypeEnum.INCOME.toString():
         return 'Ingreso registrado';
-      case 'TRANSFER':
+      case MovementTypeEnum.TRANSFER.toString():
         return 'Transferencia registrada';
       default:
         return 'Egreso registrado';
@@ -352,7 +359,7 @@ export class MovementDetailModalComponent {
   }
 
   private currentType(): MovementType {
-    return this.displayedMovement()?.type ?? 'EXPENSE';
+    return this.displayedMovement()?.type ?? MovementTypeEnum.EXPENSE.toString();
   }
 
   private toAccountView(account?: Account): AccountView {

@@ -248,7 +248,7 @@
         </div>
       </div>
 
-      @if (stopCondition() === 'OCCURRENCES') {
+      @if (stopCondition() === stopConditions.OCCURRENCES) {
         <div>
           <label
             for="sch-occurrences"
@@ -273,7 +273,7 @@
         </div>
       }
 
-      @if (stopCondition() === 'DATE') {
+      @if (stopCondition() === stopConditions.DATE) {
         <div>
           <label
             for="sch-end-date"

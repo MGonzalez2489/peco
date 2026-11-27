@@ -15,5 +15,5 @@ export * from './movement-type.type';
 export * from './pwa-install-prompt.type';
 export * from './recurrence-frequency.type';
 export * from './scheduled-transaction-stop-condition.type';
-export * from './scheduled-transaction-type-key.enum';
+export * from './scheduled-transaction-type-key.type';
 export * from './settings-section-group.type';

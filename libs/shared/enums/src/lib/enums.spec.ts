@@ -20,6 +20,7 @@ import {
   ReportPeriodStatusEnum,
   ScheduledExecutionReasonEnum,
   ScheduledExecutionStatusEnum,
+  ScheduledTransactionStopConditionEnum,
   ScheduledTransactionTypeEnum,
   stringEnumValue,
 } from '../index';
@@ -158,6 +159,12 @@ describe('shared enums', () => {
       'movements',
       'users',
     ]);
+  });
+
+  it('keeps every scheduled stop condition in a single registry', () => {
+    expect(
+      Object.values(ScheduledTransactionStopConditionEnum).map((condition) => condition.toString()),
+    ).toEqual(['NEVER', 'OCCURRENCES', 'DATE']);
   });
 
   it('keeps every API error code in a single registry', () => {

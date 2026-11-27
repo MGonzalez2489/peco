@@ -15,6 +15,7 @@ import {ScheduledTransactionsStore} from '@core/stores/scheduled-transactions.st
 import {ScheduledTransactionTypeKey} from '@core/types';
 import {AppIconComponent, ConfirmModalComponent} from '@shared/components';
 import {PrivacyCurrencyPipe} from '@shared/pipes/privacy-currency.pipe';
+import {ScheduledTransactionTypeEnum} from '@peco/enums';
 
 const FALLBACK_CATEGORY_COLOR = '#94a3b8';
 
@@ -44,13 +45,13 @@ export class ScheduledTransactionCardComponent {
   );
 
   protected readonly isIncome = computed(
-    () => this.schedule().type.key === ScheduledTransactionTypeKey.INCOME,
+    () => this.schedule().type.key === ScheduledTransactionTypeEnum.INCOME.toString(),
   );
 
   protected readonly amountPalette = computed(() =>
     this.isIncome()
       ? 'text-emerald-600 dark:text-emerald-400'
-      : this.schedule().type.key === ScheduledTransactionTypeKey.TRANSFER
+      : this.schedule().type.key === ScheduledTransactionTypeEnum.TRANSFER.toString()
         ? 'text-sky-600 dark:text-sky-400'
         : 'text-rose-600 dark:text-rose-400',
   );

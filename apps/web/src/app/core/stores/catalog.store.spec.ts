@@ -2,11 +2,11 @@ import {TestBed} from '@angular/core/testing';
 import {LOCAL_STORAGE_KEYS} from '../constants/local-storage-keys.constant';
 import {SCHEDULED_TRANSACTION_TYPE_MAP} from '../constants/scheduled-transaction-type-map.constant';
 import {Category} from '../models/category.model';
-import {ScheduledTransactionTypeKey} from '../types/scheduled-transaction-type-key.enum';
 import {AccountsStore} from './accounts.store';
 import {CatalogStore} from './catalog.store';
 import {MovementsStore} from './movements.store';
 import {ScheduledTransactionsStore} from './scheduled-transactions.store';
+import {ScheduledTransactionTypeEnum} from '@peco/enums';
 
 describe('CatalogStore categories management', () => {
   let catalogStore: InstanceType<typeof CatalogStore>;
@@ -116,7 +116,7 @@ describe('CatalogStore categories management', () => {
     scheduledStore.createScheduledTransaction({
       name: 'Vacunas',
       estimatedAmount: 40,
-      type: SCHEDULED_TRANSACTION_TYPE_MAP[ScheduledTransactionTypeKey.EXPENSE],
+      type: SCHEDULED_TRANSACTION_TYPE_MAP[ScheduledTransactionTypeEnum.EXPENSE.toString()],
       categoryId: created.id,
       sourceAccountId: account.id,
       frequency: 'MONTHLY',

@@ -5,8 +5,13 @@ import {AccountPreferences} from '../models/account-preferences.model';
 import {MovementPreferences} from '../models/movement-preferences.model';
 import {UserPreferences} from '../models/user-preferences.model';
 import {AppTheme} from '../types/app-theme.type';
+import {AppThemeEnum} from '@peco/enums';
 
-const APP_THEMES: readonly AppTheme[] = ['light', 'dark', 'system'];
+const APP_THEMES: readonly AppTheme[] = [
+  AppThemeEnum.LIGHT.toString(),
+  AppThemeEnum.DARK.toString(),
+  AppThemeEnum.SYSTEM.toString(),
+];
 
 @Injectable({providedIn: 'root'})
 export class UserPreferencesStorageService {

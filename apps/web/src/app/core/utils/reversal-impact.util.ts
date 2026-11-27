@@ -1,5 +1,6 @@
 import {Movement} from '../models/movement.model';
 import {formatCentsToCurrency} from './format-cents-to-currency.util';
+import {MovementTypeEnum} from '@peco/enums';
 
 export function reversalImpact(
   movement: Pick<Movement, 'type' | 'amount' | 'accountId' | 'targetAccountId'>,
@@ -7,11 +8,11 @@ export function reversalImpact(
   destinationAccountName?: string,
 ): string {
   switch (movement.type) {
-    case 'EXPENSE':
+    case MovementTypeEnum.EXPENSE.toString():
       return `+${formatCentsToCurrency(movement.amount)} se devolverá al saldo de la cuenta ${sourceAccountName}.`;
-    case 'INCOME':
+    case MovementTypeEnum.INCOME.toString():
       return `-${formatCentsToCurrency(movement.amount)} se descontará del saldo de la cuenta ${sourceAccountName}.`;
-    case 'TRANSFER':
+    case MovementTypeEnum.TRANSFER.toString():
       return `Se revertirán los saldos de ${sourceAccountName} y ${destinationAccountName ?? 'la cuenta destino'}.`;
     default:
       return '';
